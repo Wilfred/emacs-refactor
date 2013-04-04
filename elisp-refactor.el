@@ -21,24 +21,17 @@
 
 ;;; Commentary:
 
-;; Provides refactoring commands for Emacs Lisp. It provides the following commands:
-;; * extract function
-;; * extract variable
-;; * extract autoload
-;;
-;; These commands can be run directly, but it is easiest to access them through
-;; the refactor popup.
-
-;;; Dependencies:
-;; s dash cl-lib popup
-
-;;; Installation
 ;; Add this package to your load path and add an autoload for `elr/show-refactor-menu`.
 ;; Bind the `elr/show-refactor-menu` command to something convenient.
 
 ;; (autoload 'elr/show-refactor-menu "elisp-refactor")
 ;; (add-hook 'emacs-lisp-mode-hook
 ;;           (lambda () (local-set-key (kbd "M-RET") 'elr/show-refactor-menu)))
+
+;; See README.md for more information.
+
+;;; Dependencies:
+;; s dash cl-lib popup
 
 ;;; Code:
 
@@ -152,7 +145,6 @@ otherwise execute ELSE forms without bindings."
 
 (defvar elr--special-symbols '(&rest &optional &key &allow-other-keys \,\@ \,)
   "A list of symbols that should be ignored by variable searches.")
-
 
 ;;; FIXME:
 ;;; This needs more work to make it more accurate.

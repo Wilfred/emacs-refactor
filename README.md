@@ -10,6 +10,7 @@ The following commands are currently available:
 * extract expression to defvar
 * extract expression to defconst
 * extract autoload for function
+* evalute expression and replace it with the result.
 
 ## Dependencies
 
