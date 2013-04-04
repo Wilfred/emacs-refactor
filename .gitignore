@@ -1,4 +1,5 @@
 *~
-*elc
+*.elc
 .DS_Store
 \#*
+TAGS
