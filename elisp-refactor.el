@@ -58,11 +58,15 @@
          (eq (car (symbol-function symbol)) 'macro))))
 
 (defmacro elr--defmacro-safe (symbol arglist &rest body)
-  "Define the given macro only if it is not already defined."
+  "Define the given macro only if it is not already defined.
+SYMBOL is the name of the macro.
+ARGLIST is a cl-style argument list.
+BODY is the body of the macro.
+See `cl-defmacro'."
   (declare (doc-string 3) (indent defun))
   (cl-assert (symbolp symbol))
   (cl-assert (listp arglist))
-  `(unless (elr--fn-or-macro-boundp ',symbol)
+  `(unless (elr--macro-boundp ',symbol)
      (cl-defmacro ,symbol ,arglist ,@body)))
 
 (elr--defmacro-safe when-let ((var form) &rest body)
@@ -84,6 +88,7 @@ otherwise execute ELSE forms without bindings."
 ;;; Navigation commands
 
 (defun elr--goto-first-match (regex)
+  "Move point to the first match in the buffer for REGEX."
   (save-match-data
     (when (string-match regex (buffer-string) 0)
       (goto-char (match-beginning 0)))))
@@ -98,7 +103,7 @@ otherwise execute ELSE forms without bindings."
   (newline))
 
 (defun elr--goto-open-round ()
-  "Move to the opening paren for the lisp list at point."
+  "Move to the opening paren for the Lisp list at point."
   (interactive)
   (unless (equal "(" (thing-at-point 'char))
     (beginning-of-sexp)
@@ -106,7 +111,7 @@ otherwise execute ELSE forms without bindings."
       (search-backward "("))))
 
 (defun elr--goto-open-round-or-quote ()
-  "Move to the opening paren or quote for the lisp list at point."
+  "Move to the opening paren or quote for the Lisp list at point."
   (interactive)
   (elr--goto-open-round)
   (when (thing-at-point-looking-at "'")
@@ -115,13 +120,14 @@ otherwise execute ELSE forms without bindings."
 ;;; ----------------------------------------------------------------------------
 ;;; Formatting commands
 
-(defun elr--symbol-file-name (sym)
-  (when-let (f (find-lisp-object-file-name sym (symbol-function sym)))
-    (and (stringp f)
-         (file-name-nondirectory (file-name-sans-extension f)))))
+(defun elr--symbol-file-name (fn)
+  "Find the name of the file that declares function FN."
+  (when-let (file (find-lisp-object-file-name fn (symbol-function fn)))
+    (and (stringp file)
+         (file-name-nondirectory (file-name-sans-extension file)))))
 
 (defun elr--list-at-point ()
-  "Return the lisp list at point."
+  "Return the Lisp list at point or enclosing point."
   (interactive)
   (save-excursion
     (elr--goto-open-round)
@@ -147,7 +153,11 @@ otherwise execute ELSE forms without bindings."
 (defvar elr--special-symbols '(&rest &optional &key &allow-other-keys \,\@ \,)
   "A list of symbols that should be ignored by variable searches.")
 
+
+;;; FIXME:
+;;; This needs more work to make it more accurate.
 (defun elr--unbound-symbols (form)
+  "Try to find the symbols in FORM that do not have variable bindings."
   (->> (cl-list* form)
     (-flatten)
     (-filter 'symbolp)
@@ -160,7 +170,12 @@ otherwise execute ELSE forms without bindings."
     (-uniq)))
 
 (defun elr--unbound-symbols-string ()
-  (s-join " " (-map 'symbol-name (elr--unbound-symbols (elr--list-at-point)))))
+  "Format a string of the unbound symbols in the list at point."
+  (->> (elr--list-at-point)
+    (elr--unbound-symbols)
+    (-map 'symbol-name)
+    (s-join " ")
+    (s-trim)))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Refactoring commands
@@ -246,35 +261,36 @@ See `autoload' for details."
 ;;; ----------------------------------------------------------------------------
 ;;; UI commands
 
-(defun elr/refactor-options ()
-  (--filter (not (null it))
-            (list
-             (popup-make-item "function"
-                              :value 'elr/extract-function
-                              :summary "defun")
+(defun elr--extract-function-popup ()
+  (popup-make-item "function" :value 'elr/extract-function :summary "defun"))
 
-             (popup-make-item "variable"
-                              :value 'elr/extract-variable
-                              :summary "defvar")
+(defun elr--extract-variable-popup ()
+  (popup-make-item "variable" :value 'elr/extract-variable :summary "defvar"))
 
-             (popup-make-item "constant"
-                              :value 'elr/extract-constant
-                              :summary "defconst")
+(defun elr--extract-constant-popup ()
+  (popup-make-item "constant" :value 'elr/extract-constant :summary "defconst"))
 
-             (when (functionp (symbol-at-point))
-               (popup-make-item "autoload"
-                                :value 'elr/extract-autoload
-                                :summary "autoload"))
+(defun elr--extract-autoload-popup ()
+  (when (functionp (symbol-at-point))
+    (popup-make-item "autoload" :value 'elr/extract-autoload :summary "autoload")))
 
-             (popup-make-item "eval"
-                              :value 'elr/eval-and-replace
-                              :summary "value"))))
+(defun elr--eval-and-replace-popup ()
+  (popup-make-item "eval" :value 'elr/eval-and-replace :summary "value"))
+
+(defvar elr--refactor-options
+  (list 'elr--extract-function-popup
+        'elr--extract-variable-popup
+        'elr--extract-constant-popup
+        'elr--extract-autoload-popup
+        'elr--eval-and-replace-popup))
 
 (defun elr/show-refactor-menu ()
   "Show the extraction menu at point."
   (interactive)
-  (if-let (action (popup-menu* (elr/refactor-options) :isearch t))
-    (call-interactively action)
+  (if-let (actions (->> elr--refactor-options
+                     (-map 'funcall)
+                     (--filter (not (null it)))))
+    (call-interactively (popup-menu* actions :isearch t))
     (error "No refactorings available")))
 
 (provide 'elisp-refactor)
