@@ -1,9 +1,10 @@
 # elisp-refactor
 
-Provides refactoring commands for Emacs Lisp.
+Provides refactoring commands for Emacs Lisp. To use, move point to an expression and invoke the refactor menu.
 
-To use, move point to an expression and invoke the refactor menu. The following
-commands are currently available:
+![Refactoring menu example](https://raw.github.com/chrisbarrett/elisp-refactor/master/elr.png)
+
+The following commands are currently available:
 
 * extract expression to function
 * extract expression to defvar
