@@ -137,10 +137,15 @@ otherwise execute ELSE forms without bindings."
     (read (buffer-substring-no-properties (region-beginning)
                                           (region-end)))))
 
-(defun elr--format-defun (name arglist body)
+(defun elr--format-defun (symbol name arglist body)
+  "Format a defun-style form.  All vars should be strings.
+SYMBOL is the name for the car of the list (eg defun, defmacro)
+NAME is name being defined.
+ARGLIST is the arglist for the definition.
+BODY is the formatted body forms."
   (with-temp-buffer
     (lisp-mode-variables)
-    (insert (format "(defun %s (%s) \n%s)" name arglist body))
+    (insert (format "(%s %s (%s) \n%s)" symbol name arglist body))
     (indent-region (point-min) (point-max))
     (buffer-string)))
 
@@ -270,7 +275,7 @@ ARGLIST is its argument list."
     (elr--extraction-refactor "Extracted to"
       (insert (apply 'elr--format-list name (s-split-words args)))
       (beginning-of-defun)
-      (elr--insert-above (elr--format-defun name args (car kill-ring))))))
+      (elr--insert-above (elr--format-defun "defun" name args (car kill-ring))))))
 
 (defun elr--extract-to-form (symbol-str name)
   (let ((name (s-trim name)))
