@@ -128,6 +128,7 @@ otherwise execute ELSE forms without bindings."
     (and (stringp file)
          (file-name-nondirectory (file-name-sans-extension file)))))
 
+""
 (defun elr--list-at-point ()
   "Return the Lisp list at point or enclosing point."
   (interactive)
@@ -326,16 +327,81 @@ See `autoload' for details."
           (elr--insert-above form))))))
 
 ;;; ----------------------------------------------------------------------------
+;;; Inlining
+
+(defun elr--macro-definition? (sexp)
+  "Return t if SEXP expands to a macro definition."
+  (ignore-errors
+    (let ((exp (macroexpand-all sexp)))
+      ;; yo dawg I herd you like cars
+      (and (equal 'defalias (car exp))
+           (equal 'macro (cadar (cdaddr exp)))))))
+
+(defun elr--function-definition? (sexp)
+  "Return t if SEXP expands to a function definition."
+  (ignore-errors
+    (let ((exp (macroexpand-all sexp)))
+      (and (equal 'defalias (car exp))
+           (equal 'function (caaddr exp))))))
+
+(defun elr--variable-definition? (sexp)
+  (ignore-errors
+    (member (car (macroexpand-all sexp))
+            '(defconst defvar defcustom))))
+
+(defun elr--looking-at-definition? ()
+  (let ((sexp (elr--list-at-point)))
+    (or (elr--variable-definition? sexp)
+        (elr--macro-definition? sexp)
+        (elr--function-definition? sexp))))
+
+(defun elr--extract-var-values (sexp)
+  "Return the name and initializing value of SEXP if it is a variable definition."
+  (let ((exp (macroexpand-all sexp)))
+    (when (elr--variable-definition? exp)
+      (cl-destructuring-bind (_def sym form) exp
+          (cons sym form)))))
+
+(cl-defun elr--replace-usages ((sym . value))
+  "Replace all instances of SYM with VALUE in the current buffer."
+  (save-excursion
+    (goto-char (point-min))
+    (save-match-data
+      ;; Check for "(" since we don't want to replace function calls.
+      (while (search-forward-regexp (format "[^(]\\(%s\\)" sym) nil t)
+        (replace-match (prin1-to-string value) t t nil 1)
+        (elr--goto-open-round)
+        (indent-sexp)))))
+
+(defun elr-inline-variable ()
+  "Inline the variable at defined at point.
+Uses of the variable are replaced with the initvalue in the variable definition."
+  (interactive)
+  (save-excursion
+    (beginning-of-defun)
+    (if-let (vals (elr--extract-var-values (elr--list-at-point)))
+      (elr--extraction-refactor "Inline variable at"
+        (elr--replace-usages vals))
+      (error "Not a variable definition."))))
+
+;;; ----------------------------------------------------------------------------
 ;;; UI commands
 
+(defun elr--inline-variable-popup ()
+  (when (elr--variable-definition? (elr--list-at-point))
+    (popup-make-item "inline" :value 'elr-inline-variable)))
+
 (defun elr--extract-function-popup ()
-  (popup-make-item "function" :value 'elr-extract-function :summary "defun"))
+  (unless (elr--looking-at-definition?)
+    (popup-make-item "function" :value 'elr-extract-function :summary "defun")))
 
 (defun elr--extract-variable-popup ()
-  (popup-make-item "variable" :value 'elr-extract-variable :summary "defvar"))
+  (unless (elr--looking-at-definition?)
+    (popup-make-item "variable" :value 'elr-extract-variable :summary "defvar")))
 
 (defun elr--extract-constant-popup ()
-  (popup-make-item "constant" :value 'elr-extract-constant :summary "defconst"))
+  (unless (elr--looking-at-definition?)
+    (popup-make-item "constant" :value 'elr-extract-constant :summary "defconst")))
 
 (defun elr--autoload-exists? (function str)
   "Returns true if an autoload for FUNCTION exists in string STR."
@@ -347,10 +413,12 @@ See `autoload' for details."
     (popup-make-item "autoload" :value 'elr-extract-autoload :summary "autoload")))
 
 (defun elr--eval-and-replace-popup ()
-  (popup-make-item "eval" :value 'elr-eval-and-replace :summary "value"))
+  (unless (elr--looking-at-definition?)
+    (popup-make-item "eval" :value 'elr-eval-and-replace :summary "value")))
 
 (defvar elr--refactor-options
-  (list 'elr--extract-function-popup
+  (list 'elr--inline-variable-popup
+        'elr--extract-function-popup
         'elr--extract-variable-popup
         'elr--extract-constant-popup
         'elr--extract-autoload-popup
