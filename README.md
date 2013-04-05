@@ -22,14 +22,14 @@ The following commands are currently available:
 ## Installation
 
 Add this package to your load path and add an autoload for
-`elr/show-refactor-menu`. Bind this command to something convenient.
+`elr-show-refactor-menu`. Bind this command to something convenient.
 
 ```lisp
 (add-to-list 'load-path "path/to/elisp-refactor")
-(autoload 'elr/show-refactor-menu "elisp-refactor")
+(autoload 'elr-show-refactor-menu "elisp-refactor")
 
 (add-hook 'emacs-lisp-mode-hook
-          (lambda () (local-set-key (kbd "M-RET") 'elr/show-refactor-menu)))
+          (lambda () (local-set-key (kbd "M-RET") 'elr-show-refactor-menu)))
 ```
 
 ## TODO
