@@ -359,8 +359,8 @@ See `autoload' for details."
   "Return the name and initializing value of SEXP if it is a variable definition."
   (let ((exp (macroexpand-all sexp)))
     (when (elr--variable-definition? exp)
-      (cl-destructuring-bind (_def sym form) exp
-          (cons sym form)))))
+      (cl-destructuring-bind (_def sym &rest forms) exp
+          (cons sym (car forms))))))
 
 (cl-defun elr--replace-usages ((sym . value))
   "Replace all instances of SYM with VALUE in the current buffer."
@@ -368,8 +368,8 @@ See `autoload' for details."
     (goto-char (point-min))
     (save-match-data
       ;; Check for "(" since we don't want to replace function calls.
-      (while (search-forward-regexp (format "[^(]\\(%s\\)" sym) nil t)
-        (replace-match (prin1-to-string value) t t nil 1)
+      (while (search-forward-regexp (format "[^(]\\(\\<%s\\>\\)" sym) nil t)
+        (replace-match (pp-to-string value) t t nil 1)
         (elr--goto-open-round)
         (indent-sexp)))))
 
@@ -378,14 +378,20 @@ See `autoload' for details."
 Uses of the variable are replaced with the initvalue in the variable definition."
   (interactive)
   (save-excursion
-    (beginning-of-defun)
+    (elr--goto-open-round)
     (if-let (vals (elr--extract-var-values (elr--list-at-point)))
-      (elr--extraction-refactor "Inline variable at"
-        (elr--replace-usages vals))
-      (error "Not a variable definition."))))
+      (if (> (length vals) 1)
+          (elr--extraction-refactor "Inline variable at"
+            (elr--replace-usages vals))
+        (error "No value to inline for %s" (car vals)))
+      (error "Not a variable definition"))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; UI commands
+
+;;; The refactor menu is context-sensitive. Popup items are created with
+;;; constructor functions that may return nil. These are then filtered to
+;;; populate the refactor menu.
 
 (defun elr--inline-variable-popup ()
   (when (elr--variable-definition? (elr--list-at-point))
@@ -422,7 +428,8 @@ Uses of the variable are replaced with the initvalue in the variable definition.
         'elr--extract-variable-popup
         'elr--extract-constant-popup
         'elr--extract-autoload-popup
-        'elr--eval-and-replace-popup))
+        'elr--eval-and-replace-popup)
+  "Contains possible refactorings and determines their listing order.")
 
 (defun elr-show-refactor-menu ()
   "Show the extraction menu at point."
