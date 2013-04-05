@@ -128,7 +128,6 @@ otherwise execute ELSE forms without bindings."
     (and (stringp file)
          (file-name-nondirectory (file-name-sans-extension file)))))
 
-""
 (defun elr--list-at-point ()
   "Return the Lisp list at point or enclosing point."
   (interactive)
@@ -185,7 +184,7 @@ BODY is the formatted body forms."
     (s-trim)))
 
 ;;; ----------------------------------------------------------------------------
-;;; Reporting.
+;;; Reporting
 
 (cl-defun elr--ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
   (if (> (length str) maxlen)
@@ -237,15 +236,16 @@ Report the changes made to the buffer at a result of executing BODY forms."
   "Kill the sexp near point then execute BODY forms.
 The kill ring is reverted at the end of the body."
   (declare (indent 1))
-  `(save-excursion
-     (elr--goto-open-round-or-quote)
-     (kill-sexp)
-     (unwind-protect
-         (save-excursion
-           (elr--reporting-buffer-changes ,description
-             ,@body))
-       ;; Revert kill-ring pointer.
-       (setq kill-ring (cdr kill-ring)))))
+  `(atomic-change-group
+     (save-excursion
+       (elr--goto-open-round-or-quote)
+       (kill-sexp)
+       (unwind-protect
+           (save-excursion
+             (elr--reporting-buffer-changes ,description
+               ,@body))
+         ;; Revert kill-ring pointer.
+         (setq kill-ring (cdr kill-ring))))))
 
 (defun elr-eval-and-replace ()
   "Replace the form at point with its value."
@@ -327,7 +327,7 @@ See `autoload' for details."
           (elr--insert-above form))))))
 
 ;;; ----------------------------------------------------------------------------
-;;; Inlining
+;;; Sexp-type tests
 
 (defun elr--macro-definition? (sexp)
   "Return t if SEXP expands to a macro definition."
@@ -355,6 +355,9 @@ See `autoload' for details."
         (elr--macro-definition? sexp)
         (elr--function-definition? sexp))))
 
+;;; ----------------------------------------------------------------------------
+;;; Inlining
+
 (defun elr--extract-var-values (sexp)
   "Return the name and initializing value of SEXP if it is a variable definition."
   (let ((exp (macroexpand-all sexp)))
@@ -363,15 +366,21 @@ See `autoload' for details."
           (cons sym (car forms))))))
 
 (cl-defun elr--replace-usages ((sym . value))
-  "Replace all instances of SYM with VALUE in the current buffer."
+  "Replace all instances of SYM with VALUE in the current buffer.
+Returns a list of lines where changes were made."
   (save-excursion
     (goto-char (point-min))
     (save-match-data
-      ;; Check for "(" since we don't want to replace function calls.
-      (while (search-forward-regexp (format "[^(]\\(\\<%s\\>\\)" sym) nil t)
-        (replace-match (pp-to-string value) t t nil 1)
-        (elr--goto-open-round)
-        (indent-sexp)))))
+      (let (lines)
+        ;; Check for "(" since we don't want to replace function calls.
+        (while (search-forward-regexp (format "[^(]\\(\\<%s\\>\\)" sym) nil t)
+          (cons (line-number-at-pos) lines)
+          ;; Perform replacement.
+          (replace-match (pp-to-string value) t t nil 1)
+          ;; Try to pretty-format.
+          (elr--goto-open-round)
+          (indent-sexp))
+        (nreverse lines)))))
 
 (defun elr-inline-variable ()
   "Inline the variable at defined at point.
@@ -382,7 +391,10 @@ Uses of the variable are replaced with the initvalue in the variable definition.
     (if-let (vals (elr--extract-var-values (elr--list-at-point)))
       (if (> (length vals) 1)
           (elr--extraction-refactor "Inline variable at"
-            (elr--replace-usages vals))
+            (if-let (lines (elr--replace-usages vals))
+              (when (> (length lines) 0)
+                (message "Inlined values at lines %s" (s-join ", " lines)))
+              (error "No usages of %s found" (car vals))))
         (error "No value to inline for %s" (car vals)))
       (error "Not a variable definition"))))
 
@@ -390,8 +402,8 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 ;;; UI commands
 
 ;;; The refactor menu is context-sensitive. Popup items are created with
-;;; constructor functions that may return nil. These are then filtered to
-;;; populate the refactor menu.
+;;; constructor functions which return nil when given refactoring is not
+;;; available at POINT.
 
 (defun elr--inline-variable-popup ()
   (when (elr--variable-definition? (elr--list-at-point))
@@ -415,6 +427,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 
 (defun elr--extract-autoload-popup ()
   (when (and (functionp (symbol-at-point))
+             (not (elr--variable-definition? (elr--list-at-point)))
              (not (elr--autoload-exists? (symbol-at-point) (buffer-string))))
     (popup-make-item "autoload" :value 'elr-extract-autoload :summary "autoload")))
 
