@@ -236,16 +236,15 @@ Report the changes made to the buffer at a result of executing BODY forms."
   "Kill the sexp near point then execute BODY forms.
 The kill ring is reverted at the end of the body."
   (declare (indent 1))
-  `(atomic-change-group
-     (save-excursion
-       (elr--goto-open-round-or-quote)
-       (kill-sexp)
-       (unwind-protect
-           (save-excursion
-             (elr--reporting-buffer-changes ,description
-               ,@body))
-         ;; Revert kill-ring pointer.
-         (setq kill-ring (cdr kill-ring))))))
+  `(save-excursion
+     (elr--goto-open-round-or-quote)
+     (kill-sexp)
+     (unwind-protect
+         (save-excursion
+           (elr--reporting-buffer-changes ,description
+             ,@body))
+       ;; Revert kill-ring pointer.
+       (setq kill-ring (cdr kill-ring)))))
 
 (defun elr-eval-and-replace ()
   "Replace the form at point with its value."
@@ -371,15 +370,15 @@ Returns a list of lines where changes were made."
   (save-excursion
     (goto-char (point-min))
     (save-match-data
-      (let (lines)
+      (let ((match-sym (eval `(rx (not (any "(")) (* space) (group ,(symbol-name sym)) word-end)))
+            (lines))
         ;; Check for "(" since we don't want to replace function calls.
-        (while (search-forward-regexp (format "[^(]\\(\\<%s\\>\\)" sym) nil t)
-          (cons (line-number-at-pos) lines)
+        (while (search-forward-regexp match-sym nil t)
+          (setq lines (cons (line-number-at-pos) lines))
           ;; Perform replacement.
-          (replace-match (pp-to-string value) t t nil 1)
+          (replace-match (pp-to-string value) t nil nil 1)
           ;; Try to pretty-format.
-          (elr--goto-open-round)
-          (indent-sexp))
+          (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
         (nreverse lines)))))
 
 (defun elr-inline-variable ()
@@ -390,11 +389,19 @@ Uses of the variable are replaced with the initvalue in the variable definition.
     (elr--goto-open-round)
     (if-let (vals (elr--extract-var-values (elr--list-at-point)))
       (if (> (length vals) 1)
-          (elr--extraction-refactor "Inline variable at"
-            (if-let (lines (elr--replace-usages vals))
-              (when (> (length lines) 0)
-                (message "Inlined values at lines %s" (s-join ", " lines)))
-              (error "No usages of %s found" (car vals))))
+          (elr--extraction-refactor "Inlining applied at"
+
+            ;; Remove the line where the variable defininition used to be.
+            (kill-line)
+
+            ;; Perform inlining.
+            ;; elr--extraction-refactor will report the first insertion. If
+            ;; there are none or more than one insertion, override this report.
+            (if-let (lines (-map 'int-to-string (elr--replace-usages vals)))
+              (when (> (length lines) 1)
+                (message "Inlining applied at lines %s" (s-join ", " lines)))
+              (message "No usages found")))
+
         (error "No value to inline for %s" (car vals)))
       (error "Not a variable definition"))))
 
@@ -450,7 +457,8 @@ Uses of the variable are replaced with the initvalue in the variable definition.
   (if-let (actions (->> elr--refactor-options
                      (-map 'funcall)
                      (--filter (not (null it)))))
-    (call-interactively (popup-menu* actions :isearch t))
+    (atomic-change-group
+      (call-interactively (popup-menu* actions :isearch t)))
     (error "No refactorings available")))
 
 (provide 'elisp-refactor)
