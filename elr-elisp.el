@@ -273,10 +273,11 @@ Returns a list of lines where changes were made."
       (let ((match-sym (eval `(rx (not (any "(")) (* space) (group ,(symbol-name sym)) word-end)))
             (lines))
         ;; Check for "(" since we don't want to replace function calls.
-        (while (search-forward-regexp match-sym nil t)
+        (while (and (search-forward-regexp match-sym nil t)
+                    (match-data))
           (setq lines (cons (line-number-at-pos) lines))
           ;; Perform replacement.
-          (replace-match (pp-to-string value) t nil nil 1)
+          (replace-match (elr--print value) t nil nil 1)
           ;; Try to pretty-format.
           (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
         (nreverse lines)))))
@@ -397,8 +398,6 @@ See `autoload' for details."
            (elr--print form)))))))
 
 (provide 'elr-elisp)
-
-
 
 ;;; NB: callargs warnings disabled to prevent format warnings caused by
 ;;; `cl-assert', as of Emacs 24.3.50 darwin.
