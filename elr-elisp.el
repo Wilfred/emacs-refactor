@@ -28,6 +28,7 @@
 (require 'cl-lib)
 
 (defconst elr--newline-token :elr--newline)
+(defconst elr--line-comment :elr--line-comment)
 
 ;;; ----------------------------------------------------------------------------
 ;;; Navigation commands
@@ -37,16 +38,6 @@
   (save-match-data
     (when (string-match regex (buffer-string) 0)
       (goto-char (match-beginning 0)))))
-
-(defun elr--insert-above (str)
-  "Insert STR at the line above."
-  (beginning-of-line)
-  (newline)
-  (forward-line -1)
-  (back-to-indentation)
-  (insert str)
-  (newline)
-  str)
 
 (defun elr--goto-open-round ()
   "Move to the opening paren for the Lisp list at point."
@@ -68,19 +59,64 @@
 
 (defun elr--read (str)
   "Read the given string STR, inserting tokens to represent whitespace."
-  (read (replace-regexp-in-string
-         "\n"
-         (format " %s " elr--newline-token)
-         str)))
+
+  ;; Print forms to any depth.
+  (let (print-level eval-expression-print-level eval-expression-print-length)
+    (->> (s-lines str)
+      ;; Extract comments.
+      (--map (if (s-matches? (rx bol (* space) (+ ";")) it)
+                 (format " (%s %S ) " elr--line-comment it)
+               it))
+      ;; Insert newline token.
+      (s-join (format " %s " elr--newline-token))
+      (read))))
 
 (defun elr--print (form)
   "Print FORM, replacing whitespace tokens with newlines."
-  (replace-regexp-in-string (eval `(rx (* space) ,(symbol-name elr--newline-token) (* space)))
-                            "\n"
-                            (with-output-to-string (princ form))))
+  (let ((nl (prin1-to-string elr--newline-token))
+        (lc (prin1-to-string elr--line-comment)))
+
+    ;; Print forms to any depth.
+    (setq print-quoted t)
+    (setq print-level nil)
+    (setq print-length nil)
+    (setq print-escape-newlines t)
+
+    (->> (prin1-to-string form)
+
+      ;; Reconstruct newlines.
+      (replace-regexp-in-string (eval `(rx (* space) ,nl (* space))) "\n")
+
+      ;; Reconstruct comments.
+      (s-lines)
+      (--map (if (s-matches? (eval `(rx "(" ,lc)) it)
+                 (replace-regexp-in-string
+                  (eval `(rx "(" ,lc " " (group-n 1 (* nonl)) ")" (* space) eol))
+                  "" it t "\1")
+               it))
+
+      (s-join "\n  "))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Formatting commands
+
+;;; FIXME
+
+(defun elr--insert-above (form-str)
+  "Insert and indent FORM-STR above the current top level form."
+  (save-excursion
+    ;; Move to position above top-level form.
+    (beginning-of-defun)
+    (beginning-of-line)
+    (newline)
+    (forward-line -1)
+    (back-to-indentation)
+    ;; Insert FORM as a string.
+    (insert form-str)
+    (newline)
+    ;; Reformat.
+    (mark-defun)
+    (indent-region (region-beginning) (region-end))))
 
 (defun elr--symbol-file-name (fn)
   "Find the name of the file that declares function FN."
@@ -96,21 +132,6 @@
     (mark-sexp 1 nil)
     (read (buffer-substring-no-properties (region-beginning)
                                           (region-end)))))
-
-(defun elr--format-defun (symbol name arglist body)
-  "Format a defun-style form.  All vars should be strings.
-SYMBOL is the name for the car of the list (eg defun, defmacro)
-NAME is name being defined.
-ARGLIST is the arglist for the definition.
-BODY is the formatted body forms."
-  (with-temp-buffer
-    (lisp-mode-variables)
-    (insert (format "(%s %s (%s) \n%s)" symbol name arglist body))
-    (indent-region (point-min) (point-max))
-    (buffer-string)))
-
-(defun elr--format-list (&rest args)
-  (concat "(" (s-trim (s-join " " args)) ")"))
 
 (defun elr--global-var? (sym)
   (let ((s (symbol-name sym)))
@@ -144,27 +165,7 @@ BODY is the formatted body forms."
     (s-trim)))
 
 ;;; ----------------------------------------------------------------------------
-;;; Refactoring Commands
-
-(defmacro elr--extraction-refactor (description &rest body)
-  "Kill the sexp near point then execute BODY forms.
-The kill ring is reverted at the end of the body."
-  (declare (indent 1))
-  `(save-excursion
-     (elr--goto-open-round-or-quote)
-     (kill-sexp)
-     (unwind-protect
-         (save-excursion
-           (elr--reporting-buffer-changes ,description
-             ,@body))
-       ;; Revert kill-ring pointer.
-       (setq kill-ring (cdr kill-ring)))))
-
-(defun elr--line-visible? (line)
-  "Return true if LINE is within the visible bounds of the current window."
-  (let* ((min (line-number-at-pos (window-start)))
-         (max (line-number-at-pos (window-end))))
-    (and (>= line min) (<= line max))))
+;;; Refactoring Macros
 
 (defmacro elr--reporting-buffer-changes (description &rest body)
   "Execute forms producing an effect described by DESCRIPTION.
@@ -179,8 +180,29 @@ Report the changes made to the buffer at a result of executing BODY forms."
          (unless (elr--line-visible? line)
            (elr--report-action ,description line text))))))
 
+(defmacro elr--extraction-refactor (description &rest body)
+  "Kill the sexp near point then execute BODY forms.
+The extracted expression is bound to the symbol 'extracted-sexp'.
+"
+  (declare (indent 1))
+  `(save-excursion
+     (elr--goto-open-round-or-quote)
+     (kill-sexp)
+     (let ((extracted-sexp (elr--read (car kill-ring))))
+       ;; Revert kill-ring pointer.
+       (setq kill-ring (cdr kill-ring))
+       (save-excursion
+         (elr--reporting-buffer-changes ,description
+           ,@body)))))
+
+(defun elr--line-visible? (line)
+  "Return true if LINE is within the visible bounds of the current window."
+  (let* ((min (line-number-at-pos (window-start)))
+         (max (line-number-at-pos (window-end))))
+    (and (>= line min) (<= line max))))
+
 ;;; ----------------------------------------------------------------------------
-;;; Sexp-type tests
+;;; Definition site tests.
 
 (defun elr--macro-definition? (sexp)
   "Return t if SEXP expands to a macro definition."
@@ -271,57 +293,64 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 
 (defun elr--read-args ()
   "Read an arglist from the user."
-  (let ((syms (elr--unbound-symbols-string)))
-    (if (s-blank? syms)
-        (read-string "Arglist: ")
-      (read-string (format "Arglist (default: %s): " syms) nil nil syms))))
+  (let* ((syms (elr--unbound-symbols-string))
+         (input (s-trim
+                 (if (s-blank? syms)
+                     (read-string "Arglist: ")
+                   (read-string (format "Arglist (default: %s): " syms) nil nil syms)))))
+    (unless (or (s-blank? input)
+                (s-matches? (rx (or "()" "nil")) input))
+      (read (format "(%s)" input)))))
+
+(defun elr--format-defun (defun-str)
+  "Format DEFUN-STR to a prettier defun representation."
+  (replace-regexp-in-string
+   (rx bol "(defun" (* nonl) (group "nil" (* space)) eol)
+   "()"
+   defun-str t nil 1))
 
 (defun elr-extract-function (name arglist)
   "Extract a function from the sexp beginning at point.
 NAME is the name of the new function.
 ARGLIST is its argument list."
-  (interactive
-   (list (read-string "Name: ")
-         (elr--read-args)))
-  (cl-assert (not (s-blank? name)) t "Name must not be blank")
-  (let* ((args (s-trim arglist))
-         (args (if (or (equal "()" args) (equal "nil" args)) "" args))
-         (name (s-trim name)))
-    (elr--extraction-refactor "Extracted to"
-      (insert (apply 'elr--format-list name (s-split-words args)))
-      (beginning-of-defun)
-      (elr--insert-above (elr--format-defun "defun" name args (car kill-ring))))))
-
-(defun elr--extract-to-form (symbol-str name)
-  (let ((name (s-trim name)))
-    (elr--extraction-refactor "Extracted to"
-      (insert name)
-      (beginning-of-defun)
-      (elr--insert-above (elr--format-list symbol-str name (car kill-ring)))
-      (beginning-of-defun)
-      (indent-sexp))))
+  (interactive (list (read-string "Name: ")
+                     (elr--read-args)))
+  (cl-assert (not (s-blank\? name)) t "Name must not be blank")
+  (elr--extraction-refactor "Extracted to"
+    (let ((name (intern name)))
+      ;; Insert usage.
+      (insert (elr--print (cl-list* name arglist)))
+      ;; Insert defun, substituting parens for nil arglist.
+      (elr--insert-above
+       (elr--format-defun
+        (elr--print
+         `(defun ,name ,arglist
+            ,elr--newline-token
+            ,extracted-sexp)))))))
 
 (defun elr-extract-variable (name)
   "Extract a form as the argument to a defvar named NAME."
   (interactive "sName: ")
   (cl-assert (not (s-blank? name)) t "Name must not be blank")
-  (let ((name (s-trim name)))
-    (elr--extraction-refactor "Extracted to"
-      (insert name)
-      (beginning-of-defun)
-      (elr--insert-above (elr--format-list "defvar" name (car kill-ring)))
-      (beginning-of-defun)
-      (indent-sexp))))
+  (elr--extraction-refactor "Extracted to"
+    ;; Insert usage.
+    (insert (s-trim name))
+    ;; Insert definition.
+    (elr--insert-above
+     (elr--print
+      (list 'defvar (intern name) extracted-sexp)))))
 
 (defun elr-extract-constant (name)
   "Extract a form as the argument to a defconst named NAME."
   (interactive "sName: ")
   (cl-assert (not (s-blank? name)) t "Name must not be blank")
-  (let ((name (s-trim name)))
-    (elr--extraction-refactor "Extracted to"
-      (insert name)
-      (beginning-of-defun)
-      (elr--insert-above (elr--format-list "defconst" name (car kill-ring))))))
+  (elr--extraction-refactor "Extracted to"
+    ;; Insert usage
+    (insert (s-trim name))
+    ;; Insert definition.
+    (elr--insert-above
+     (elr--print
+      (list 'defconst (intern name) extracted-sexp)))))
 
 (defun elr-extract-autoload (function file)
   "Create an autoload for FUNCTION.
@@ -332,13 +361,16 @@ See `autoload' for details."
           (file (or (elr--symbol-file-name sym)
                     (read-string "File: "))))
      (list sym file)))
-  (let ((form  (format "(autoload '%s \"%s\")" function file)) )
+  (let ((form `(autoload ',function ,file)))
     (save-excursion
       (elr--reporting-buffer-changes "Extracted to"
+        ;; Put the extraction next to existing autoloads if any, otherwise
+        ;; insert above top-level form.
         (if (elr--goto-first-match "^(autoload ")
-            (progn (forward-line 1) (end-of-line) (newline) (insert form))
-          (beginning-of-defun)
-          (elr--insert-above form))))))
+            (progn (forward-line 1) (end-of-line) (newline)
+                   (insert (elr--print form)))
+          (elr--insert-above
+           (elr--print form)))))))
 
 (provide 'elr-elisp)
 
