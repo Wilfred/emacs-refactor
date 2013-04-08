@@ -166,7 +166,8 @@ otherwise execute ELSE forms without bindings."
                      (-map 'funcall)
                      (--filter (not (null it)))))
     (atomic-change-group
-      (call-interactively (popup-menu* actions :isearch t)))
+      (when-let (action (popup-menu* actions :isearch t))
+        (call-interactively action)))
     (error "No refactorings available")))
 
 (provide 'elisp-refactor)

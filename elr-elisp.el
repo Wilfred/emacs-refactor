@@ -28,6 +28,64 @@
 (require 'cl-lib)
 
 ;;; ----------------------------------------------------------------------------
+;;; Read and write lisp forms.
+;;;
+;;; Because the Elisp reader does not preserve comments or newlines, we embed
+;;; them in forms so that they can be reconstructed when printing.
+
+(defconst elr--newline-token :elr--newline)
+(defconst elr--comment :elr--comment)
+
+(defun elr--format-comments (line)
+  "Wrap any comments at the end of LINE in a comment form.  Otherwise return LINE unchanged."
+  (if-let (pos (s-index-of ";" line))
+    (let ((code    (substring line 0 (1- pos)))
+          (comment (substring line pos)))
+      (concat
+       code
+       (if (s-blank? comment) "" (format " (%s %S)" elr--comment comment))))
+    line))
+
+(defun elr--read (str)
+  "Read the given string STR, inserting tokens to represent whitespace."
+  (let ((print-quoted t)
+        (print-level nil)
+        (print-length nil)
+        (print-escape-newlines t)
+        )
+    (->> (s-lines str)
+      (-map 'elr--format-comments)
+      ;; Insert newline tokens.
+      (s-join (format " %s " elr--newline-token))
+      (read))))
+
+(defun elr--reconstruct-comments (str)
+  "Unpack any eol comments in STR, otherwise leave STR unchanged."
+  (let ((prefix (format "(%s" elr--comment)))
+    (if (s-contains? prefix str)
+        (let* ((split   (s-split (s-trim prefix)))
+               (code    (or (car split) ""))
+               (comment (format "%s" (read (cdr split)))))
+          (concat code comment))
+      str)))
+
+(defun elr--print (form)
+  "Print FORM, replacing whitespace tokens with newlines."
+  (let ((nl (format "%s" elr--newline-token))
+        ;; Print forms to any depth.
+        (print-quoted t)
+        (print-level nil)
+        (print-length nil)
+        (print-escape-newlines t)
+        )
+    (->> (prin1-to-string form)
+      ;; Reconstruct newlines.
+      (replace-regexp-in-string (eval `(rx (* space) ,nl (* space))) "\n")
+      (s-lines)
+      (-map 'elr--reconstruct-comments)
+      (s-join "\n  "))))
+
+;;; ----------------------------------------------------------------------------
 ;;; Navigation commands
 
 (defun elr--goto-first-match (regex)
@@ -59,67 +117,6 @@
   (when (or (thing-at-point-looking-at "'")
             (elr--looking-at-string?))
     (search-backward "'")))
-
-;;; ----------------------------------------------------------------------------
-;;; Read and write lisp forms.
-;;;
-;;; Because the Elisp reader does not preserve comments or newlines, we embed
-;;; them in forms so that they can be reconstructed when printing.
-
-(defconst elr--newline-token :elr--newline)
-(defconst elr--comment :elr--comment)
-
-(defun elr--format-comments (line)
-  "Wrap any comments at the end of LINE in a comment form.  Otherwise return LINE unchanged."
-  (if-let (pos (s-index-of ";" line))
-    (let ((code    (substring line 0 (1- pos)))
-          (comment (substring line pos)))
-      (concat
-       code
-       (if (s-blank? comment) "" (format " (%s %S)" elr--comment comment))))
-    line))
-
-(defun elr--read (str)
-  "Read the given string STR, inserting tokens to represent whitespace."
-  (let ((print-quoted t)
-        (print-level nil)
-        (print-length nil)
-        (print-escape-newlines t)
-        )
-    (->> (s-lines str)
-      (-map 'elr--format-comments)
-      ;; Insert newline token.
-      (s-join (format " %s " elr--newline-token))
-      (read))))
-
-(defun elr--reconstruct-comments (str)
-  "Unpack any eol comments in STR, otherwise leave STR unchanged."
-  (let ((prefix (format "(%s" elr--comment)))
-    (if (s-contains? prefix str)
-        (let* ((split (->> ;; Remove properties.
-                          (format "%s" str)
-                        (s-trim)
-                        (s-split prefix)))
-               (code    (or (car split) ""))
-               (comment (format "%s" (read (cdr split)))))
-          (concat code comment))
-      str)))
-
-(defun elr--print (form)
-  "Print FORM, replacing whitespace tokens with newlines."
-  (let ((nl (format "%s" elr--newline-token))
-        ;; Print forms to any depth.
-        (print-quoted t)
-        (print-level nil)
-        (print-length nil)
-        (print-escape-newlines t)
-        )
-    (->> (prin1-to-string form)
-      ;; Reconstruct newlines.
-      (replace-regexp-in-string (eval `(rx (* space) ,nl (* space))) "\n")
-      (s-lines)
-      (-map 'elr--reconstruct-comments)
-      (s-join "\n  "))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Formatting commands
