@@ -115,8 +115,9 @@
   (interactive)
   (elr--goto-open-round)
   (when (or (thing-at-point-looking-at "'")
+            (thing-at-point-looking-at "`")
             (elr--looking-at-string?))
-    (search-backward "'")))
+    (search-backward-regexp (rx (or "'" "`")))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Formatting commands
@@ -202,9 +203,10 @@ Report the changes made to the buffer at a result of executing BODY forms."
            (elr--report-action ,description line text))))))
 
 (defmacro elr--extraction-refactor (description &rest body)
-  "Kill the sexp near point then execute BODY forms.
-The extracted expression is bound to the symbol 'extracted-sexp'.
-"
+  "Kill the sexp near point then execute forms.
+DESCRIPTION is used to report the result of the refactoring.
+BODY is a list of forms to execute after extracting the sexp near point.
+The extracted expression is bound to the symbol 'extracted-sexp'."
   (declare (indent 1))
   `(save-excursion
      (elr--goto-open-round-or-quote)
@@ -250,6 +252,10 @@ The extracted expression is bound to the symbol 'extracted-sexp'.
     (or (elr--variable-definition? sexp)
         (elr--macro-definition? sexp)
         (elr--function-definition? sexp))))
+
+(defun elr--autoload-exists? (function str)
+  "Returns true if an autoload for FUNCTION exists in string STR."
+  (s-contains? (format "(autoload '%s " function) str))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Inlining
@@ -337,18 +343,19 @@ NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
                      (elr--read-args)))
-  (cl-assert (not (s-blank\? name)) t "Name must not be blank")
+  (cl-assert (not (s-blank? name)) t "Name must not be blank")
   (elr--extraction-refactor "Extracted to"
     (let ((name (intern name)))
       ;; Insert usage.
       (insert (elr--print (cl-list* name arglist)))
-      ;; Insert defun, substituting parens for nil arglist.
+      ;; Insert defun.
       (elr--insert-above
        (elr--format-defun
         (elr--print
          `(defun ,name ,arglist
             ,elr--newline-token
-            ,extracted-sexp)))))))
+            ,(--drop-while (equal elr--newline-token it)
+                           extracted-sexp))))))))
 
 (defun elr-extract-variable (name)
   "Extract a form as the argument to a defvar named NAME."
@@ -393,6 +400,40 @@ See `autoload' for details."
                    (insert (elr--print form)))
           (elr--insert-above
            (elr--print form)))))))
+
+;;; ----------------------------------------------------------------------------
+;;; Declare refactoring commands.
+
+;;; Inline variable
+(elr--declare-refactoring elr-inline-variable emacs-lisp-mode "inline"
+  :predicate (elr--variable-definition? (elr--list-at-point)))
+
+;;; Extract function
+(elr--declare-refactoring elr-extract-function emacs-lisp-mode "function"
+  :predicate (not (elr--looking-at-definition?))
+  :description "defun")
+
+;;; Extract variable
+(elr--declare-refactoring elr-extract-variable emacs-lisp-mode "variable"
+  :predicate (not (elr--looking-at-definition?))
+  :description "defvar")
+
+;;; Extract constant
+(elr--declare-refactoring elr-extract-constant emacs-lisp-mode "constant"
+  :predicate (not (elr--looking-at-definition?))
+  :description "defconst")
+
+;;; Eval and replace expression
+(elr--declare-refactoring elr-eval-and-replace emacs-lisp-mode "eval"
+  :predicate (not (elr--looking-at-definition?))
+  :description "value")
+
+;;; Extract autoload
+(elr--declare-refactoring elr-extract-autoload emacs-lisp-mode "autoload"
+  :description "autoload"
+  :predicate (and (functionp (symbol-at-point))
+                  (not (elr--variable-definition? (elr--list-at-point)))
+                  (not (elr--autoload-exists? (symbol-at-point) (buffer-string)))))
 
 (provide 'elr-elisp)
 

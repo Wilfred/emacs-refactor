@@ -39,7 +39,6 @@
 (require 'cl-lib)
 (require 'thingatpt)
 (require 'popup)
-(require 'elr-elisp)
 
 (defgroup elisp-refactor nil
   "Provides refactoring tools for Emacs Lisp."
@@ -114,62 +113,46 @@ otherwise execute ELSE forms without bindings."
               (replace-regexp-in-string "[ \n\r\t]+" " " text))))))
 
 ;;; ----------------------------------------------------------------------------
-;;; UI commands
+;;; Elisp refactoring commands
 
 ;;; The refactor menu is context-sensitive. Popup items are created with
 ;;; constructor functions which return nil when given refactoring is not
 ;;; available at POINT.
 
-(defun elr--inline-variable-popup ()
-  (when (elr--variable-definition? (elr--list-at-point))
-    (popup-make-item "inline" :value 'elr-inline-variable)))
+(defvar elr--refactor-commands '()
+  "A list of refactoring commands used to build menu items.")
 
-(defun elr--extract-function-popup ()
-  (unless (elr--looking-at-definition?)
-    (popup-make-item "function" :value 'elr-extract-function :summary "defun")))
-
-(defun elr--extract-variable-popup ()
-  (unless (elr--looking-at-definition?)
-    (popup-make-item "variable" :value 'elr-extract-variable :summary "defvar")))
-
-(defun elr--extract-constant-popup ()
-  (unless (elr--looking-at-definition?)
-    (popup-make-item "constant" :value 'elr-extract-constant :summary "defconst")))
-
-(defun elr--autoload-exists? (function str)
-  "Returns true if an autoload for FUNCTION exists in string STR."
-  (s-contains? (format "(autoload '%s " function) str))
-
-(defun elr--extract-autoload-popup ()
-  (when (and (functionp (symbol-at-point))
-             (not (elr--variable-definition? (elr--list-at-point)))
-             (not (elr--autoload-exists? (symbol-at-point) (buffer-string))))
-    (popup-make-item "autoload" :value 'elr-extract-autoload :summary "autoload")))
-
-(defun elr--eval-and-replace-popup ()
-  (unless (elr--looking-at-definition?)
-    (popup-make-item "eval" :value 'elr-eval-and-replace :summary "value")))
-
-(defvar elr--refactor-options
-  (list 'elr--inline-variable-popup
-        'elr--extract-function-popup
-        'elr--extract-variable-popup
-        'elr--extract-constant-popup
-        'elr--extract-autoload-popup
-        'elr--eval-and-replace-popup)
-  "Contains possible refactorings and determines their listing order.")
+(cl-defmacro elr--declare-refactoring (function mode title &key predicate description)
+  "Define a refactoring command.
+FUNCTION is the refactoring command to perform.
+MODE is the major mode in which this
+TITLE is the name of the command that will be displayed in the popup menu.
+PREDICATE is a condition that must be satisfied to display this item.
+DESCRIPTION is shown to the left of the titile in the popup menu."
+  (declare (indent 2))
+  (let ((pred (cl-gensym))
+        (fname (intern (format "elr--gen--%s--%s" mode title))))
+    `(progn
+       (defun ,fname nil
+         (let ((,pred ',predicate))
+           (when (and (derived-mode-p major-mode ',mode)
+                      (or (null ',pred)
+                          (eval ,pred)))
+             (popup-make-item ,title :value ',function :summary ,description))))
+       (add-to-list 'elr--refactor-commands ',fname 'append))))
 
 (defun elr-show-refactor-menu ()
   "Show the extraction menu at point."
   (interactive)
-  (if-let (actions (->> elr--refactor-options
+  (if-let (actions (->> elr--refactor-commands
                      (-map 'funcall)
-                     (--filter (not (null it)))))
+                     (-remove 'null)))
     (atomic-change-group
       (when-let (action (popup-menu* actions :isearch t))
         (call-interactively action)))
     (error "No refactorings available")))
 
+(require 'elr-elisp "./elr-elisp.el")
 (provide 'elisp-refactor)
 
 ;;; NB: callargs warnings disabled to prevent format warnings caused by
