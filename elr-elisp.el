@@ -27,9 +27,6 @@
 
 (require 'cl-lib)
 
-(defconst elr--newline-token :elr--newline)
-(defconst elr--line-comment :elr--line-comment)
-
 ;;; ----------------------------------------------------------------------------
 ;;; Navigation commands
 
@@ -39,10 +36,18 @@
     (when (string-match regex (buffer-string) 0)
       (goto-char (match-beginning 0)))))
 
+(defun elr--looking-at-string? ()
+  "Return non-nil if point is inside a string."
+  (save-excursion
+    (let ((point (point)))
+      (beginning-of-defun)
+      (nth 3 (parse-partial-sexp (point) point)))))
+
 (defun elr--goto-open-round ()
   "Move to the opening paren for the Lisp list at point."
   (interactive)
-  (unless (equal "(" (thing-at-point 'char))
+  (when (or (not (equal "(" (thing-at-point 'char)))
+            (elr--looking-at-string?))
     (beginning-of-sexp)
     (unless (equal "(" (thing-at-point 'char))
       (search-backward "("))))
@@ -51,50 +56,69 @@
   "Move to the opening paren or quote for the Lisp list at point."
   (interactive)
   (elr--goto-open-round)
-  (when (thing-at-point-looking-at "'")
+  (when (or (thing-at-point-looking-at "'")
+            (elr--looking-at-string?))
     (search-backward "'")))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Read and write lisp forms.
+;;;
+;;; Because the Elisp reader does not preserve comments or newlines, we embed
+;;; them in forms so that they can be reconstructed when printing.
+
+(defconst elr--newline-token :elr--newline)
+(defconst elr--comment :elr--comment)
+
+(defun elr--format-comments (line)
+  "Wrap any comments at the end of LINE in a comment form.  Otherwise return LINE unchanged."
+  (if-let (pos (s-index-of ";" line))
+    (let ((code    (substring line 0 (1- pos)))
+          (comment (substring line pos)))
+      (concat
+       code
+       (if (s-blank? comment) "" (format " (%s %S)" elr--comment comment))))
+    line))
 
 (defun elr--read (str)
   "Read the given string STR, inserting tokens to represent whitespace."
-
-  ;; Print forms to any depth.
-  (let (print-level eval-expression-print-level eval-expression-print-length)
+  (let ((print-quoted t)
+        (print-level nil)
+        (print-length nil)
+        (print-escape-newlines t)
+        )
     (->> (s-lines str)
-      ;; Extract comments.
-      (--map (if (s-matches? (rx bol (* space) (+ ";")) it)
-                 (format " (%s %S ) " elr--line-comment it)
-               it))
+      (-map 'elr--format-comments)
       ;; Insert newline token.
       (s-join (format " %s " elr--newline-token))
       (read))))
 
+(defun elr--reconstruct-comments (str)
+  "Unpack any eol comments in STR, otherwise leave STR unchanged."
+  (let ((prefix (format "(%s" elr--comment)))
+    (if (s-contains? prefix str)
+        (let* ((split (->> ;; Remove properties.
+                          (format "%s" str)
+                        (s-trim)
+                        (s-split prefix)))
+               (code    (or (car split) ""))
+               (comment (format "%s" (read (cdr split)))))
+          (concat code comment))
+      str)))
+
 (defun elr--print (form)
   "Print FORM, replacing whitespace tokens with newlines."
-  (let ((nl (prin1-to-string elr--newline-token))
-        (lc (prin1-to-string elr--line-comment)))
-
-    ;; Print forms to any depth.
-    (setq print-quoted t)
-    (setq print-level nil)
-    (setq print-length nil)
-    (setq print-escape-newlines t)
-
+  (let ((nl (format "%s" elr--newline-token))
+        ;; Print forms to any depth.
+        (print-quoted t)
+        (print-level nil)
+        (print-length nil)
+        (print-escape-newlines t)
+        )
     (->> (prin1-to-string form)
-
       ;; Reconstruct newlines.
       (replace-regexp-in-string (eval `(rx (* space) ,nl (* space))) "\n")
-
-      ;; Reconstruct comments.
       (s-lines)
-      (--map (if (s-matches? (eval `(rx "(" ,lc)) it)
-                 (replace-regexp-in-string
-                  (eval `(rx "(" ,lc " " (group-n 1 (* nonl)) ")" (* space) eol))
-                  "" it t "\1")
-               it))
-
+      (-map 'elr--reconstruct-comments)
       (s-join "\n  "))))
 
 ;;; ----------------------------------------------------------------------------
@@ -287,7 +311,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
   "Replace the form at point with its value."
   (interactive)
   (elr--extraction-refactor "Replacement at"
-    (let ((str (prin1-to-string (eval (read (car kill-ring))))))
+    (let ((str (prin1-to-string (eval extracted-sexp))))
       (insert str)
       (indent-for-tab-command))))
 
@@ -374,8 +398,14 @@ See `autoload' for details."
 
 (provide 'elr-elisp)
 
+
+
+;;; NB: callargs warnings disabled to prevent format warnings caused by
+;;; `cl-assert', as of Emacs 24.3.50 darwin.
+
 ;; Local Variables:
 ;; lexical-binding: t
+;; byte-compile-warnings: (not callargs)
 ;; End:
 
 ;;; elr-elisp.el ends here
