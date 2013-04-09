@@ -34,7 +34,16 @@
 ;;; them in forms so that they can be reconstructed when printing.
 
 (defconst elr--newline-token :elr--newline)
+
 (defconst elr--comment :elr--comment)
+
+(defun elr--newline-token? (form)
+  "Non-nil if FORM is a newline token."
+  (equal form elr--newline-token))
+
+(defun elr--comment? (form)
+  "Non-nil if FORM is an elr--comment."
+  (equal elr--comment (car-safe form)))
 
 (defun elr--format-comments (line)
   "Wrap any comments at the end of LINE in a comment form.  Otherwise return LINE unchanged."
@@ -122,7 +131,15 @@
 ;;; ----------------------------------------------------------------------------
 ;;; Formatting commands
 
-;;; FIXME
+(defun elr--reindent-string (form-str)
+  "Reformat FORM-STRING, assuming it is a Lisp fragment."
+  (with-temp-buffer
+    (lisp-mode-variables)
+    (insert form-str)
+    (newline)
+    (mark-defun)
+    (indent-region (region-beginning) (region-end))
+    (buffer-string)))
 
 (defun elr--insert-above (form-str)
   "Insert and indent FORM-STR above the current top level form."
@@ -133,12 +150,7 @@
     (newline)
     (forward-line -1)
     (back-to-indentation)
-    ;; Insert FORM as a string.
-    (insert form-str)
-    (newline)
-    ;; Reformat.
-    (mark-defun)
-    (indent-region (region-beginning) (region-end))))
+    (insert (elr--reindent-string form-str))))
 
 (defun elr--symbol-file-name (fn)
   "Find the name of the file that declares function FN."
@@ -152,8 +164,8 @@
   (save-excursion
     (elr--goto-open-round)
     (mark-sexp 1 nil)
-    (read (buffer-substring-no-properties (region-beginning)
-                                          (region-end)))))
+    (elr--read (buffer-substring-no-properties (region-beginning)
+                                               (region-end)))))
 
 (defun elr--global-var? (sym)
   (let ((s (symbol-name sym)))
@@ -227,38 +239,42 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
 ;;; ----------------------------------------------------------------------------
 ;;; Definition site tests.
 
-(defun elr--macro-definition? (sexp)
-  "Return t if SEXP expands to a macro definition."
+(defun elr--macro-definition? (form)
+  "Return t if FORM expands to a macro definition."
   (ignore-errors
-    (let ((exp (macroexpand-all sexp)))
+    (let ((exp (macroexpand-all form)))
       ;; yo dawg I herd you like cars
       (and (equal 'defalias (car exp))
            (equal 'macro (cadar (cdaddr exp)))))))
 
-(defun elr--function-definition? (sexp)
-  "Return t if SEXP expands to a function definition."
+(defun elr--function-definition? (form)
+  "Return t if FORM expands to a function definition."
   (ignore-errors
-    (let ((exp (macroexpand-all sexp)))
+    (let ((exp (macroexpand-all form)))
       (and (equal 'defalias (car exp))
            (equal 'function (caaddr exp))))))
 
-(defun elr--variable-definition? (sexp)
+(defun elr--variable-definition? (form)
   (ignore-errors
     (-contains? '(defconst defvar defcustom)
-                (car (macroexpand-all sexp)))))
+                (car (macroexpand-all form)))))
+
+(defun elr--definition? (form)
+  "Return non-nil if FORM is a definition."
+  (or (elr--variable-definition? form)
+      (elr--macro-definition? form)
+      (elr--function-definition? form)))
 
 (defun elr--looking-at-definition? ()
-  (let ((sexp (elr--list-at-point)))
-    (or (elr--variable-definition? sexp)
-        (elr--macro-definition? sexp)
-        (elr--function-definition? sexp))))
+  "Return non-nil if point is at a definition form."
+  (elr--definition? (elr--list-at-point)))
 
 (defun elr--autoload-exists? (function str)
   "Returns true if an autoload for FUNCTION exists in string STR."
   (s-contains? (format "(autoload '%s " function) str))
 
 ;;; ----------------------------------------------------------------------------
-;;; Inlining
+;;; Define refactoring commands.
 
 (defun elr--extract-var-values (sexp)
   "Return the name and initializing value of SEXP if it is a variable definition."
@@ -333,7 +349,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 (defun elr--format-defun (defun-str)
   "Format DEFUN-STR to a prettier defun representation."
   (replace-regexp-in-string
-   (rx bol "(defun" (* nonl) (group "nil" (* space)) eol)
+   (rx bol "(" (* nonl) "def" (* nonl) (group "nil" (* space)) eol)
    "()"
    defun-str t nil 1))
 
@@ -409,7 +425,103 @@ See `autoload' for details."
   (comment-region (region-beginning) (region-end)))
 
 ;;; ----------------------------------------------------------------------------
-;;; Declare refactoring commands.
+;;; Let expressions.
+
+(defun elr--let-form? (form)
+  "Non-nil if FORM is a let or let* form."
+  (-contains? '(let let*) (car-safe form)))
+
+(defun elr--defun-form? (form)
+  "Non-nil if FORM is a function or macro definition form."
+  (-contains? '(defun cl-defun defun* defmacro cl-defmacro defmacro*)
+              (car-safe form)))
+
+(defun elr--let-wrap (form)
+  "Ensure FORM is wrapped with a `let' form."
+  (if (elr--let-form? form)
+      form
+    (list 'let nil :elr--newline form)))
+
+(cl-defun elr--insert-let-var (symbol value-form (let bindings &rest body))
+  "Insert a binding into the given let expression."
+  (cl-assert (elr--let-form? (list let)))
+  (let* ((new    `((,symbol ,value-form)))
+         (updated (if bindings (-concat bindings (list elr--newline-token) new) new)))
+    (cl-list* let updated body)))
+
+(defun elr--index-of (elt coll)
+  "Find the index of ELT in COLL, or nil if not found."
+  (->> coll
+    (-map-indexed (lambda (i x) (cons i x)))
+    (--first (equal elt (cdr it)))
+    (car)))
+
+(defun elr--partition-defun (form)
+  (cl-assert (elr--defun-form? form) "Not a recognised definition form.")
+  (let* (
+         ;; Inspect the structure of the form. A definition contains an optional
+         ;; docstring and interactive/declare specs which should not be changed
+         ;; by operations to the body, so we skip those.
+
+         (skip-decl (->> form
+                      ;; newlines and comments not semantically useful here.
+                      (--remove (or (elr--newline-token? it) (elr--comment? it)))
+                      ;; skip defun, symbol and arglist.
+                      (-drop 3)))
+         (skip-spec (->>
+                        ;; skip docstring, but only if there are forms afterwards.
+                        (if (and (stringp (car-safe skip-decl))
+                                 (cdr skip-decl))
+                            (cdr skip-decl)
+                          skip-decl)
+                      ;; skip INTERACTIVE and DECLARE forms.
+                      (--drop-while (or (equal 'interactive (car-safe it))
+                                        (equal 'declare (car-safe it))))))
+
+         ;; Now that we know which form is probably the body, get its position
+         ;; in FORM and split FORM at that point.
+         (split-point (car skip-spec))
+         (pos (elr--index-of split-point form))
+         )
+    (cl-assert (integerp pos) "Unable to determine position of body within form %s" form)
+    (-split-at pos form)))
+
+(defun elr--partition-body (form)
+  "Splits the given form into a 2-item list at its body forms, if any."
+  (if (elr--defun-form? form)
+      (elr--partition-defun form)
+    (list nil form)))
+
+(defun elr--refactor-let-binding (symbol value form)
+  "Insert (SYMBOL VALUE) into FORM, encapsulating FORM in a `let' expression if necessary."
+  (destructuring-bind (header body) (elr--partition-body form)
+    (->> (elr--let-wrap body)
+      (elr--insert-let-var symbol value)
+      (-concat header))))
+
+;; (elr--refactor-let-binding 'x 'y '(defun test (args) "docstring" (declare bork) 'hello))
+
+(defun elr-extract-to-let (symbol)
+  "Extract the form at point into a let expression.
+The expression will be bound to SYMBOL."
+  (interactive "SSymbol: ")
+  (elr--extraction-refactor "Extracted to let expression"
+    ;; Insert usage.
+    (insert (elr--print symbol))
+    ;; Replace the top-level form.
+    (beginning-of-defun)
+    (kill-sexp)
+    ;; Insert updated let-binding.
+    (->> (elr--read (car kill-ring))
+      (elr--refactor-let-binding symbol extracted-sexp)
+      ;; Pretty-format for insertion.
+      (elr--print)
+      (elr--format-defun)
+      (elr--reindent-string)
+      (insert))))
+
+;;; ----------------------------------------------------------------------------
+;;; Declare commands with ELR.
 
 ;;; Inline variable
 (elr-declare-action elr-inline-variable emacs-lisp-mode "inline"
@@ -421,8 +533,14 @@ See `autoload' for details."
   :description "defun")
 
 ;;; Extract variable
-(elr-declare-action elr-extract-variable emacs-lisp-mode "variable"
+(elr-declare-action elr-extract-to-let emacs-lisp-mode "let-bind"
   :predicate (not (elr--looking-at-definition?))
+  :description "let")
+
+;;; Extract variable
+(elr-declare-action elr-extract-variable emacs-lisp-mode "variable"
+  :predicate (and (not (elr--looking-at-definition?))
+                  (thing-at-point 'defun))
   :description "defvar")
 
 ;;; Extract constant
