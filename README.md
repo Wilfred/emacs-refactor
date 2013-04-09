@@ -7,15 +7,12 @@ To use ELR when editing, simply move point to an expression and invoke the refac
 
 ![Refactoring menu example](https://raw.github.com/chrisbarrett/elisp-refactor/master/elr.png)
 
-The following commands are available in Emacs Lisp:
+ELR ships with useful refactorings for Emacs Lisp, including:
 
 * extract expression to function
-* extract expression to defvar
-* extract expression to defconst
-* extract autoload for function
-* evalute expression and replace it with the result
-* inline variable
-* comment expression.
+* extract and inline variables
+* extract autoloads for functions
+* evalute expression and replace it with the result.
 
 More languages are forthcoming. See *Extension* for details on extending ELR to
 other language modes. It's easy (honest!).
