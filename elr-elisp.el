@@ -221,8 +221,15 @@ BODY is a list of forms to execute after extracting the sexp near point.
 The extracted expression is bound to the symbol 'extracted-sexp'."
   (declare (indent 1))
   `(save-excursion
-     (elr--goto-open-round-or-quote)
-     (kill-sexp)
+
+     ;; Either extract the active region or the sexp near point.
+     (if (region-active-p)
+         (kill-region (region-beginning)
+                      (region-end))
+
+       (elr--goto-open-round-or-quote)
+       (kill-sexp))
+
      (let ((extracted-sexp (elr--read (car kill-ring))))
        ;; Revert kill-ring pointer.
        (setq kill-ring (cdr kill-ring))
@@ -440,7 +447,7 @@ See `autoload' for details."
   "Ensure FORM is wrapped with a `let' form."
   (if (elr--let-form? form)
       form
-    (list 'let nil :elr--newline form)))
+    (cl-list* 'let nil :elr--newline form)))
 
 (cl-defun elr--insert-let-var (symbol value-form (let bindings &rest body))
   "Insert a binding into the given let expression."
@@ -456,31 +463,35 @@ See `autoload' for details."
     (--first (equal elt (cdr it)))
     (car)))
 
-(defun elr--partition-defun (form)
+(defun elr--split-defun (form)
+  "Split a defun FORM into a list of (header body).
+The body is the part of FORM that can be safely transformed without breaking the definition."
   (cl-assert (elr--defun-form? form) "Not a recognised definition form.")
   (let* (
          ;; Inspect the structure of the form. A definition contains an optional
          ;; docstring and interactive/declare specs which should not be changed
          ;; by operations to the body, so we skip those.
 
-         (skip-decl (->> form
-                      ;; newlines and comments not semantically useful here.
-                      (--remove (or (elr--newline-token? it) (elr--comment? it)))
-                      ;; skip defun, symbol and arglist.
-                      (-drop 3)))
-         (skip-spec (->>
-                        ;; skip docstring, but only if there are forms afterwards.
-                        (if (and (stringp (car-safe skip-decl))
-                                 (cdr skip-decl))
-                            (cdr skip-decl)
-                          skip-decl)
-                      ;; skip INTERACTIVE and DECLARE forms.
-                      (--drop-while (or (equal 'interactive (car-safe it))
-                                        (equal 'declare (car-safe it))))))
+         (split-point
+
+          (->> form
+            ;; Newlines and comments not semantically useful here.
+            (--remove (or (elr--newline-token? it) (elr--comment? it)))
+            ;; Skip defun, symbol and arglist.
+            (-drop 3)
+            ;; Skip docstring, but only if there are forms afterwards.
+            (funcall
+             (lambda (xs) (if (and (stringp (car-safe xs)) (cdr xs))
+                              (cdr xs)
+                            xs)))
+            ;; Skip INTERACTIVE and DECLARE forms.
+            (--drop-while (or (equal 'interactive (car-safe it))
+                              (equal 'declare (car-safe it))))
+            ;; The car should be the first BODY form.
+            (car)))
 
          ;; Now that we know which form is probably the body, get its position
          ;; in FORM and split FORM at that point.
-         (split-point (car skip-spec))
          (pos (elr--index-of split-point form))
          )
     (cl-assert (integerp pos) "Unable to determine position of body within form %s" form)
@@ -489,17 +500,14 @@ See `autoload' for details."
 (defun elr--partition-body (form)
   "Splits the given form into a 2-item list at its body forms, if any."
   (if (elr--defun-form? form)
-      (elr--partition-defun form)
+      (elr--split-defun form)
     (list nil form)))
 
 (defun elr--refactor-let-binding (symbol value form)
   "Insert (SYMBOL VALUE) into FORM, encapsulating FORM in a `let' expression if necessary."
   (destructuring-bind (header body) (elr--partition-body form)
-    (->> (elr--let-wrap body)
-      (elr--insert-let-var symbol value)
-      (-concat header))))
-
-;; (elr--refactor-let-binding 'x 'y '(defun test (args) "docstring" (declare bork) 'hello))
+    (-concat header (list (->> (elr--let-wrap body)
+                            (elr--insert-let-var symbol value))))))
 
 (defun elr-extract-to-let (symbol)
   "Extract the form at point into a let expression.
