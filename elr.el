@@ -1,4 +1,4 @@
-;;; elisp-refactor --- Refactoring commands for Emacs Lisp.
+;;; elr --- Emacs refactoring system.
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -26,8 +26,8 @@
 ;; Add this package to your load path and add an autoload for `elr-show-refactor-menu`.
 ;; Bind the `elr-show-refactor-menu` command to something convenient.
 ;;
-;; (autoload 'elr-show-refactor-menu "elisp-refactor")
-;; (add-hook 'emacs-lisp-mode-hook
+;; (autoload 'elr-show-refactor-menu "elr")
+;; (add-hook 'prog-mode-hook
 ;;           (lambda () (local-set-key (kbd "M-RET") 'elr-show-refactor-menu)))
 ;;
 ;; See README.md for more information.
@@ -50,7 +50,10 @@
   :type 'checkbox
   :group 'elisp-refactor)
 
+;;; ----------------------------------------------------------------------------
 ;;; Macros
+;;;
+;;; Convenience macros.
 
 (defun elr--macro-boundp (symbol)
   "Test whether SYMBOL is bound as a macro."
@@ -117,7 +120,6 @@ otherwise execute ELSE forms without bindings."
 
 ;;; ----------------------------------------------------------------------------
 ;;; Popup menu
-;;;
 ;;; Items to be displayed in the refactoring popup menu are added using the
 ;;; `elr-declare-action' macro.
 
@@ -155,6 +157,7 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
     (error "No refactorings available")))
 
 (require 'elr-elisp)
+
 (provide 'elisp-refactor)
 
 ;;; NB: callargs warnings disabled to prevent format warnings caused by

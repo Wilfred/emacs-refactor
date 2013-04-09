@@ -10,7 +10,8 @@ The following commands are currently available:
 * extract expression to defvar
 * extract expression to defconst
 * extract autoload for function
-* evalute expression and replace it with the result.
+* evalute expression and replace it with the result
+* inline variable.
 
 ## Dependencies
 
@@ -35,7 +36,7 @@ Add this package to your load path and add an autoload for
 ## TODO
 
 * inline function
-* inline variable
+* remove PROGN on function extraction.
 
 ## Contributing
 
