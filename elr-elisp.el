@@ -401,6 +401,13 @@ See `autoload' for details."
           (elr--insert-above
            (elr--print form)))))))
 
+(defun elr-comment-form ()
+  "Comment out the list at point."
+  (interactive)
+  (elr--goto-open-round-or-quote)
+  (mark-sexp)
+  (comment-region (region-beginning) (region-end)))
+
 ;;; ----------------------------------------------------------------------------
 ;;; Declare refactoring commands.
 
@@ -434,6 +441,10 @@ See `autoload' for details."
   :predicate (and (functionp (symbol-at-point))
                   (not (elr--variable-definition? (elr--list-at-point)))
                   (not (elr--autoload-exists? (symbol-at-point) (buffer-string)))))
+
+;;; Comment-out form
+(elr-declare-action elr-comment-form emacs-lisp-mode "comment"
+  :predicate t)
 
 (provide 'elr-elisp)
 

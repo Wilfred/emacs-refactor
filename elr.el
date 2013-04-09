@@ -60,7 +60,7 @@
   (and (functionp symbol)
        ;; This may throw an error if it's a normal function.
        (ignore-errors
-	 (eq (car (symbol-function symbol)) 'macro))))
+         (eq (car (symbol-function symbol)) 'macro))))
 
 (defmacro elr--defmacro-safe (symbol arglist &rest body)
   "Define the given macro only if it is not already defined.
@@ -106,17 +106,17 @@ otherwise execute ELSE forms without bindings."
 (defun elr--diff-lines (str1 str2)
   "Get the lines that differ between strings STR1 and STR2."
   (--remove (equal (car it) (cdr it))
-	    (-zip (elr--indexed-lines str1) (elr--indexed-lines str2))))
+            (-zip (elr--indexed-lines str1) (elr--indexed-lines str2))))
 
 (cl-defun elr--report-action (description line text)
   "Report the action that occured at the point of difference."
   (message
    (elr--ellipsize
     (format "%s line %s: %s"
-	    description
-	    line
-	    (if (s-blank? text) "nil"
-	      (replace-regexp-in-string "[ \n\r\t]+" " " text))))))
+            description
+            line
+            (if (s-blank? text) "nil"
+              (replace-regexp-in-string "[ \n\r\t]+" " " text))))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Popup menu
@@ -126,12 +126,13 @@ otherwise execute ELSE forms without bindings."
 (defvar elr--refactor-commands '()
   "A list of refactoring commands used to build menu items.")
 
-(cl-defmacro elr-declare-action (function mode title &key predicate description)
+(cl-defmacro elr-declare-action (function mode title &key (predicate t) description)
   "Define a refactoring command.
 FUNCTION is the refactoring command to perform.
 MODE is the major mode in which this
 TITLE is the name of the command that will be displayed in the popup menu.
 PREDICATE is a condition that must be satisfied to display this item.
+If PREDICATE is not supplied, the item will always be visible for this mode.
 DESCRIPTION is shown to the left of the titile in the popup menu."
   (declare (indent 3))
   (let ((fname (intern (format "elr--gen--%s--%s" mode title))))
@@ -139,9 +140,9 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
        ;; Define a function to encapsulate the predicate. Also ensures each
        ;; refactoring command is only added once.
        (defun ,fname nil
-	 (when (and (derived-mode-p major-mode ',mode)
-		    (eval ,predicate))
-	   (popup-make-item ,title :value ',function :summary ,description)))
+         (when (and (derived-mode-p major-mode ',mode)
+                    (eval ,predicate))
+           (popup-make-item ,title :value ',function :summary ,description)))
        ;; Make this refactoring available in the popup menu.
        (add-to-list 'elr--refactor-commands ',fname t))))
 
@@ -149,11 +150,11 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
   "Show the extraction menu at point."
   (interactive)
   (if-let (actions (->> elr--refactor-commands
-		     (-map 'funcall)
-		     (-remove 'null)))
+                     (-map 'funcall)
+                     (-remove 'null)))
     (atomic-change-group
       (when-let (action (popup-menu* actions :isearch t))
-	(call-interactively action)))
+        (call-interactively action)))
     (error "No refactorings available")))
 
 (require 'elr-elisp)

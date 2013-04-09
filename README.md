@@ -1,17 +1,24 @@
 # elisp-refactor
 
-Provides refactoring commands for Emacs Lisp. To use, move point to an expression and invoke the refactor menu.
+ELR allows you to define language-specific refactoring commands in Emacs. It has
+a simple declarative interface for easy extension.
+
+To use ELR when editing, simply move point to an expression and invoke the refactor menu.
 
 ![Refactoring menu example](https://raw.github.com/chrisbarrett/elisp-refactor/master/elr.png)
 
-The following commands are currently available:
+The following commands are available in Emacs Lisp:
 
 * extract expression to function
 * extract expression to defvar
 * extract expression to defconst
 * extract autoload for function
 * evalute expression and replace it with the result
-* inline variable.
+* inline variable
+* comment expression.
+
+More languages are forthcoming. See *Extension* for details on extending ELR to
+other language modes. It's easy (honest!).
 
 ## Dependencies
 
@@ -20,23 +27,53 @@ The following commands are currently available:
 * [popup](https://github.com/magnars/dash.el)
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
 
+Download them using [Melpa](http://melpa.milkbox.net/), or get them straight
+from GitHub.
+
 ## Installation
 
 Add this package to your load path and add an autoload for
 `elr-show-refactor-menu`. Bind this command to something convenient.
 
 ```lisp
-(add-to-list 'load-path "path/to/elisp-refactor")
-(autoload 'elr-show-refactor-menu "elisp-refactor")
+(add-to-list 'load-path "path/to/elr")
+(autoload 'elr-show-refactor-menu "elr")
 
-(add-hook 'emacs-lisp-mode-hook
+(add-hook 'prog-mode-hook
           (lambda () (local-set-key (kbd "M-RET") 'elr-show-refactor-menu)))
 ```
 
+## Extension
+
+Use the `elr-declare-action' macro to declare a refactoring action for a given
+mode. The action will automatically become available in the refactoring popup
+menu.
+
+This macro supports predicate expressions, allowing the options displayed to be
+context-sensitive.
+
+As an example, here is the declaration for a refactoring that ships with ELR:
+
+```lisp
+;;; Extract constant
+(elr-declare-action elr-extract-constant emacs-lisp-mode "constant"
+  :predicate (not (elr--looking-at-definition?))
+  :description "defconst")
+```
+
+This wires the `elr-extract-constant` function to be displayed in
+`emacs-lisp-mode`, provided point is not looking at an Elisp definition form.
+
+If your favourite language mode already offers refactoring commands, it is
+simple to wire them up with ELR using this interface.
+
 ## TODO
 
-* inline function
-* remove PROGN on function extraction.
+* Support for other languages (esp. Clojure, Python, Ruby)
+
+* Elisp:
+   * inline function
+   * remove PROGN on function extraction.
 
 ## Contributing
 
