@@ -136,8 +136,7 @@
   (with-temp-buffer
     (lisp-mode-variables)
     (insert form-str)
-    (newline)
-    (mark-defun)
+    (mark-whole-buffer)
     (indent-region (region-beginning) (region-end))
     (buffer-string)))
 
@@ -150,7 +149,8 @@
     (newline)
     (forward-line -1)
     (back-to-indentation)
-    (insert (elr--reindent-string form-str))))
+    (insert (elr--reindent-string form-str))
+    (newline-and-indent)))
 
 (defun elr--symbol-file-name (fn)
   "Find the name of the file that declares function FN."
@@ -519,11 +519,14 @@ The body is the part of FORM that can be safely transformed without breaking the
 The expression will be bound to SYMBOL."
   (interactive "SSymbol: ")
   (elr--extraction-refactor "Extracted to let expression"
+
     ;; Insert usage.
     (insert (elr--print symbol))
+
     ;; Replace the top-level form.
     (beginning-of-defun)
     (kill-sexp)
+
     ;; Insert updated let-binding.
     (->> (elr--read (car kill-ring))
       (elr--refactor-let-binding symbol extracted-sexp)
@@ -531,7 +534,14 @@ The expression will be bound to SYMBOL."
       (elr--print)
       (elr--format-defun)
       (elr--reindent-string)
-      (insert))))
+      (insert)))
+
+  ;; Move to inserted variable.
+  (save-match-data
+    (search-forward-regexp
+     (eval `(rx word-start ,(elr--print symbol) word-end))
+     (save-excursion (end-of-defun))
+     t)))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Declare commands with ELR.
