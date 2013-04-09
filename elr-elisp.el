@@ -506,8 +506,13 @@ The body is the part of FORM that can be safely transformed without breaking the
 (defun elr--refactor-let-binding (symbol value form)
   "Insert (SYMBOL VALUE) into FORM, encapsulating FORM in a `let' expression if necessary."
   (destructuring-bind (header body) (elr--partition-body form)
-    (-concat header (list (->> (elr--let-wrap body)
-                            (elr--insert-let-var symbol value))))))
+    (->> ;; Unpack singleton form.
+        (if (equal 1 (length body)) (car body) body)
+      (elr--let-wrap)
+      (elr--insert-let-var symbol value)
+      ;; Insert body into original context.
+      (list)
+      (-concat header))))
 
 (defun elr-extract-to-let (symbol)
   "Extract the form at point into a let expression.
