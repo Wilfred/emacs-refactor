@@ -3,10 +3,7 @@ testd = $(abspath test)/
 tmpd  = $(abspath tmp)/
 
 
-src         = elr.el elr-elisp.el
-tests       = $(wildcard $(testd)*tests.el)
-load_files  = $(patsubst %,-l %, $(src))
-load_tests  = $(patsubst %,-l %, $(tests))
+test-runner = $(testd)test-runner.el
 
 # ============================================================================
 
@@ -15,24 +12,26 @@ load_tests  = $(patsubst %,-l %, $(tests))
 all : test
 
 # Cleaning tasks.
-clean : clean-elc clean-flycheck
+clean : clean-elc clean-flycheck clean-tmp
 clean-elc :
 	rm -f *.elc
 	rm -f $(testd)*.elc
 clean-flycheck :
 	rm -f *flycheck
 	rm -f $(testd)*flycheck
+clean-tmp :
+	rm -r $(tmpd)
 
 # Run unit tests.
 test : $(tmpd).emacs.d/elpa
 	$(emacs) --version
 	HOME=$(tmpd) ;\
-	$(emacs) --batch $(load_files) $(load_tests) -f run-tests
+	$(emacs) --batch -l $(test-runner) -f run-tests
 
 # Download package dependencies.
 $(tmpd).emacs.d/elpa :
 	HOME=$(tmpd) ;\
-	$(emacs) --batch -l $(testd)test-runner.el -f load-packages
+	$(emacs) --batch -l $(test-runner) -f load-packages
 
 # Create dir to hold test .emacs.d
 $(tmpd) :; makedir -p $(tmpd)

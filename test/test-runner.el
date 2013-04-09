@@ -53,7 +53,10 @@
   (init-melpa)
   (add-to-list 'load-path (expand-file-name ".."))
   (add-to-list 'load-path (expand-file-name "."))
+  (add-to-list 'load-path (expand-file-name "./test"))
+
   (load-packages)
+  (message "%s" load-path)
   (require 'elr)
   (require 'elr-elisp)
   (require 'elr-elisp-tests)
