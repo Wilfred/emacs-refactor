@@ -1,4 +1,4 @@
-;;; elr-elisp --- Functions for working with Elisp.
+;;; elr-elisp --- Refactoring commands for Emacs Lisp
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; Functions for working with Elisp.
+;;; Refactoring commands for Emacs Lisp. Part of the ELR suite.
 
 ;;; Code:
 
@@ -47,7 +47,7 @@
     line))
 
 (defun elr--read (str)
-  "Read the given string STR, inserting tokens to represent whitespace."
+  "Read the given string STR as a Lisp expression, inserting tokens to represent whitespace."
   (let ((print-quoted t)
         (print-level nil)
         (print-length nil)
@@ -63,14 +63,14 @@
   "Unpack any eol comments in STR, otherwise leave STR unchanged."
   (let ((prefix (format "(%s" elr--comment)))
     (if (s-contains? prefix str)
-        (let* ((split   (s-split (s-trim prefix)))
+        (let* ((split   (s-split (s-trim prefix) str))
                (code    (or (car split) ""))
                (comment (format "%s" (read (cdr split)))))
           (concat code comment))
       str)))
 
 (defun elr--print (form)
-  "Print FORM, replacing whitespace tokens with newlines."
+  "Print FORM as a Lisp expression, replacing whitespace tokens with newlines."
   (let ((nl (format "%s" elr--newline-token))
         ;; Print forms to any depth.
         (print-quoted t)
@@ -244,8 +244,8 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
 
 (defun elr--variable-definition? (sexp)
   (ignore-errors
-    (member (car (macroexpand-all sexp))
-            '(defconst defvar defcustom))))
+    (-contains? '(defconst defvar defcustom)
+                (car (macroexpand-all sexp)))))
 
 (defun elr--looking-at-definition? ()
   (let ((sexp (elr--list-at-point)))
@@ -405,31 +405,31 @@ See `autoload' for details."
 ;;; Declare refactoring commands.
 
 ;;; Inline variable
-(elr--declare-refactoring elr-inline-variable emacs-lisp-mode "inline"
+(elr-declare-action elr-inline-variable emacs-lisp-mode "inline"
   :predicate (elr--variable-definition? (elr--list-at-point)))
 
 ;;; Extract function
-(elr--declare-refactoring elr-extract-function emacs-lisp-mode "function"
+(elr-declare-action elr-extract-function emacs-lisp-mode "function"
   :predicate (not (elr--looking-at-definition?))
   :description "defun")
 
 ;;; Extract variable
-(elr--declare-refactoring elr-extract-variable emacs-lisp-mode "variable"
+(elr-declare-action elr-extract-variable emacs-lisp-mode "variable"
   :predicate (not (elr--looking-at-definition?))
   :description "defvar")
 
 ;;; Extract constant
-(elr--declare-refactoring elr-extract-constant emacs-lisp-mode "constant"
+(elr-declare-action elr-extract-constant emacs-lisp-mode "constant"
   :predicate (not (elr--looking-at-definition?))
   :description "defconst")
 
 ;;; Eval and replace expression
-(elr--declare-refactoring elr-eval-and-replace emacs-lisp-mode "eval"
+(elr-declare-action elr-eval-and-replace emacs-lisp-mode "eval"
   :predicate (not (elr--looking-at-definition?))
   :description "value")
 
 ;;; Extract autoload
-(elr--declare-refactoring elr-extract-autoload emacs-lisp-mode "autoload"
+(elr-declare-action elr-extract-autoload emacs-lisp-mode "autoload"
   :description "autoload"
   :predicate (and (functionp (symbol-at-point))
                   (not (elr--variable-definition? (elr--list-at-point)))

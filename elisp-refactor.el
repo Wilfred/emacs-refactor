@@ -87,6 +87,9 @@ otherwise execute ELSE forms without bindings."
 
 ;;; ----------------------------------------------------------------------------
 ;;; Reporting
+;;;
+;;; These commands may be used to describe the changes made to buffers. See
+;;; example in elr-elisp.
 
 (cl-defun elr--ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
   (if (> (length str) maxlen)
@@ -113,33 +116,32 @@ otherwise execute ELSE forms without bindings."
               (replace-regexp-in-string "[ \n\r\t]+" " " text))))))
 
 ;;; ----------------------------------------------------------------------------
-;;; Elisp refactoring commands
-
-;;; The refactor menu is context-sensitive. Popup items are created with
-;;; constructor functions which return nil when given refactoring is not
-;;; available at POINT.
+;;; Popup menu
+;;;
+;;; Items to be displayed in the refactoring popup menu are added using the
+;;; `elr-declare-action' macro.
 
 (defvar elr--refactor-commands '()
   "A list of refactoring commands used to build menu items.")
 
-(cl-defmacro elr--declare-refactoring (function mode title &key predicate description)
+(cl-defmacro elr-declare-action (function mode title &key predicate description)
   "Define a refactoring command.
 FUNCTION is the refactoring command to perform.
 MODE is the major mode in which this
 TITLE is the name of the command that will be displayed in the popup menu.
 PREDICATE is a condition that must be satisfied to display this item.
 DESCRIPTION is shown to the left of the titile in the popup menu."
-  (declare (indent 2))
-  (let ((pred (cl-gensym))
-        (fname (intern (format "elr--gen--%s--%s" mode title))))
+  (declare (indent 3))
+  (let ((fname (intern (format "elr--gen--%s--%s" mode title))))
     `(progn
+       ;; Define a function to encapsulate the predicate. Also ensures each
+       ;; refactoring command is only added once.
        (defun ,fname nil
-         (let ((,pred ',predicate))
-           (when (and (derived-mode-p major-mode ',mode)
-                      (or (null ',pred)
-                          (eval ,pred)))
-             (popup-make-item ,title :value ',function :summary ,description))))
-       (add-to-list 'elr--refactor-commands ',fname 'append))))
+         (when (and (derived-mode-p major-mode ',mode)
+                    (eval ,predicate))
+           (popup-make-item ,title :value ',function :summary ,description)))
+       ;; Make this refactoring available in the popup menu.
+       (add-to-list 'elr--refactor-commands ',fname t))))
 
 (defun elr-show-refactor-menu ()
   "Show the extraction menu at point."
@@ -152,7 +154,7 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
         (call-interactively action)))
     (error "No refactorings available")))
 
-(require 'elr-elisp "./elr-elisp.el")
+(require 'elr-elisp)
 (provide 'elisp-refactor)
 
 ;;; NB: callargs warnings disabled to prevent format warnings caused by
