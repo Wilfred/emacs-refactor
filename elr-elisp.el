@@ -559,6 +559,18 @@ See `autoload' for details."
     (--first (equal elt (cdr it)))
     (car)))
 
+(defun elr--maybe-skip-docstring (xs)
+  "Skip docstring if it is at the head of XS.
+If there are forms afterwards, do not skip."
+  (if (and (stringp (car-safe xs)) (cdr xs))
+      (cdr xs)
+    xs))
+
+(defun elr--decl-form? (form)
+  "Non-nil if form is an `interactive' spec, assertion, or `declare' form."
+  (-contains? '(interactive declare assert cl-assert)
+               (or (car-safe form) form)))
+
 (defun elr--split-defun (form)
   "Split a defun FORM into a list of (header body).
 The body is the part of FORM that can be safely transformed without breaking the definition."
@@ -575,14 +587,9 @@ The body is the part of FORM that can be safely transformed without breaking the
             (--remove (or (elr--newline-token? it) (elr--comment? it)))
             ;; Skip defun, symbol and arglist.
             (-drop 3)
-            ;; Skip docstring, but only if there are forms afterwards.
-            (funcall
-             (lambda (xs) (if (and (stringp (car-safe xs)) (cdr xs))
-                              (cdr xs)
-                            xs)))
+            (elr--maybe-skip-docstring)
             ;; Skip INTERACTIVE, DECLARE and assertion forms.
-            (--drop-while (-contains? '(interactive declare assert cl-assert)
-                                      (car-safe it)))
+            (--drop-while (elr--decl-form? it))
             ;; The car should be the first BODY form.
             (car)))
 
@@ -593,22 +600,30 @@ The body is the part of FORM that can be safely transformed without breaking the
     (cl-assert (integerp pos) "Unable to determine position of body within form %s" form)
     (-split-at pos form)))
 
+(cl-defun elr--split-defvar ((def sym &optional value docstring))
+  "Split FORM into a list of (decl sym docstring)"
+  (list (list def sym) (list value) (list docstring)))
+
 (defun elr--partition-body (form)
   "Splits the given form into a 2-item list at its body forms, if any."
-  (if (elr--defun-form? form)
-      (elr--split-defun form)
-    (list nil form)))
+  (cond ((elr--defun-form? form)          (elr--split-defun form))
+        ((elr--variable-definition? form) (elr--split-defvar form))
+        (t
+         (list nil form))))
+
+;; (defvar hello (symbol x) "docstring")
 
 (defun elr--refactor-let-binding (symbol value form)
   "Insert (SYMBOL VALUE) into FORM, encapsulating FORM in a `let' expression if necessary."
-  (destructuring-bind (header body) (elr--partition-body form)
-    (->> ;; Unpack singleton form.
-        (if (equal 1 (length body)) (car body) body)
-      (elr--let-wrap)
-      (elr--insert-let-var symbol value)
-      ;; Insert body into original context.
-      (list)
-      (-concat header))))
+  (destructuring-bind (header body &optional epilogue) (elr--partition-body form)
+    (let ((updated
+           (->> ;; Unpack singleton form.
+               (if (equal 1 (length body)) (car body) body)
+             (elr--let-wrap)
+             (elr--insert-let-var symbol value)
+             ;; Insert body into original context.
+             (list))))
+      (-concat header updated epilogue))))
 
 (defun elr-extract-to-let (symbol)
   "Extract the form at point into a let expression.
