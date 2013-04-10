@@ -504,20 +504,51 @@ See `autoload' for details."
       form
     (cl-list* 'let nil :elr--newline form)))
 
+;;; Binding membership tests.
+
+(defun elr--first-atom (form)
+  "Returns the first atom the car of FORM, at any level of nesting."
+  (if (listp form)
+      (car-safe (-flatten form))
+    form))
+
+(defun elr--bindings-after (sym binding-forms)
+  "Return the bindings after the first instance of SYM in BINDING-FORMS."
+  (->> binding-forms
+    (--split-with (equal sym (elr--first-atom it)))
+    (cdr)))
+
+(defun elr--find-binding-references (current-form binding-forms)
+  (let* ((sym (elr--first-atom current-form))
+         (rest (elr--bindings-after sym binding-forms)))
+    (-contains? rest sym)))
+
+(defun elr--duplicates? (xs)
+  "Return non-nil if any elements in XS are duplicated."
+  (/= (length xs) (length (-distinct xs))))
+
 (defun elr--recursive-bindings? (binding-forms)
   "Test whether let BINDING-FORMS are dependent on one-another."
-  (let ((rev (reverse binding-forms)))
-    (->> rev
-      (--map-indexed (-contains\? nil it)))
+  (let ((syms (->> binding-forms
+                (--map (or (car-safe it) it))
+                (--remove (or (elr--newline-token? it)
+                              (elr--comment? it)))))
+        (vals (->> binding-forms
+                (-map 'cdr-safe)
+                (--remove (or (elr--newline-token? it)
+                              (elr--comment? it))))))
+    (or (elr--duplicates? syms)
+        (-intersection syms (-flatten vals)))))
 
-
-    ))
+;;; Variable insertion.
 
 (cl-defun elr--insert-let-var (symbol value-form (let bindings &rest body))
   "Insert a binding into the given let expression."
   (cl-assert (elr--let-form? (list let)))
   (let* ((new    `((,symbol ,value-form)))
-         (updated (if bindings (-concat bindings (list elr--newline-token) new) new))
+         (updated (if bindings
+                      (-concat bindings (list elr--newline-token) new)
+                    new))
          (let-form (if (elr--recursive-bindings? updated) 'let* 'let)))
     (cl-list* let-form updated body)))
 

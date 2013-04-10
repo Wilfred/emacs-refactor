@@ -72,6 +72,20 @@ BODY lists the forms to be executed."
     (should-match (rx  "(list "(* space) ";;; Comment" (* space) eol)
                   line)))
 
+(check "can match on recursive let-bindings 1"
+  (should (elr--recursive-bindings? '((x y)
+                                      z
+                                      (x)))))
+
+
+(check "can match on recursive let-bindings 2"
+  (should (elr--recursive-bindings? '((x y)
+                                      y
+                                      (z w)))))
+
+(check "can match on non-recursive let-bindings"
+  (should (not (elr--recursive-bindings? '((x y) z w)))))
+
 (provide 'elr-elisp-tests)
 
 ;; Local Variables:
