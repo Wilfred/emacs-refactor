@@ -78,6 +78,17 @@
           (concat code comment))
       str)))
 
+(defun elr--unescape-question-marks (str)
+  "Unescape question marks that were escaped by the reader."
+  (with-temp-buffer
+    (lisp-mode-variables)
+    (insert str)
+    (goto-char (point-min))
+    (save-match-data
+      (while (search-forward "\\?" nil t)
+        (replace-match "?")))
+    (buffer-string)))
+
 (defun elr--print (form)
   "Print FORM as a Lisp expression, replacing whitespace tokens with newlines."
   (let ((nl (format "%s" elr--newline-token))
@@ -92,7 +103,8 @@
       (replace-regexp-in-string (eval `(rx (* space) ,nl (* space))) "\n")
       (s-lines)
       (-map 'elr--reconstruct-comments)
-      (s-join "\n  "))))
+      (s-join "\n  ")
+      (elr--unescape-question-marks))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Navigation commands
@@ -141,7 +153,8 @@
     (buffer-string)))
 
 (defun elr--insert-above (form-str)
-  "Insert and indent FORM-STR above the current top level form."
+  "Insert and indent FORM-STR above the current top level form.
+Return the position of the end of FORM-STR."
   (save-excursion
     ;; Move to position above top-level form.
     (beginning-of-defun)
@@ -150,7 +163,8 @@
     (forward-line -1)
     (back-to-indentation)
     (insert (elr--reindent-string form-str))
-    (newline-and-indent)))
+    (prog1 (point)
+      (newline-and-indent))))
 
 (defun elr--symbol-file-name (fn)
   "Find the name of the file that declares function FN."
@@ -214,12 +228,13 @@ Report the changes made to the buffer at a result of executing BODY forms."
          (unless (elr--line-visible? line)
            (elr--report-action ,description line text))))))
 
-(defmacro elr--extraction-refactor (description &rest body)
+(cl-defmacro elr--extraction-refactor ((&optional binding) description &rest body)
   "Kill the sexp near point then execute forms.
+BINDING is the name to bind to the extracted form.
 DESCRIPTION is used to report the result of the refactoring.
 BODY is a list of forms to execute after extracting the sexp near point.
 The extracted expression is bound to the symbol 'extracted-sexp'."
-  (declare (indent 1))
+  (declare (indent 2))
   `(save-excursion
 
      ;; Either extract the active region or the sexp near point.
@@ -230,7 +245,11 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
        (elr--goto-open-round-or-quote)
        (kill-sexp))
 
-     (let ((extracted-sexp (elr--read (car kill-ring))))
+
+     (let
+         ;; Define BINDING if supplied.
+         ,(when binding `((,binding (elr--read (car kill-ring)))))
+
        ;; Revert kill-ring pointer.
        (setq kill-ring (cdr kill-ring))
        (save-excursion
@@ -316,7 +335,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
     (elr--goto-open-round)
     (if-let (vals (elr--extract-var-values (elr--list-at-point)))
       (if (> (length vals) 1)
-          (elr--extraction-refactor "Inlining applied at"
+          (elr--extraction-refactor () "Inlining applied at"
 
             ;; Clean up line spacing.
             (while (s-blank? (buffer-substring-no-properties (line-beginning-position)
@@ -337,18 +356,23 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 (defun elr-eval-and-replace ()
   "Replace the form at point with its value."
   (interactive)
-  (elr--extraction-refactor "Replacement at"
-    (let ((str (prin1-to-string (eval extracted-sexp))))
+  (elr--extraction-refactor (sexp) "Replacement at"
+    (let ((str (prin1-to-string (eval sexp))))
       (insert str)
       (indent-for-tab-command))))
+
+(defun elr--read-with-default (prompt value)
+  "Prompt for user input, showing PROMPT with an inline default VALUE."
+  (let ((val (s-trim (format "%s" value))))
+    (s-trim
+     (if (s-blank? val)
+         (read-string (format "%s:  " prompt))
+       (read-string (format "%s (default: %s): "  prompt val) nil nil val)))))
 
 (defun elr--read-args ()
   "Read an arglist from the user."
   (let* ((syms (elr--unbound-symbols-string))
-         (input (s-trim
-                 (if (s-blank? syms)
-                     (read-string "Arglist: ")
-                   (read-string (format "Arglist (default: %s): " syms) nil nil syms)))))
+         (input (elr--read-with-default "Arglist" syms)))
     (unless (or (s-blank? input)
                 (s-matches? (rx (or "()" "nil")) input))
       (read (format "(%s)" input)))))
@@ -367,7 +391,7 @@ ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
                      (elr--read-args)))
   (cl-assert (not (s-blank? name)) t "Name must not be blank")
-  (elr--extraction-refactor "Extracted to"
+  (elr--extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name)))
       ;; Insert usage.
       (insert (elr--print (cl-list* name arglist)))
@@ -377,32 +401,31 @@ ARGLIST is its argument list."
         (elr--print
          `(defun ,name ,arglist
             ,elr--newline-token
-            ,(--drop-while (equal elr--newline-token it)
-                           extracted-sexp))))))))
+            ,(-drop-while 'elr--newline-token? sexp))))))))
 
 (defun elr-extract-variable (name)
   "Extract a form as the argument to a defvar named NAME."
   (interactive "sName: ")
   (cl-assert (not (s-blank? name)) t "Name must not be blank")
-  (elr--extraction-refactor "Extracted to"
+  (elr--extraction-refactor (sexp) "Extracted to"
     ;; Insert usage.
     (insert (s-trim name))
     ;; Insert definition.
     (elr--insert-above
      (elr--print
-      (list 'defvar (intern name) extracted-sexp)))))
+      (list 'defvar (intern name) sexp)))))
 
 (defun elr-extract-constant (name)
   "Extract a form as the argument to a defconst named NAME."
   (interactive "sName: ")
   (cl-assert (not (s-blank? name)) t "Name must not be blank")
-  (elr--extraction-refactor "Extracted to"
+  (elr--extraction-refactor (sexp) "Extracted to"
     ;; Insert usage
     (insert (s-trim name))
     ;; Insert definition.
     (elr--insert-above
      (elr--print
-      (list 'defconst (intern name) extracted-sexp)))))
+      (list 'defconst (intern name) sexp)))))
 
 (defun elr-extract-autoload (function file)
   "Create an autoload for FUNCTION.
@@ -431,6 +454,38 @@ See `autoload' for details."
   (mark-sexp)
   (comment-region (region-beginning) (region-end)))
 
+(defun elr-implement-function (name arglist)
+  "Insert a function definition for NAME with ARGLIST."
+  (interactive (list
+                (elr--read (elr--read-with-default "Name" (symbol-at-point)))
+                (elr--read-args)))
+
+  ;; Save position after insertion so we can move to the defun's body.
+  (let (pos)
+    (save-excursion
+
+      ;; Mark whole sexp at point.
+      (beginning-of-thing 'sexp)
+      (mark-sexp)
+
+      (elr--extraction-refactor ()  "Defined function"
+
+        ;; Insert reference.
+        (insert (format "%s" name))
+
+        ;; Insert definition.
+        (->> (list 'defun name arglist elr--newline-token)
+          (elr--print)
+          (elr--format-defun)
+          (elr--insert-above)
+          (setq pos))))
+
+    ;; Move to body position.
+    (goto-char pos)
+    (beginning-of-defun)
+    (forward-line 1)
+    (indent-for-tab-command)))
+
 ;;; ----------------------------------------------------------------------------
 ;;; Let expressions.
 
@@ -449,12 +504,22 @@ See `autoload' for details."
       form
     (cl-list* 'let nil :elr--newline form)))
 
+(defun elr--recursive-bindings? (binding-forms)
+  "Test whether let BINDING-FORMS are dependent on one-another."
+  (let ((rev (reverse binding-forms)))
+    (->> rev
+      (--map-indexed (-contains\? nil it)))
+
+
+    ))
+
 (cl-defun elr--insert-let-var (symbol value-form (let bindings &rest body))
   "Insert a binding into the given let expression."
   (cl-assert (elr--let-form? (list let)))
   (let* ((new    `((,symbol ,value-form)))
-         (updated (if bindings (-concat bindings (list elr--newline-token) new) new)))
-    (cl-list* let updated body)))
+         (updated (if bindings (-concat bindings (list elr--newline-token) new) new))
+         (let-form (if (elr--recursive-bindings? updated) 'let* 'let)))
+    (cl-list* let-form updated body)))
 
 (defun elr--index-of (elt coll)
   "Find the index of ELT in COLL, or nil if not found."
@@ -484,9 +549,9 @@ The body is the part of FORM that can be safely transformed without breaking the
              (lambda (xs) (if (and (stringp (car-safe xs)) (cdr xs))
                               (cdr xs)
                             xs)))
-            ;; Skip INTERACTIVE and DECLARE forms.
-            (--drop-while (or (equal 'interactive (car-safe it))
-                              (equal 'declare (car-safe it))))
+            ;; Skip INTERACTIVE, DECLARE and assertion forms.
+            (--drop-while (-contains? '(interactive declare assert cl-assert)
+                                      (car-safe it)))
             ;; The car should be the first BODY form.
             (car)))
 
@@ -518,7 +583,7 @@ The body is the part of FORM that can be safely transformed without breaking the
   "Extract the form at point into a let expression.
 The expression will be bound to SYMBOL."
   (interactive "SSymbol: ")
-  (elr--extraction-refactor "Extracted to let expression"
+  (elr--extraction-refactor (sexp) "Extracted to let expression"
 
     ;; Insert usage.
     (insert (elr--print symbol))
@@ -529,7 +594,7 @@ The expression will be bound to SYMBOL."
 
     ;; Insert updated let-binding.
     (->> (elr--read (car kill-ring))
-      (elr--refactor-let-binding symbol extracted-sexp)
+      (elr--refactor-let-binding symbol sexp)
       ;; Pretty-format for insertion.
       (elr--print)
       (elr--format-defun)
@@ -570,6 +635,13 @@ The expression will be bound to SYMBOL."
 (elr-declare-action elr-extract-constant emacs-lisp-mode "constant"
   :predicate (not (elr--looking-at-definition?))
   :description "defconst")
+
+(elr-declare-action elr-implement-function emacs-lisp-mode "implement function"
+  :predicate (and (not (elr--looking-at-string?))
+                  (not (thing-at-point 'comment))
+                  (symbol-at-point)
+                  (not (boundp (symbol-at-point)))
+                  (not (fboundp (symbol-at-point)))))
 
 ;;; Eval and replace expression
 (elr-declare-action elr-eval-and-replace emacs-lisp-mode "eval"
