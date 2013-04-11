@@ -207,7 +207,10 @@ Return the position of the end of FORM-STR."
 
 (defun emr--bound-variables (form)
   "Find the list of let- or lambda-bound variables in form."
-  (let ((hd (car-safe (macroexpand-all (cl-list* form)))))
+  (let ((hd (car-safe
+             ;; Continue valiantly if a form fails to macroexpand.
+             (or (ignore-errors (macroexpand-all (cl-list* form)))
+                 (cl-list* form)))))
     (case hd
       (nil   nil)
       ('lambda    (emr--bindings-in-lambda form))
@@ -226,7 +229,8 @@ Return the position of the end of FORM-STR."
   ;; other symbols in FORM. Figure out which ones are not functions, keywords,
   ;; special vars, etc. This should give a pretty good idea of which symbols are
   ;; 'free'.
-  (let ((ls (cl-list* (macroexpand-all form)))
+  (let ((ls (cl-list* (or (ignore-errors (macroexpand-all form))
+                          form)))
         (vars (emr--bound-variables form)))
     (->> ls
       (-flatten)
@@ -263,17 +267,22 @@ Report the changes made to the buffer at a result of executing BODY forms."
          (unless (emr--line-visible? line)
            (emr--report-action ,description line text))))))
 
+(defun emr--remove-trailing-newlines (form)
+  (->> form (reverse) (-remove 'emr--newline?) (reverse)))
+
 (defun emr--try-read-kill-ring ()
   "Read that form in the kill ring, wrapping in a PROGN if necessary."
   (let* (
          ;; Wrap the last kill in a progn.
          (form (emr--read (format "(progn \n %s)" (car kill-ring))))
          ;; Point to the first non-newline item in the PROGN.
-         (beg (--drop-while (or (equal 'progn it) (emr--newline? it)) form)))
+         (beg (--drop-while (or (equal 'progn it) (emr--newline? it)) form))
+         )
+    (emr--remove-trailing-newlines
     ;; Strip the PROGN if it only contains a single sexpr.
-    (if (= 1 (length (-remove 'emr--nl-or-comment? beg)))
-        (car beg)
-      form)))
+     (if (= 1 (length (-remove 'emr--nl-or-comment? beg)))
+         (car beg)
+       form))))
 
 (cl-defmacro emr--extraction-refactor ((&optional binding) description &rest body)
   "Kill the sexp near point then execute forms.
@@ -431,6 +440,14 @@ Uses of the variable are replaced with the initvalue in the variable definition.
    "()"
    defun-str t nil 1))
 
+(defun emr--unprogn (body)
+  "Remove a `progn' if it is the first non-whitespace symbol in BODY.
+Wraps the result in another list regardless of whether a progn was found."
+  (->> body
+    (-drop-while 'emr--newline?)
+    (macroexp-unprogn)
+    (-drop-while 'emr--newline?)))
+
 ;;;###autoload
 (defun emr-extract-function (name arglist)
   "Extract a function from the sexp beginning at point.
@@ -449,7 +466,7 @@ ARGLIST is its argument list."
         (emr--print
          `(defun ,name ,arglist
             :emr--newline
-            ,(-drop-while 'emr--newline? sexp))))))))
+            ,@(emr--unprogn sexp))))))))
 
 ;;;###autoload
 (defun emr-extract-variable (name)
