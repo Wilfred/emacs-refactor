@@ -191,11 +191,6 @@ Return the position of the end of FORM-STR."
     (emr--read (buffer-substring-no-properties (region-beginning)
                                                (region-end)))))
 
-(defun emr--global-var? (sym)
-  (let ((s (symbol-name sym)))
-    (or (s-contains? "--" s)
-        (s-contains? "/" s))))
-
 (defvar emr--special-symbols '(&rest &optional &key &allow-other-keys \,\@ \,)
   "A list of symbols that should be ignored by variable searches.")
 
