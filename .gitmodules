@@ -1,0 +1,15 @@
+[submodule "lib/dash"]
+	path = lib/dash
+	url = https://github.com/magnars/dash.el
+[submodule "lib/ert"]
+	path = lib/ert
+	url = git://github.com/ohler/ert.git
+[submodule "lib/s.el"]
+	path = lib/s.el
+	url = git://github.com/magnars/s.el.git
+[submodule "lib/popup-el"]
+	path = lib/popup-el
+	url = https://github.com/auto-complete/popup-el
+[submodule "lib/cl-lib"]
+	path = lib/cl-lib
+	url = git://github.com/emacsmirror/cl-lib.git
