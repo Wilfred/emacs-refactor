@@ -162,15 +162,16 @@
   "Insert and indent FORM-STR above the current top level form.
 Return the position of the end of FORM-STR."
   (save-excursion
-    ;; Move to position above top-level form.
-    (beginning-of-defun)
-    (beginning-of-line)
-    (newline)
-    (forward-line -1)
-    (back-to-indentation)
-    (insert (emr--reindent-string form-str))
-    (prog1 (point)
-      (newline-and-indent))))
+    (let ((mark-ring nil))
+      ;; Move to position above top-level form.
+      (beginning-of-line)
+      (beginning-of-defun)
+      (newline)
+      (forward-line -1)
+      (back-to-indentation)
+      (insert (emr--reindent-string form-str))
+      (prog1 (point)
+        (newline-and-indent)))))
 
 (defun emr--symbol-file-name (fn)
   "Find the name of the file that declares function FN."
@@ -268,7 +269,9 @@ Report the changes made to the buffer at a result of executing BODY forms."
            (emr--report-action ,description line text))))))
 
 (defun emr--remove-trailing-newlines (form)
-  (->> form (reverse) (-remove 'emr--newline?) (reverse)))
+  (if (listp form)
+      (->> form (reverse) (-remove 'emr--newline?) (reverse))
+    form))
 
 (defun emr--try-read-kill-ring ()
   "Read that form in the kill ring, wrapping in a PROGN if necessary."
@@ -279,10 +282,13 @@ Report the changes made to the buffer at a result of executing BODY forms."
          (beg (--drop-while (or (equal 'progn it) (emr--newline? it)) form))
          )
     (emr--remove-trailing-newlines
-    ;; Strip the PROGN if it only contains a single sexpr.
-     (if (= 1 (length (-remove 'emr--nl-or-comment? beg)))
-         (car beg)
-       form))))
+     (cond ((atom beg)
+            beg)
+           ;; Strip the PROGN if it only contains a single sexpr.
+           ((= 1 (length (-remove 'emr--nl-or-comment? beg)))
+            (car beg))
+           (t
+            form)))))
 
 (cl-defmacro emr--extraction-refactor ((&optional binding) description &rest body)
   "Kill the sexp near point then execute forms.
@@ -443,7 +449,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 (defun emr--unprogn (body)
   "Remove a `progn' if it is the first non-whitespace symbol in BODY.
 Wraps the result in another list regardless of whether a progn was found."
-  (->> body
+  (->> (cl-list* body)
     (-drop-while 'emr--newline?)
     (macroexp-unprogn)
     (-drop-while 'emr--newline?)))
@@ -797,8 +803,7 @@ The expression will be bound to SYMBOL."
 
 ;;; Let-bind variable.
 (emr-declare-action emr-extract-to-let emacs-lisp-mode "let-bind"
-  :predicate (or (not (emr--looking-at-definition?))
-                 (region-active-p))
+  :predicate (not (emr--looking-at-definition?))
   :description "let")
 
 ;;; Extract variable
