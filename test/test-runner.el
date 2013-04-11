@@ -27,7 +27,11 @@
 
 (require 'package)
 
-(defconst test-dependencies '(ert popup s dash cl-lib))
+(defconst test-dependencies '(ert
+                              auto-complete ;popup
+                              s
+                              dash
+                              cl-lib))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Configuration
