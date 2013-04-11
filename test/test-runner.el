@@ -34,7 +34,6 @@
 
 (defun load-packages ()
   "Install package dependencies."
-  (init-melpa)
   (mapc 'require-package test-dependencies))
 
 (defun init-melpa ()
@@ -55,16 +54,26 @@
 
 (defun run-tests ()
   "Set up the environment and run unit tests."
+  (message "Initializing melpa...")
   (init-melpa)
+
+  (message "Configuring load path...")
   (add-to-list 'load-path (expand-file-name ".."))
   (add-to-list 'load-path (expand-file-name "."))
   (add-to-list 'load-path (expand-file-name "./test"))
+
+  (message "Loading package dependencies...")
   (load-packages)
 
+  (message "Requiring features...")
   (require 'ert)
   (require 'emr)
   (require 'emr-elisp)
+
+  (message "Loading tests...")
   (require 'emr-elisp-tests)
+
+  (message "Running tests...")
   (ert-run-tests-batch-and-exit nil))
 
 (provide 'test-runner)
