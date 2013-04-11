@@ -20,7 +20,7 @@ clean-flycheck :
 	rm -f *flycheck
 	rm -f $(testd)*flycheck
 clean-tmp :
-	rm -r $(tmpd)
+	rm -fr $(tmpd)
 
 # Run unit tests.
 test : $(tmpd).emacs.d/elpa
