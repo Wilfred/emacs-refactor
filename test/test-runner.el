@@ -27,22 +27,25 @@
 
 (require 'ert)
 
-(defconst dependencies '(popup s dash))
+(defconst test-dependencies '(ert popup s dash))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Configuration
 
 (defun load-packages ()
+  "Install package dependencies."
   (init-melpa)
-  (mapc 'require-package dependencies))
+  (mapc 'require-package test-dependencies))
 
 (defun init-melpa ()
+  "Configure package.el to use MELPA and initialize."
   (setq package-archives '(("melpa" . "http://melpa.milkbox.net/packages/")))
   (package-initialize)
   (unless package-archive-contents
     (package-refresh-contents)))
 
 (defun require-package (pkg)
+  "Install package PKG and require it."
   (unless (package-installed-p pkg)
     (package-install pkg))
   (require pkg))
@@ -50,6 +53,7 @@
 ;;; ----------------------------------------------------------------------------
 
 (defun run-tests ()
+  "Set up the environment and run unit tests."
   (init-melpa)
   (add-to-list 'load-path (expand-file-name ".."))
   (add-to-list 'load-path (expand-file-name "."))
