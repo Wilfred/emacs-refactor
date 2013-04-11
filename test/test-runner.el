@@ -40,6 +40,7 @@
 (defun init-melpa ()
   "Configure package.el to use MELPA and initialize."
   (add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/"))
+  (add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
   (package-initialize)
   (unless package-archive-contents
     (package-refresh-contents)))
