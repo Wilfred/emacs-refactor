@@ -78,18 +78,21 @@ BODY lists the forms to be executed."
 
 ;;; Let-extraction
 
-(check "can match on recursive let-bindings 1"
-  (should (emr--recursive-bindings? '((x y)
-                                      z
-                                      (x)))))
+(check "let-extracted variables use let when bindings are not recursive"
+  (should=
+   '(let ((z w) :emr--newline
+          (x y)) :emr--newline
+          body)
 
-(check "can match on recursive let-bindings 2"
-  (should (emr--recursive-bindings? '((x y)
-                                      y
-                                      (z w)))))
+   (emr--add-let-binding 'x 'y '(let ((z w)) body))))
 
-(check "can match on non-recursive let-bindings"
-  (should (not (emr--recursive-bindings? '((x y) z w)))))
+(check "let-extracted variables use let* when bindings are recursive"
+  (should=
+   '(let* ((z w) :emr--newline
+           (z y)) :emr--newline
+           body)
+
+   (emr--add-let-binding 'z 'y '(let ((z w)) body))))
 
 (check "can let-extract atom where body is single form"
   (should= '(let ((x y)) :emr--newline body)

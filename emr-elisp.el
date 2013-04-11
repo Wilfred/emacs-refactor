@@ -565,17 +565,28 @@ See `autoload' for details."
      (t
       (list     'let nil :emr--newline ls)))))
 
+(defun emr--pad-top (form)
+  "Ensure FORM begins with a newline."
+  (if (equal :emr--newline (car-safe form))
+      form
+    (cons :emr--newline form)))
+
+(defun emr--add-to-bindings (symbol value bindings-list)
+  "Append SYMBOL and VALUE to BINDINGS-LIST.
+If BINDINGS-LIST is nil, just return the new bindings."
+  (let ((new `((,symbol ,value))))
+    (if bindings-list
+        `(,@bindings-list :emr--newline ,@new)
+      new)))
+
 (cl-defun emr--insert-let-var (symbol value-form (let bindings &rest body))
   "Insert a binding into the given let expression."
   (cl-assert (emr--let-form? (list let)))
-  (let* ((new `((,symbol ,value-form)))
-         ;; Add to existing bindings if possible.
-         (updated (if bindings (-concat bindings (list :emr--newline) new) new))
-         )
+  (let ((updated (emr--add-to-bindings symbol value-form bindings)))
     ;; Combine updated forms. If the updated bindings are recursive, use let*.
     `(,(if (emr--recursive-bindings? updated) 'let* 'let)
       ,updated
-      ,@body)))
+      ,@(emr--pad-top body))))
 
 (defun emr--maybe-skip-docstring (xs)
   "Skip docstring if it is at the head of XS.
