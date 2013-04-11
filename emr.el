@@ -1,4 +1,4 @@
-;;; elr --- Emacs refactoring system.
+;;; emr --- Emacs refactoring system.
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -23,12 +23,12 @@
 
 ;;; Commentary:
 
-;; Add this package to your load path and add an autoload for `elr-show-refactor-menu`.
-;; Bind the `elr-show-refactor-menu` command to something convenient.
+;; Add this package to your load path and add an autoload for `emr-show-refactor-menu`.
+;; Bind the `emr-show-refactor-menu` command to something convenient.
 ;;
-;; (autoload 'elr-show-refactor-menu "elr")
+;; (autoload 'emr-show-refactor-menu "emr")
 ;; (add-hook 'prog-mode-hook
-;;           (lambda () (local-set-key (kbd "M-RET") 'elr-show-refactor-menu)))
+;;           (lambda () (local-set-key (kbd "M-RET") 'emr-show-refactor-menu)))
 ;;
 ;; See README.md for more information.
 
@@ -40,29 +40,29 @@
 (require 'thingatpt)
 (require 'popup)
 
-(defgroup elisp-refactor nil
+(defgroup emacs-refactor nil
   "Provides refactoring tools for Emacs Lisp."
   :group 'tools
-  :prefix "elr-")
+  :prefix "emr-")
 
-(defcustom elr-report-actions t
+(defcustom emr-report-actions t
   "Non-nil means display an indication when a refactoring results in an insertion."
   :type 'checkbox
-  :group 'elisp-refactor)
+  :group 'emacs-refactor)
 
 ;;; ----------------------------------------------------------------------------
 ;;; Macros
 ;;;
 ;;; Convenience macros.
 
-(defun elr--macro-boundp (symbol)
+(defun emr--macro-boundp (symbol)
   "Test whether SYMBOL is bound as a macro."
   (and (functionp symbol)
        ;; This may throw an error if it's a normal function.
        (ignore-errors
          (eq (car (symbol-function symbol)) 'macro))))
 
-(defmacro elr--defmacro-safe (symbol arglist &rest body)
+(defmacro emr--defmacro-safe (symbol arglist &rest body)
   "Define the given macro only if it is not already defined.
 SYMBOL is the name of the macro.
 ARGLIST is a cl-style argument list.
@@ -71,17 +71,17 @@ See `cl-defmacro'."
   (declare (doc-string 3) (indent defun))
   (cl-assert (symbolp symbol))
   (cl-assert (listp arglist))
-  `(unless (elr--macro-boundp ',symbol)
+  `(unless (emr--macro-boundp ',symbol)
      (cl-defmacro ,symbol ,arglist ,@body)))
 
-(elr--defmacro-safe when-let ((var form) &rest body)
+(emr--defmacro-safe when-let ((var form) &rest body)
   "Execute BODY forms with bindings only if FORM evaluates to a non-nil value."
   (declare (indent 1))
   `(let ((,var ,form))
      (when ,var
        ,@body)))
 
-(elr--defmacro-safe if-let ((var form) then &rest else)
+(emr--defmacro-safe if-let ((var form) then &rest else)
   "Execute THEN form with bindings if FORM evaluates to a non-nil value,
 otherwise execute ELSE forms without bindings."
   (declare (indent 1))
@@ -92,26 +92,26 @@ otherwise execute ELSE forms without bindings."
 ;;; Reporting
 ;;;
 ;;; These commands may be used to describe the changes made to buffers. See
-;;; example in elr-elisp.
+;;; example in emr-elisp.
 
-(cl-defun elr--ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
+(cl-defun emr--ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
   (if (> (length str) maxlen)
       (concat (substring-no-properties str 0 (1- maxlen)) "…")
     str))
 
-(defun elr--indexed-lines (str)
+(defun emr--indexed-lines (str)
   "Split string STR into a list of conses.  The index is the car and the line is the cdr."
   (--map-indexed (cons it-index it) (s-lines str)))
 
-(defun elr--diff-lines (str1 str2)
+(defun emr--diff-lines (str1 str2)
   "Get the lines that differ between strings STR1 and STR2."
   (--remove (equal (car it) (cdr it))
-            (-zip (elr--indexed-lines str1) (elr--indexed-lines str2))))
+            (-zip (emr--indexed-lines str1) (emr--indexed-lines str2))))
 
-(cl-defun elr--report-action (description line text)
+(cl-defun emr--report-action (description line text)
   "Report the action that occured at the point of difference."
   (message
-   (elr--ellipsize
+   (emr--ellipsize
     (format "%s line %s: %s"
             description
             line
@@ -121,12 +121,12 @@ otherwise execute ELSE forms without bindings."
 ;;; ----------------------------------------------------------------------------
 ;;; Popup menu
 ;;; Items to be displayed in the refactoring popup menu are added using the
-;;; `elr-declare-action' macro.
+;;; `emr-declare-action' macro.
 
-(defvar elr--refactor-commands '()
+(defvar emr--refactor-commands '()
   "A list of refactoring commands used to build menu items.")
 
-(cl-defmacro elr-declare-action (function mode title &key (predicate t) description)
+(cl-defmacro emr-declare-action (function mode title &key (predicate t) description)
   "Define a refactoring command.
 FUNCTION is the refactoring command to perform.
 MODE is the major mode in which this
@@ -135,7 +135,7 @@ PREDICATE is a condition that must be satisfied to display this item.
 If PREDICATE is not supplied, the item will always be visible for this mode.
 DESCRIPTION is shown to the left of the titile in the popup menu."
   (declare (indent 3))
-  (let ((fname (intern (format "elr--gen--%s--%s" mode title))))
+  (let ((fname (intern (format "emr--gen--%s--%s" mode title))))
     `(progn
        ;; Define a function to encapsulate the predicate. Also ensures each
        ;; refactoring command is only added once.
@@ -144,12 +144,12 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
                     (eval ,predicate))
            (popup-make-item ,title :value ',function :summary ,description)))
        ;; Make this refactoring available in the popup menu.
-       (add-to-list 'elr--refactor-commands ',fname t))))
+       (add-to-list 'emr--refactor-commands ',fname t))))
 
-(defun elr-show-refactor-menu ()
+(defun emr-show-refactor-menu ()
   "Show the extraction menu at point."
   (interactive)
-  (if-let (actions (->> elr--refactor-commands
+  (if-let (actions (->> emr--refactor-commands
                      (-map 'funcall)
                      (-remove 'null)))
     (atomic-change-group
@@ -157,12 +157,12 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
         (call-interactively action)))
     (error "No refactorings available")))
 
-(require 'elr-elisp)
+(require 'emr-elisp)
 
-(provide 'elr)
+(provide 'emr)
 
 ;; Local Variables:
 ;; lexical-binding: t
 ;; End:
 
-;;; elisp-refactor.el ends here
+;;; emacs-refactor.el ends here

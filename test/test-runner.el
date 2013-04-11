@@ -1,4 +1,4 @@
-;;; test-runner --- Runs elr tests.
+;;; test-runner --- Runs emr tests.
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; Runs elr tests.
+;; Runs emr tests.
 
 ;;; Code:
 
@@ -57,9 +57,9 @@
 
   (load-packages)
   (message "%s" load-path)
-  (require 'elr)
-  (require 'elr-elisp)
-  (require 'elr-elisp-tests)
+  (require 'emr)
+  (require 'emr-elisp)
+  (require 'emr-elisp-tests)
   (ert-run-tests-batch-and-exit nil))
 
 (provide 'test-runner)

@@ -1,4 +1,4 @@
-;;; elr-elisp --- Refactoring commands for Emacs Lisp
+;;; emr-elisp --- Refactoring commands for Emacs Lisp
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -33,21 +33,21 @@
 ;;; Because the Elisp reader does not preserve comments or newlines, we embed
 ;;; them in forms so that they can be reconstructed when printing.
 
-(defun elr--newline? (form)
+(defun emr--newline? (form)
   "Non-nil if FORM is a newline token."
-  (equal form :elr--newline))
+  (equal form :emr--newline))
 
-(defun elr--format-comments (line)
+(defun emr--format-comments (line)
   "Wrap any comments at the end of LINE in a comment form.  Otherwise return LINE unchanged."
   (if-let (pos (s-index-of ";" line))
     (let ((code    (substring line 0 (1- pos)))
           (comment (substring line pos)))
       (concat
        code
-       (if (s-blank? comment) "" (format " (%s %S)" :elr--comment comment))))
+       (if (s-blank? comment) "" (format " (%s %S)" :emr--comment comment))))
     line))
 
-(defun elr--read (str)
+(defun emr--read (str)
   "Read the given string STR as a Lisp expression, inserting tokens to represent whitespace."
   (let ((print-quoted t)
         (print-level nil)
@@ -55,14 +55,14 @@
         (print-escape-newlines t)
         )
     (->> (s-lines str)
-      (-map 'elr--format-comments)
+      (-map 'emr--format-comments)
       ;; Insert newline tokens.
-      (s-join (format " %s " :elr--newline))
+      (s-join (format " %s " :emr--newline))
       (read))))
 
-(defun elr--reconstruct-comments (str)
+(defun emr--reconstruct-comments (str)
   "Unpack any eol comments in STR, otherwise leave STR unchanged."
-  (let ((prefix (format "(%s" :elr--comment)))
+  (let ((prefix (format "(%s" :emr--comment)))
     (if (s-contains? prefix str)
         (let* ((split   (s-split (s-trim prefix) str))
                (code    (or (car split) ""))
@@ -70,7 +70,7 @@
           (concat code comment))
       str)))
 
-(defun elr--unescape-question-marks (str)
+(defun emr--unescape-question-marks (str)
   "Unescape question marks that were escaped by the reader."
   (with-temp-buffer
     (lisp-mode-variables)
@@ -81,9 +81,9 @@
         (replace-match "?")))
     (buffer-string)))
 
-(defun elr--print (form)
+(defun emr--print (form)
   "Print FORM as a Lisp expression, replacing whitespace tokens with newlines."
-  (let ((nl (format "%s" :elr--newline))
+  (let ((nl (format "%s" :emr--newline))
         ;; Print forms to any depth.
         (print-quoted t)
         (print-level nil)
@@ -94,48 +94,48 @@
       ;; Reconstruct newlines.
       (replace-regexp-in-string (eval `(rx (* space) ,nl (* space))) "\n")
       (s-lines)
-      (-map 'elr--reconstruct-comments)
+      (-map 'emr--reconstruct-comments)
       (s-join "\n  ")
-      (elr--unescape-question-marks))))
+      (emr--unescape-question-marks))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Navigation commands
 
-(defun elr--goto-first-match (regex)
+(defun emr--goto-first-match (regex)
   "Move point to the first match in the buffer for REGEX."
   (save-match-data
     (when (string-match regex (buffer-string) 0)
       (goto-char (match-beginning 0)))))
 
-(defun elr--looking-at-string? ()
+(defun emr--looking-at-string? ()
   "Return non-nil if point is inside a string."
   (save-excursion
     (let ((point (point)))
       (beginning-of-defun)
       (nth 3 (parse-partial-sexp (point) point)))))
 
-(defun elr--goto-open-round ()
+(defun emr--goto-open-round ()
   "Move to the opening paren for the Lisp list at point."
   (interactive)
   (when (or (not (equal "(" (thing-at-point 'char)))
-            (elr--looking-at-string?))
+            (emr--looking-at-string?))
     (beginning-of-sexp)
     (unless (equal "(" (thing-at-point 'char))
       (search-backward "("))))
 
-(defun elr--goto-open-round-or-quote ()
+(defun emr--goto-open-round-or-quote ()
   "Move to the opening paren or quote for the Lisp list at point."
   (interactive)
-  (elr--goto-open-round)
+  (emr--goto-open-round)
   (when (or (thing-at-point-looking-at "'")
             (thing-at-point-looking-at "`")
-            (elr--looking-at-string?))
+            (emr--looking-at-string?))
     (search-backward-regexp (rx (or "'" "`")))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Formatting commands
 
-(defun elr--reindent-string (form-str)
+(defun emr--reindent-string (form-str)
   "Reformat FORM-STRING, assuming it is a Lisp fragment."
   (with-temp-buffer
     (lisp-mode-variables)
@@ -145,7 +145,7 @@
     (indent-for-tab-command)
     (buffer-string)))
 
-(defun elr--insert-above (form-str)
+(defun emr--insert-above (form-str)
   "Insert and indent FORM-STR above the current top level form.
 Return the position of the end of FORM-STR."
   (save-excursion
@@ -155,36 +155,36 @@ Return the position of the end of FORM-STR."
     (newline)
     (forward-line -1)
     (back-to-indentation)
-    (insert (elr--reindent-string form-str))
+    (insert (emr--reindent-string form-str))
     (prog1 (point)
       (newline-and-indent))))
 
-(defun elr--symbol-file-name (fn)
+(defun emr--symbol-file-name (fn)
   "Find the name of the file that declares function FN."
   (when-let (file (find-lisp-object-file-name fn (symbol-function fn)))
     (and (stringp file)
          (file-name-nondirectory (file-name-sans-extension file)))))
 
-(defun elr--list-at-point ()
+(defun emr--list-at-point ()
   "Return the Lisp list at point or enclosing point."
   (interactive)
   (save-excursion
-    (elr--goto-open-round)
+    (emr--goto-open-round)
     (mark-sexp 1 nil)
-    (elr--read (buffer-substring-no-properties (region-beginning)
+    (emr--read (buffer-substring-no-properties (region-beginning)
                                                (region-end)))))
 
-(defun elr--global-var? (sym)
+(defun emr--global-var? (sym)
   (let ((s (symbol-name sym)))
     (or (s-contains? "--" s)
         (s-contains? "/" s))))
 
-(defvar elr--special-symbols '(&rest &optional &key &allow-other-keys \,\@ \,)
+(defvar emr--special-symbols '(&rest &optional &key &allow-other-keys \,\@ \,)
   "A list of symbols that should be ignored by variable searches.")
 
 ;;; FIXME:
 ;;; This needs more work to make it more accurate.
-(defun elr--unbound-symbols (form)
+(defun emr--unbound-symbols (form)
   "Try to find the symbols in FORM that do not have variable bindings."
   (->> (cl-list* form)
     (-flatten)
@@ -193,14 +193,14 @@ Return the position of the end of FORM-STR."
      (or (symbol-function it)
          (booleanp it)
          (keywordp it)
-         (elr--global-var? it)
-         (-contains? elr--special-symbols it)))
+         (emr--global-var? it)
+         (-contains? emr--special-symbols it)))
     (-uniq)))
 
-(defun elr--unbound-symbols-string ()
+(defun emr--unbound-symbols-string ()
   "Format a string of the unbound symbols in the list at point."
-  (->> (elr--list-at-point)
-    (elr--unbound-symbols)
+  (->> (emr--list-at-point)
+    (emr--unbound-symbols)
     (-map 'symbol-name)
     (s-join " ")
     (s-trim)))
@@ -208,20 +208,20 @@ Return the position of the end of FORM-STR."
 ;;; ----------------------------------------------------------------------------
 ;;; Refactoring Macros
 
-(defmacro elr--reporting-buffer-changes (description &rest body)
+(defmacro emr--reporting-buffer-changes (description &rest body)
   "Execute forms producing an effect described by DESCRIPTION.
 Report the changes made to the buffer at a result of executing BODY forms."
   (declare (indent 1))
   `(let ((before-changes (buffer-string)))
      ,@body
      ;; Report changes.
-     (when-let (diff (and elr-report-actions
-                          (car (elr--diff-lines before-changes (buffer-string)))))
+     (when-let (diff (and emr-report-actions
+                          (car (emr--diff-lines before-changes (buffer-string)))))
        (destructuring-bind (_ . (line . text)) diff
-         (unless (elr--line-visible? line)
-           (elr--report-action ,description line text))))))
+         (unless (emr--line-visible? line)
+           (emr--report-action ,description line text))))))
 
-(cl-defmacro elr--extraction-refactor ((&optional binding) description &rest body)
+(cl-defmacro emr--extraction-refactor ((&optional binding) description &rest body)
   "Kill the sexp near point then execute forms.
 BINDING is the name to bind to the extracted form.
 DESCRIPTION is used to report the result of the refactoring.
@@ -235,21 +235,21 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
          (kill-region (region-beginning)
                       (region-end))
 
-       (elr--goto-open-round-or-quote)
+       (emr--goto-open-round-or-quote)
        (kill-sexp))
 
 
      (let
          ;; Define BINDING if supplied.
-         ,(when binding `((,binding (elr--read (car kill-ring)))))
+         ,(when binding `((,binding (emr--read (car kill-ring)))))
 
        ;; Revert kill-ring pointer.
        (setq kill-ring (cdr kill-ring))
        (save-excursion
-         (elr--reporting-buffer-changes ,description
+         (emr--reporting-buffer-changes ,description
            ,@body)))))
 
-(defun elr--line-visible? (line)
+(defun emr--line-visible? (line)
   "Return true if LINE is within the visible bounds of the current window."
   (let* ((min (line-number-at-pos (window-start)))
          (max (line-number-at-pos (window-end))))
@@ -258,7 +258,7 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
 ;;; ----------------------------------------------------------------------------
 ;;; Definition site tests.
 
-(defun elr--macro-definition? (form)
+(defun emr--macro-definition? (form)
   "Return t if FORM expands to a macro definition."
   (ignore-errors
     (let ((exp (macroexpand-all form)))
@@ -266,43 +266,43 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
       (and (equal 'defalias (car exp))
            (equal 'macro (cadar (cdaddr exp)))))))
 
-(defun elr--function-definition? (form)
+(defun emr--function-definition? (form)
   "Return t if FORM expands to a function definition."
   (ignore-errors
     (let ((exp (macroexpand-all form)))
       (and (equal 'defalias (car exp))
            (equal 'function (caaddr exp))))))
 
-(defun elr--variable-definition? (form)
+(defun emr--variable-definition? (form)
   (ignore-errors
     (-contains? '(defconst defvar defcustom)
                 (car (macroexpand-all form)))))
 
-(defun elr--definition? (form)
+(defun emr--definition? (form)
   "Return non-nil if FORM is a definition."
-  (or (elr--variable-definition? form)
-      (elr--macro-definition? form)
-      (elr--function-definition? form)))
+  (or (emr--variable-definition? form)
+      (emr--macro-definition? form)
+      (emr--function-definition? form)))
 
-(defun elr--looking-at-definition? ()
+(defun emr--looking-at-definition? ()
   "Return non-nil if point is at a definition form."
-  (elr--definition? (elr--list-at-point)))
+  (emr--definition? (emr--list-at-point)))
 
-(defun elr--autoload-exists? (function str)
+(defun emr--autoload-exists? (function str)
   "Returns true if an autoload for FUNCTION exists in string STR."
   (s-contains? (format "(autoload '%s " function) str))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Define refactoring commands.
 
-(defun elr--extract-var-values (sexp)
+(defun emr--extract-var-values (sexp)
   "Return the name and initializing value of SEXP if it is a variable definition."
   (let ((exp (macroexpand-all sexp)))
-    (when (elr--variable-definition? exp)
+    (when (emr--variable-definition? exp)
       (cl-destructuring-bind (_def sym &rest forms) exp
           (cons sym (car forms))))))
 
-(cl-defun elr--replace-usages ((sym . value))
+(cl-defun emr--replace-usages ((sym . value))
   "Replace all instances of SYM with VALUE in the current buffer.
 Returns a list of lines where changes were made."
   (save-excursion
@@ -315,20 +315,20 @@ Returns a list of lines where changes were made."
                     (match-data))
           (setq lines (cons (line-number-at-pos) lines))
           ;; Perform replacement.
-          (replace-match (elr--print value) t nil nil 1)
+          (replace-match (emr--print value) t nil nil 1)
           ;; Try to pretty-format.
           (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
         (nreverse lines)))))
 
-(defun elr-inline-variable ()
+(defun emr-inline-variable ()
   "Inline the variable at defined at point.
 Uses of the variable are replaced with the initvalue in the variable definition."
   (interactive)
   (save-excursion
-    (elr--goto-open-round)
-    (if-let (vals (elr--extract-var-values (elr--list-at-point)))
+    (emr--goto-open-round)
+    (if-let (vals (emr--extract-var-values (emr--list-at-point)))
       (if (> (length vals) 1)
-          (elr--extraction-refactor () "Inlining applied at"
+          (emr--extraction-refactor () "Inlining applied at"
 
             ;; Clean up line spacing.
             (while (s-blank? (buffer-substring-no-properties (line-beginning-position)
@@ -336,9 +336,9 @@ Uses of the variable are replaced with the initvalue in the variable definition.
               (kill-line))
 
             ;; Perform inlining.
-            ;; elr--extraction-refactor will report the first insertion. If
+            ;; emr--extraction-refactor will report the first insertion. If
             ;; there are none or more than one insertion, override this report.
-            (if-let (lines (-map 'int-to-string (elr--replace-usages vals)))
+            (if-let (lines (-map 'int-to-string (emr--replace-usages vals)))
               (when (> (length lines) 1)
                 (message "Inlining applied at lines %s" (s-join ", " lines)))
               (message "No usages found")))
@@ -346,15 +346,15 @@ Uses of the variable are replaced with the initvalue in the variable definition.
         (error "No value to inline for %s" (car vals)))
       (error "Not a variable definition"))))
 
-(defun elr-eval-and-replace ()
+(defun emr-eval-and-replace ()
   "Replace the form at point with its value."
   (interactive)
-  (elr--extraction-refactor (sexp) "Replacement at"
+  (emr--extraction-refactor (sexp) "Replacement at"
     (let ((str (prin1-to-string (eval sexp))))
       (insert str)
       (indent-for-tab-command))))
 
-(defun elr--read-with-default (prompt value)
+(defun emr--read-with-default (prompt value)
   "Prompt for user input, showing PROMPT with an inline default VALUE."
   (let ((val (s-trim (format "%s" value))))
     (s-trim
@@ -362,99 +362,99 @@ Uses of the variable are replaced with the initvalue in the variable definition.
          (read-string (format "%s:  " prompt))
        (read-string (format "%s (default: %s): "  prompt val) nil nil val)))))
 
-(defun elr--read-args ()
+(defun emr--read-args ()
   "Read an arglist from the user."
-  (let* ((syms (elr--unbound-symbols-string))
-         (input (elr--read-with-default "Arglist" syms)))
+  (let* ((syms (emr--unbound-symbols-string))
+         (input (emr--read-with-default "Arglist" syms)))
     (unless (or (s-blank? input)
                 (s-matches? (rx (or "()" "nil")) input))
       (read (format "(%s)" input)))))
 
-(defun elr--format-defun (defun-str)
+(defun emr--format-defun (defun-str)
   "Format DEFUN-STR to a prettier defun representation."
   (replace-regexp-in-string
    (rx bol "(" (* nonl) "def" (* nonl) (group "nil" (* space)) eol)
    "()"
    defun-str t nil 1))
 
-(defun elr-extract-function (name arglist)
+(defun emr-extract-function (name arglist)
   "Extract a function from the sexp beginning at point.
 NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
-                     (elr--read-args)))
+                     (emr--read-args)))
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
-  (elr--extraction-refactor (sexp) "Extracted to"
+  (emr--extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name)))
       ;; Insert usage.
-      (insert (elr--print (cl-list* name arglist)))
+      (insert (emr--print (cl-list* name arglist)))
       ;; Insert defun.
-      (elr--insert-above
-       (elr--format-defun
-        (elr--print
+      (emr--insert-above
+       (emr--format-defun
+        (emr--print
          `(defun ,name ,arglist
-            :elr--newline
-            ,(-drop-while 'elr--newline? sexp))))))))
+            :emr--newline
+            ,(-drop-while 'emr--newline? sexp))))))))
 
-(defun elr-extract-variable (name)
+(defun emr-extract-variable (name)
   "Extract a form as the argument to a defvar named NAME."
   (interactive "sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
-  (elr--extraction-refactor (sexp) "Extracted to"
+  (emr--extraction-refactor (sexp) "Extracted to"
     ;; Insert usage.
     (insert (s-trim name))
     ;; Insert definition.
-    (elr--insert-above
-     (elr--print
+    (emr--insert-above
+     (emr--print
       (list 'defvar (intern name) sexp)))))
 
-(defun elr-extract-constant (name)
+(defun emr-extract-constant (name)
   "Extract a form as the argument to a defconst named NAME."
   (interactive "sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
-  (elr--extraction-refactor (sexp) "Extracted to"
+  (emr--extraction-refactor (sexp) "Extracted to"
     ;; Insert usage
     (insert (s-trim name))
     ;; Insert definition.
-    (elr--insert-above
-     (elr--print
+    (emr--insert-above
+     (emr--print
       (list 'defconst (intern name) sexp)))))
 
-(defun elr-extract-autoload (function file)
+(defun emr-extract-autoload (function file)
   "Create an autoload for FUNCTION.
 FILE is the file that declares FUNCTION.
 See `autoload' for details."
   (interactive
    (let* ((sym  (intern (or (thing-at-point 'symbol) (read-string "Function: "))))
-          (file (or (elr--symbol-file-name sym)
+          (file (or (emr--symbol-file-name sym)
                     (read-string "File: "))))
      (list sym file)))
   (let ((form `(autoload ',function ,file)))
     (save-excursion
-      (elr--reporting-buffer-changes "Extracted to"
+      (emr--reporting-buffer-changes "Extracted to"
         ;; Put the extraction next to existing autoloads if any, otherwise
         ;; insert above top-level form.
-        (if (elr--goto-first-match "^(autoload ")
+        (if (emr--goto-first-match "^(autoload ")
             (progn (forward-line 1) (end-of-line) (newline)
-                   (insert (elr--print form)))
-          (elr--insert-above
-           (elr--print form)))))))
+                   (insert (emr--print form)))
+          (emr--insert-above
+           (emr--print form)))))))
 
-(defun elr-comment-form ()
+(defun emr-comment-form ()
   "Comment out the list at point."
   (interactive)
   (if (region-active-p)
       (comment-region (region-beginning)
                       (region-end))
-    (elr--goto-open-round-or-quote)
+    (emr--goto-open-round-or-quote)
     (mark-sexp)
     (comment-region (region-beginning) (region-end))))
 
-(defun elr-implement-function (name arglist)
+(defun emr-implement-function (name arglist)
   "Insert a function definition for NAME with ARGLIST."
   (interactive (list
-                (elr--read (elr--read-with-default "Name" (symbol-at-point)))
-                (elr--read-args)))
+                (emr--read (emr--read-with-default "Name" (symbol-at-point)))
+                (emr--read-args)))
 
   ;; Save position after insertion so we can move to the defun's body.
   (let (pos)
@@ -464,16 +464,16 @@ See `autoload' for details."
       (beginning-of-thing 'sexp)
       (mark-sexp)
 
-      (elr--extraction-refactor ()  "Defined function"
+      (emr--extraction-refactor ()  "Defined function"
 
         ;; Insert reference.
         (insert (format "%s" name))
 
         ;; Insert definition.
-        (->> (list 'defun name arglist :elr--newline)
-          (elr--print)
-          (elr--format-defun)
-          (elr--insert-above)
+        (->> (list 'defun name arglist :emr--newline)
+          (emr--print)
+          (emr--format-defun)
+          (emr--insert-above)
           (setq pos))))
 
     ;; Move to body position.
@@ -485,105 +485,105 @@ See `autoload' for details."
 ;;; ----------------------------------------------------------------------------
 ;;; Let expressions.
 
-(defun elr--let-form? (form)
+(defun emr--let-form? (form)
   "Non-nil if FORM is a let or let* form."
   (-contains? '(let let*) (car-safe form)))
 
-(defun elr--defun-form? (form)
+(defun emr--defun-form? (form)
   "Non-nil if FORM is a function or macro definition form."
   (-contains? '(defun cl-defun defun* defmacro cl-defmacro defmacro*)
               (car-safe form)))
 
 ;;; Binding membership tests.
 
-(defun elr--first-atom (form)
+(defun emr--first-atom (form)
   "Returns the first atom the car of FORM, at any level of nesting."
   (if (listp form)
       (car-safe (-flatten form))
     form))
 
-(defun elr--bindings-after (sym binding-forms)
+(defun emr--bindings-after (sym binding-forms)
   "Return the bindings after the first instance of SYM in BINDING-FORMS."
   (->> binding-forms
-    (--split-with (equal sym (elr--first-atom it)))
+    (--split-with (equal sym (emr--first-atom it)))
     (cdr)))
 
-(defun elr--find-binding-references (current-form binding-forms)
-  (let* ((sym (elr--first-atom current-form))
-         (rest (elr--bindings-after sym binding-forms)))
+(defun emr--find-binding-references (current-form binding-forms)
+  (let* ((sym (emr--first-atom current-form))
+         (rest (emr--bindings-after sym binding-forms)))
     (-contains? rest sym)))
 
-(defun elr--duplicates? (xs)
+(defun emr--duplicates? (xs)
   "Return non-nil if any elements in XS are duplicated."
   (/= (length xs) (length (-distinct xs))))
 
-(defun elr--recursive-bindings? (binding-forms)
+(defun emr--recursive-bindings? (binding-forms)
   "Test whether let BINDING-FORMS are dependent on one-another."
   (let ((syms (->> binding-forms
                 (--map (or (car-safe it) it))
-                (-remove 'elr--nl-or-comment?)))
+                (-remove 'emr--nl-or-comment?)))
         (vals (->> binding-forms
                 (-map 'cdr-safe)
-                (-remove 'elr--nl-or-comment?) )))
-    (or (elr--duplicates? syms)
+                (-remove 'emr--nl-or-comment?) )))
+    (or (emr--duplicates? syms)
         (-intersection syms (-flatten vals)))))
 
 ;;; Variable insertion.
 
-(defun elr--let-wrap (form &optional splice?)
+(defun emr--let-wrap (form &optional splice?)
   "Ensure FORM is wrapped with a `let' form. No change if FORM is already a let form."
   ;; Trim leading newlines.
-  (let ((ls (if (listp form) (-drop-while 'elr--newline? form) form)))
+  (let ((ls (if (listp form) (-drop-while 'emr--newline? form) form)))
     (cond
-     ((elr--let-form? ls)
+     ((emr--let-form? ls)
       ls)
 
      (splice?
-      (cl-list* 'let nil :elr--newline ls))
+      (cl-list* 'let nil :emr--newline ls))
 
      (t
-      (list     'let nil :elr--newline ls)))))
+      (list     'let nil :emr--newline ls)))))
 
-(cl-defun elr--insert-let-var (symbol value-form (let bindings &rest body))
+(cl-defun emr--insert-let-var (symbol value-form (let bindings &rest body))
   "Insert a binding into the given let expression."
-  (cl-assert (elr--let-form? (list let)))
+  (cl-assert (emr--let-form? (list let)))
   (let* ((new `((,symbol ,value-form)))
          ;; Add to existing bindings if possible.
-         (updated (if bindings (-concat bindings (list :elr--newline) new) new))
+         (updated (if bindings (-concat bindings (list :emr--newline) new) new))
          )
     ;; Combine updated forms. If the updated bindings are recursive, use let*.
-    `(,(if (elr--recursive-bindings? updated) 'let* 'let)
+    `(,(if (emr--recursive-bindings? updated) 'let* 'let)
       ,updated
       ,@body)))
 
-(defun elr--maybe-skip-docstring (xs)
+(defun emr--maybe-skip-docstring (xs)
   "Skip docstring if it is at the head of XS.
 If there are forms afterwards, do not skip."
   (if (and (stringp (car-safe xs))
-           (-remove 'elr--newline? (cdr xs)))
+           (-remove 'emr--newline? (cdr xs)))
       (cdr xs)
     xs))
 
-(defun elr--decl-form? (form)
+(defun emr--decl-form? (form)
   "Non-nil if form is an `interactive' spec, assertion, or `declare' form."
   (-contains? '(interactive declare assert cl-assert)
                (or (car-safe form) form)))
 
-(defun elr--index-of (elt coll)
+(defun emr--index-of (elt coll)
   "Find the index of ELT in COLL, or nil if not found."
   (->> coll
     (--map-indexed (cons it-index it))
     (--first (equal elt (cdr it)))
     (car)))
 
-(defun elr--nl-or-comment? (form)
-  (or (equal :elr--newline form)
-      (equal :elr--comment form)))
+(defun emr--nl-or-comment? (form)
+  (or (equal :emr--newline form)
+      (equal :emr--comment form)))
 
-(defun elr--split-defun (form)
+(defun emr--split-defun (form)
   "Split a defun FORM into a list of (header body).
 The body is the part of FORM that can be safely transformed without breaking the definition."
-  (cl-assert (elr--defun-form? form) () "Not a recognised definition form.")
+  (cl-assert (emr--defun-form? form) () "Not a recognised definition form.")
   (let* (
          ;; Inspect the structure of the form. A definition contains an optional
          ;; docstring and interactive/declare specs which should not be changed
@@ -593,92 +593,92 @@ The body is the part of FORM that can be safely transformed without breaking the
 
           (->> form
             ;; Newlines and comments not semantically useful here.
-            (-remove 'elr--nl-or-comment?)
+            (-remove 'emr--nl-or-comment?)
             ;; Skip defun, symbol and arglist.
             (-drop 3)
-            (elr--maybe-skip-docstring)
+            (emr--maybe-skip-docstring)
             ;; Skip comments, INTERACTIVE, DECLARE and assertion forms.
-            (--drop-while (or (elr--nl-or-comment? it) (elr--decl-form? it)))
+            (--drop-while (or (emr--nl-or-comment? it) (emr--decl-form? it)))
             ;; We should now be pointed at the first body form.
             (car)))
 
          ;; Now that we know which form is probably the body, get its position
          ;; in FORM and split FORM at that point.
-         (pos (elr--index-of split-point form))
+         (pos (emr--index-of split-point form))
          )
     (cl-assert (integerp pos) () "Unable find body in `%s`" form)
     (-split-at pos form)))
 
-(cl-defun elr--split-defvar (form)
+(cl-defun emr--split-defvar (form)
   "Split FORM into a list of (decl sym & docstring)"
   (cl-destructuring-bind (def sym &optional value docstring)
-      (-remove 'elr--nl-or-comment? form)
-    `((,def ,sym :elr--newline) ,value (,docstring))))
+      (-remove 'emr--nl-or-comment? form)
+    `((,def ,sym :emr--newline) ,value (,docstring))))
 
-(defun elr--partition-body (form)
+(defun emr--partition-body (form)
   "Splits the given form into a 2-item list at its body forms, if any."
-  (cond ((elr--defun-form? form)          (elr--split-defun form))
-        ((elr--variable-definition? form) (elr--split-defvar form))
+  (cond ((emr--defun-form? form)          (emr--split-defun form))
+        ((emr--variable-definition? form) (emr--split-defvar form))
         (t
          ;; Supply a null item to signify an empty header.
          (list nil form))))
 
-(cl-defun elr--recombine-forms (header body (&rest docstring))
-  (cond ((elr--defun-form? header) `(,@header ,body))
+(cl-defun emr--recombine-forms (header body (&rest docstring))
+  (cond ((emr--defun-form? header) `(,@header ,body))
 
-        ((elr--variable-definition? header)
+        ((emr--variable-definition? header)
          `(,@header ,body ; Put non-nil docstring on a new line.
-                    ,@(when docstring (cons :elr--newline docstring))))
+                    ,@(when docstring (cons :emr--newline docstring))))
         (t
          body)))
 
-(defun elr--add-let-binding (symbol value form)
+(defun emr--add-let-binding (symbol value form)
   "Insert (SYMBOL VALUE & DOC) into FORM, encapsulating FORM in a `let' expression if necessary."
   (destructuring-bind (header body &optional docstring)
-      (elr--partition-body form)
+      (emr--partition-body form)
 
-    (elr--recombine-forms
+    (emr--recombine-forms
      header
 
      ;; Wrap BODY in a let expression.
      ;; Defun forms should have their body spliced into the let form.
-     (->> (elr--defun-form? header)
-       (elr--let-wrap body)
-       (elr--insert-let-var symbol value ))
+     (->> (emr--defun-form? header)
+       (emr--let-wrap body)
+       (emr--insert-let-var symbol value ))
 
      docstring)))
 
-(defun elr-extract-to-let (symbol)
+(defun emr-extract-to-let (symbol)
   "Extract the form at point into a let expression.
 The expression will be bound to SYMBOL."
   (interactive "SSymbol: ")
-  (elr--extraction-refactor (sexp) "Extracted to let expression"
+  (emr--extraction-refactor (sexp) "Extracted to let expression"
 
     ;; Insert usage.
-    (insert (elr--print symbol))
+    (insert (emr--print symbol))
 
     ;; Replace the top-level form.
     (beginning-of-defun)
     (kill-sexp)
 
     ;; Insert updated let-binding.
-    (->> (elr--read (car kill-ring))
-      (elr--add-let-binding symbol sexp)
+    (->> (emr--read (car kill-ring))
+      (emr--add-let-binding symbol sexp)
       ;; Pretty-format for insertion.
-      (elr--print)
-      (elr--format-defun)
-      (elr--reindent-string)
+      (emr--print)
+      (emr--format-defun)
+      (emr--reindent-string)
       (insert)))
 
   ;; Move to inserted variable.
   (save-match-data
     (search-forward-regexp
-     (eval `(rx word-start ,(elr--print symbol) word-end))
+     (eval `(rx word-start ,(emr--print symbol) word-end))
      (save-excursion (end-of-defun))
      'no-error)))
 
 ;;; TODO: Use body form index instead of crazy parsing.
-;; (defun elr--fn-body-index (fn)
+;; (defun emr--fn-body-index (fn)
 ;;   "Return the minimum position of the body or &rest args for function fn."
 ;;   (when (fboundp fn)
 ;;     (->> (help-function-arglist fn)
@@ -690,34 +690,34 @@ The expression will be bound to SYMBOL."
 ;;; Declare commands with ELR.
 
 ;;; Inline variable
-(elr-declare-action elr-inline-variable emacs-lisp-mode "inline"
-  :predicate (elr--variable-definition? (elr--list-at-point)))
+(emr-declare-action emr-inline-variable emacs-lisp-mode "inline"
+  :predicate (emr--variable-definition? (emr--list-at-point)))
 
 ;;; Extract function
-(elr-declare-action elr-extract-function emacs-lisp-mode "function"
-  :predicate (not (elr--looking-at-definition?))
+(emr-declare-action emr-extract-function emacs-lisp-mode "function"
+  :predicate (not (emr--looking-at-definition?))
   :description "defun")
 
 ;;; Let-bind variable.
-(elr-declare-action elr-extract-to-let emacs-lisp-mode "let-bind"
-  :predicate (or (not (elr--looking-at-definition?))
+(emr-declare-action emr-extract-to-let emacs-lisp-mode "let-bind"
+  :predicate (or (not (emr--looking-at-definition?))
                  (region-active-p))
   :description "let")
 
 ;;; Extract variable
-(elr-declare-action elr-extract-variable emacs-lisp-mode "variable"
-  :predicate (and (not (elr--looking-at-definition?))
+(emr-declare-action emr-extract-variable emacs-lisp-mode "variable"
+  :predicate (and (not (emr--looking-at-definition?))
                   (thing-at-point 'defun))
   :description "defvar")
 
 ;;; Extract constant
-(elr-declare-action elr-extract-constant emacs-lisp-mode "constant"
-  :predicate (not (elr--looking-at-definition?))
+(emr-declare-action emr-extract-constant emacs-lisp-mode "constant"
+  :predicate (not (emr--looking-at-definition?))
   :description "defconst")
 
 ;;; Implement function.
-(elr-declare-action elr-implement-function emacs-lisp-mode "implement function"
-  :predicate (and (not (elr--looking-at-string?))
+(emr-declare-action emr-implement-function emacs-lisp-mode "implement function"
+  :predicate (and (not (emr--looking-at-string?))
                   (not (thing-at-point 'comment))
                   (not (thing-at-point 'number))
                   (symbol-at-point)
@@ -725,25 +725,25 @@ The expression will be bound to SYMBOL."
                   (not (fboundp (symbol-at-point)))))
 
 ;;; Eval and replace expression
-(elr-declare-action elr-eval-and-replace emacs-lisp-mode "eval"
-  :predicate (not (elr--looking-at-definition?))
+(emr-declare-action emr-eval-and-replace emacs-lisp-mode "eval"
+  :predicate (not (emr--looking-at-definition?))
   :description "value")
 
 ;;; Extract autoload
-(elr-declare-action elr-extract-autoload emacs-lisp-mode "autoload"
+(emr-declare-action emr-extract-autoload emacs-lisp-mode "autoload"
   :description "autoload"
   :predicate (and (functionp (symbol-at-point))
-                  (not (elr--variable-definition? (elr--list-at-point)))
-                  (not (elr--autoload-exists? (symbol-at-point) (buffer-string)))))
+                  (not (emr--variable-definition? (emr--list-at-point)))
+                  (not (emr--autoload-exists? (symbol-at-point) (buffer-string)))))
 
 ;;; Comment-out form
 ;;; Should be looking at a lisp list.
-(elr-declare-action elr-comment-form emacs-lisp-mode "comment"
+(emr-declare-action emr-comment-form emacs-lisp-mode "comment"
   :predicate (and (thing-at-point 'defun)
-                  (not (elr--looking-at-comment?))))
+                  (not (emr--looking-at-comment?))))
 
 ;;; Uncomment form.
-(defun elr--looking-at-comment? ()
+(defun emr--looking-at-comment? ()
   "Non-nil if point is on a comment."
   (when-let (comment (save-excursion
                        (beginning-of-line)
@@ -751,7 +751,7 @@ The expression will be bound to SYMBOL."
     ;; Test if there is a comment-start before point.
     (<= comment (point))))
 
-(defun elr--find-comment-block-start ()
+(defun emr--find-comment-block-start ()
   (let (pos)
     (save-excursion
       (while (search-backward-regexp (eval `(rx bol (* space) ,comment-start))
@@ -759,19 +759,19 @@ The expression will be bound to SYMBOL."
         (setq pos (point))))
     pos))
 
-(defun elr-uncomment-form ()
+(defun emr-uncomment-form ()
   (interactive)
   (let nil
 
-    (elr--find-comment-block-start)))
+    (emr--find-comment-block-start)))
 
-(elr-declare-action elr-uncomment-form emacs-lisp-mode "uncomment"
-  :predicate (elr--looking-at-comment?))
+(emr-declare-action emr-uncomment-form emacs-lisp-mode "uncomment"
+  :predicate (emr--looking-at-comment?))
 
-(provide 'elr-elisp)
+(provide 'emr-elisp)
 
 ;; Local Variables:
 ;; lexical-binding: t
 ;; End:
 
-;;; elr-elisp.el ends here
+;;; emr-elisp.el ends here

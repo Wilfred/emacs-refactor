@@ -1,4 +1,4 @@
-;;; elr-elisp-tests --- Tests for elr-elisp
+;;; emr-elisp-tests --- Tests for emr-elisp
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -21,13 +21,13 @@
 
 ;;; Commentary:
 
-;; Tests for elr-elisp
+;; Tests for emr-elisp
 
 ;;; Code:
 
 (require 'ert)
-(require 'elr (expand-file-name "../elr.el"))
-(require 'elr-elisp (expand-file-name "../elr-elisp.el"))
+(require 'emr (expand-file-name "../emr.el"))
+(require 'emr-elisp (expand-file-name "../emr-elisp.el"))
 
 (defmacro check (desc &rest body)
   "Wrap `ert-deftest' with a simpler interface.
@@ -47,49 +47,49 @@ BODY lists the forms to be executed."
 ;;; ----------------------------------------------------------------------------
 
 (check "reading single-line form does not change input"
-  (should= '(input) (elr--read "(input)")))
+  (should= '(input) (emr--read "(input)")))
 
 (check "can read and print Lisp forms on one line"
   (let ((line "(list 1 2 3 4)"))
-    (should= (elr--print (elr--read line))
+    (should= (emr--print (emr--read line))
              line)))
 
 (check "preserves line-endings"
   (let ((line "(list\n1)"))
-    (should (string-match-p "\n" (elr--print (elr--read line))))))
+    (should (string-match-p "\n" (emr--print (emr--read line))))))
 
 (check "preserves whole-line comments"
   (let* ((expr    "(list \n ;;; Comment \n )")
-         (output  (elr--print (elr--read expr)))
+         (output  (emr--print (emr--read expr)))
          (line    (nth 1 (split-string output "\n"))))
     (should-match (rx bol (* space) ";;; Comment" (* space) eol)
                   line)))
 
 (check "preserves eol-line comments"
   (let* ((expr    "(list ;;; Comment \n )")
-         (output  (elr--print (elr--read expr)))
+         (output  (emr--print (emr--read expr)))
          (line    (car (split-string output "\n"))))
     (should-match (rx  "(list "(* space) ";;; Comment" (* space) eol)
                   line)))
 
 (check "can match on recursive let-bindings 1"
-  (should (elr--recursive-bindings? '((x y)
+  (should (emr--recursive-bindings? '((x y)
                                       z
                                       (x)))))
 
 
 (check "can match on recursive let-bindings 2"
-  (should (elr--recursive-bindings? '((x y)
+  (should (emr--recursive-bindings? '((x y)
                                       y
                                       (z w)))))
 
 (check "can match on non-recursive let-bindings"
-  (should (not (elr--recursive-bindings? '((x y) z w)))))
+  (should (not (emr--recursive-bindings? '((x y) z w)))))
 
-(provide 'elr-elisp-tests)
+(provide 'emr-elisp-tests)
 
 ;; Local Variables:
 ;; lexical-binding: t
 ;; End:
 
-;;; elr-elisp-tests.el ends here
+;;; emr-elisp-tests.el ends here
