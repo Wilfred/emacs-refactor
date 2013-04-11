@@ -25,6 +25,8 @@
 
 ;;; Code:
 
+(require 'package)
+
 (defconst test-dependencies '(ert popup s dash))
 
 ;;; ----------------------------------------------------------------------------

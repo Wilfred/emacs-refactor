@@ -1,4 +1,5 @@
 # emacs-refactor
+[![Build Status](https://travis-ci.org/chrisbarrett/emacs-refactor.png?branch=master)](https://travis-ci.org/chrisbarrett/emacs-refactor)
 
 EMR allows you to define language-specific refactoring commands in Emacs. It has
 a simple declarative interface for easy extension.
