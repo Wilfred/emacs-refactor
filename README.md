@@ -23,11 +23,10 @@ other language modes. It's easy (honest!).
 
 * [s](https://github.com/magnars/s.el)
 * [dash](https://github.com/magnars/dash.el)
-* [popup](https://github.com/magnars/dash.el)
+* [popup](https://github.com/auto-complete/popup-el)
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
 
-Download them using [Melpa](http://melpa.milkbox.net/), or get them straight
-from GitHub.
+Shout out to [@magnars](https://twitter.com/magnars) for those awesome libraries.
 
 ## Installation
 

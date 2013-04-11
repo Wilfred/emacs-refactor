@@ -2,7 +2,6 @@ emacs = emacs
 testd = $(abspath test)/
 tmpd  = $(abspath tmp)/
 
-
 test-runner = $(testd)test-runner.el
 
 # ============================================================================
@@ -23,15 +22,10 @@ clean-tmp :
 	rm -fr $(tmpd)
 
 # Run unit tests.
-test : $(tmpd).emacs.d/elpa
+test : $(tmpd)
 	$(emacs) --version
 	HOME=$(tmpd) ;\
 	$(emacs) --batch -l $(test-runner) -f run-tests
 
-# Download package dependencies.
-$(tmpd).emacs.d/elpa :
-	HOME=$(tmpd) ;\
-	$(emacs) --batch -l $(test-runner) -f load-packages
-
 # Create dir to hold test .emacs.d
-$(tmpd) :; makedir -p $(tmpd)
+$(tmpd) :; mkdir -p $(tmpd)

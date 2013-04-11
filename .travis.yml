@@ -3,6 +3,9 @@ language: emacs-lisp
 env:
   EMACS=emacs24
 
+before_install:
+  - git submodule --quiet update --init --recursive
+
 install:
   sudo add-apt-repository -y ppa:cassou/emacs &&
   sudo apt-get update -qq &&
@@ -10,3 +13,6 @@ install:
 
 script:
   $EMACS --version && make test
+
+notifications:
+  email: false

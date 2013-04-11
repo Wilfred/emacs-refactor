@@ -25,49 +25,40 @@
 
 ;;; Code:
 
-(require 'package)
-
-(defconst test-dependencies '(ert
-                              auto-complete ;popup
-                              s
-                              dash
-                              cl-lib))
+(require 'cl)
 
 ;;; ----------------------------------------------------------------------------
-;;; Configuration
+;;; Load path processing.
 
-(defun load-packages ()
-  "Install package dependencies."
-  (mapc 'require-package test-dependencies))
+(defun directory-p (f)
+  "Test whether F is a directory.  Return nil for '.' and '..'."
+  (and (file-directory-p f) (not (string-match "/[.]+$" f))))
 
-(defun init-melpa ()
-  "Configure package.el to use MELPA and initialize."
-  (add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/"))
-  (add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
-  (package-initialize)
-  (unless package-archive-contents
-    (package-refresh-contents)))
+(defun directory-subfolders (path)
+  "Return a flat list of all subfolders of PATH."
+  (unless (string-match-p ".git" path)
+    (flatten
+     (mapcar
+      (lambda (d) (cons d (directory-subfolders d)))
+      (remove-if-not 'directory-p (directory-files path t))))))
 
-(defun require-package (pkg)
-  "Install package PKG and require it."
-  (unless (package-installed-p pkg)
-    (package-install pkg))
-  (require pkg))
+(defun flatten (ls)
+  (cond ((null ls) nil)
+        ((atom ls) (list ls))
+        (t (append (flatten (car ls)) (flatten (cdr ls))))))
+
+(defun add-tree-to-load-path (dir)
+  (let ((dir (expand-file-name dir)))
+    (mapc (lambda (s) (add-to-list 'load-path s))
+          (cons dir (directory-subfolders dir)))))
 
 ;;; ----------------------------------------------------------------------------
 
 (defun run-tests ()
   "Set up the environment and run unit tests."
-  (message "Initializing melpa...")
-  (init-melpa)
-
   (message "Configuring load path...")
-  (add-to-list 'load-path (expand-file-name ".."))
-  (add-to-list 'load-path (expand-file-name "."))
-  (add-to-list 'load-path (expand-file-name "./test"))
-
-  (message "Loading package dependencies...")
-  (load-packages)
+  (add-tree-to-load-path "../")
+  (add-tree-to-load-path "./")
 
   (message "Requiring features...")
   (require 'ert)
@@ -84,6 +75,7 @@
 
 ;; Local Variables:
 ;; lexical-binding: t
+;; byte-compile-warnings: (not cl-functions)
 ;; End:
 
 ;;; test-runner.el ends here
