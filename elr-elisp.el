@@ -33,17 +33,9 @@
 ;;; Because the Elisp reader does not preserve comments or newlines, we embed
 ;;; them in forms so that they can be reconstructed when printing.
 
-(defconst elr--newline-token :elr--newline)
-
-(defconst elr--comment :elr--comment)
-
-(defun elr--newline-token? (form)
+(defun elr--newline? (form)
   "Non-nil if FORM is a newline token."
-  (equal form elr--newline-token))
-
-(defun elr--comment? (form)
-  "Non-nil if FORM is an elr--comment."
-  (equal elr--comment (car-safe form)))
+  (equal form :elr--newline))
 
 (defun elr--format-comments (line)
   "Wrap any comments at the end of LINE in a comment form.  Otherwise return LINE unchanged."
@@ -52,7 +44,7 @@
           (comment (substring line pos)))
       (concat
        code
-       (if (s-blank? comment) "" (format " (%s %S)" elr--comment comment))))
+       (if (s-blank? comment) "" (format " (%s %S)" :elr--comment comment))))
     line))
 
 (defun elr--read (str)
@@ -65,12 +57,12 @@
     (->> (s-lines str)
       (-map 'elr--format-comments)
       ;; Insert newline tokens.
-      (s-join (format " %s " elr--newline-token))
+      (s-join (format " %s " :elr--newline))
       (read))))
 
 (defun elr--reconstruct-comments (str)
   "Unpack any eol comments in STR, otherwise leave STR unchanged."
-  (let ((prefix (format "(%s" elr--comment)))
+  (let ((prefix (format "(%s" :elr--comment)))
     (if (s-contains? prefix str)
         (let* ((split   (s-split (s-trim prefix) str))
                (code    (or (car split) ""))
@@ -91,7 +83,7 @@
 
 (defun elr--print (form)
   "Print FORM as a Lisp expression, replacing whitespace tokens with newlines."
-  (let ((nl (format "%s" elr--newline-token))
+  (let ((nl (format "%s" :elr--newline))
         ;; Print forms to any depth.
         (print-quoted t)
         (print-level nil)
@@ -148,8 +140,9 @@
   (with-temp-buffer
     (lisp-mode-variables)
     (insert form-str)
+    ;; Indent each line.
     (mark-whole-buffer)
-    (indent-region (region-beginning) (region-end))
+    (indent-for-tab-command)
     (buffer-string)))
 
 (defun elr--insert-above (form-str)
@@ -390,7 +383,7 @@ NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
                      (elr--read-args)))
-  (cl-assert (not (s-blank? name)) t "Name must not be blank")
+  (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (elr--extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name)))
       ;; Insert usage.
@@ -400,13 +393,13 @@ ARGLIST is its argument list."
        (elr--format-defun
         (elr--print
          `(defun ,name ,arglist
-            ,elr--newline-token
-            ,(-drop-while 'elr--newline-token? sexp))))))))
+            :elr--newline
+            ,(-drop-while 'elr--newline? sexp))))))))
 
 (defun elr-extract-variable (name)
   "Extract a form as the argument to a defvar named NAME."
   (interactive "sName: ")
-  (cl-assert (not (s-blank? name)) t "Name must not be blank")
+  (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (elr--extraction-refactor (sexp) "Extracted to"
     ;; Insert usage.
     (insert (s-trim name))
@@ -418,7 +411,7 @@ ARGLIST is its argument list."
 (defun elr-extract-constant (name)
   "Extract a form as the argument to a defconst named NAME."
   (interactive "sName: ")
-  (cl-assert (not (s-blank? name)) t "Name must not be blank")
+  (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (elr--extraction-refactor (sexp) "Extracted to"
     ;; Insert usage
     (insert (s-trim name))
@@ -450,9 +443,12 @@ See `autoload' for details."
 (defun elr-comment-form ()
   "Comment out the list at point."
   (interactive)
-  (elr--goto-open-round-or-quote)
-  (mark-sexp)
-  (comment-region (region-beginning) (region-end)))
+  (if (region-active-p)
+      (comment-region (region-beginning)
+                      (region-end))
+    (elr--goto-open-round-or-quote)
+    (mark-sexp)
+    (comment-region (region-beginning) (region-end))))
 
 (defun elr-implement-function (name arglist)
   "Insert a function definition for NAME with ARGLIST."
@@ -474,7 +470,7 @@ See `autoload' for details."
         (insert (format "%s" name))
 
         ;; Insert definition.
-        (->> (list 'defun name arglist elr--newline-token)
+        (->> (list 'defun name arglist :elr--newline)
           (elr--print)
           (elr--format-defun)
           (elr--insert-above)
@@ -497,12 +493,6 @@ See `autoload' for details."
   "Non-nil if FORM is a function or macro definition form."
   (-contains? '(defun cl-defun defun* defmacro cl-defmacro defmacro*)
               (car-safe form)))
-
-(defun elr--let-wrap (form)
-  "Ensure FORM is wrapped with a `let' form."
-  (if (elr--let-form? form)
-      form
-    (cl-list* 'let nil :elr--newline form)))
 
 ;;; Binding membership tests.
 
@@ -531,38 +521,46 @@ See `autoload' for details."
   "Test whether let BINDING-FORMS are dependent on one-another."
   (let ((syms (->> binding-forms
                 (--map (or (car-safe it) it))
-                (--remove (or (elr--newline-token? it)
-                              (elr--comment? it)))))
+                (-remove 'elr--nl-or-comment?)))
         (vals (->> binding-forms
                 (-map 'cdr-safe)
-                (--remove (or (elr--newline-token? it)
-                              (elr--comment? it))))))
+                (-remove 'elr--nl-or-comment?) )))
     (or (elr--duplicates? syms)
         (-intersection syms (-flatten vals)))))
 
 ;;; Variable insertion.
 
+(defun elr--let-wrap (form &optional splice?)
+  "Ensure FORM is wrapped with a `let' form. No change if FORM is already a let form."
+  ;; Trim leading newlines.
+  (let ((ls (if (listp form) (-drop-while 'elr--newline? form) form)))
+    (cond
+     ((elr--let-form? ls)
+      ls)
+
+     (splice?
+      (cl-list* 'let nil :elr--newline ls))
+
+     (t
+      (list     'let nil :elr--newline ls)))))
+
 (cl-defun elr--insert-let-var (symbol value-form (let bindings &rest body))
   "Insert a binding into the given let expression."
   (cl-assert (elr--let-form? (list let)))
-  (let* ((new    `((,symbol ,value-form)))
-         (updated (if bindings
-                      (-concat bindings (list elr--newline-token) new)
-                    new))
-         (let-form (if (elr--recursive-bindings? updated) 'let* 'let)))
-    (cl-list* let-form updated body)))
-
-(defun elr--index-of (elt coll)
-  "Find the index of ELT in COLL, or nil if not found."
-  (->> coll
-    (-map-indexed (lambda (i x) (cons i x)))
-    (--first (equal elt (cdr it)))
-    (car)))
+  (let* ((new `((,symbol ,value-form)))
+         ;; Add to existing bindings if possible.
+         (updated (if bindings (-concat bindings (list :elr--newline) new) new))
+         )
+    ;; Combine updated forms. If the updated bindings are recursive, use let*.
+    `(,(if (elr--recursive-bindings? updated) 'let* 'let)
+      ,updated
+      ,@body)))
 
 (defun elr--maybe-skip-docstring (xs)
   "Skip docstring if it is at the head of XS.
 If there are forms afterwards, do not skip."
-  (if (and (stringp (car-safe xs)) (cdr xs))
+  (if (and (stringp (car-safe xs))
+           (-remove 'elr--newline? (cdr xs)))
       (cdr xs)
     xs))
 
@@ -571,10 +569,21 @@ If there are forms afterwards, do not skip."
   (-contains? '(interactive declare assert cl-assert)
                (or (car-safe form) form)))
 
+(defun elr--index-of (elt coll)
+  "Find the index of ELT in COLL, or nil if not found."
+  (->> coll
+    (--map-indexed (cons it-index it))
+    (--first (equal elt (cdr it)))
+    (car)))
+
+(defun elr--nl-or-comment? (form)
+  (or (equal :elr--newline form)
+      (equal :elr--comment form)))
+
 (defun elr--split-defun (form)
   "Split a defun FORM into a list of (header body).
 The body is the part of FORM that can be safely transformed without breaking the definition."
-  (cl-assert (elr--defun-form? form) "Not a recognised definition form.")
+  (cl-assert (elr--defun-form? form) () "Not a recognised definition form.")
   (let* (
          ;; Inspect the structure of the form. A definition contains an optional
          ;; docstring and interactive/declare specs which should not be changed
@@ -584,46 +593,60 @@ The body is the part of FORM that can be safely transformed without breaking the
 
           (->> form
             ;; Newlines and comments not semantically useful here.
-            (--remove (or (elr--newline-token? it) (elr--comment? it)))
+            (-remove 'elr--nl-or-comment?)
             ;; Skip defun, symbol and arglist.
             (-drop 3)
             (elr--maybe-skip-docstring)
-            ;; Skip INTERACTIVE, DECLARE and assertion forms.
-            (--drop-while (elr--decl-form? it))
-            ;; The car should be the first BODY form.
+            ;; Skip comments, INTERACTIVE, DECLARE and assertion forms.
+            (--drop-while (or (elr--nl-or-comment? it) (elr--decl-form? it)))
+            ;; We should now be pointed at the first body form.
             (car)))
 
          ;; Now that we know which form is probably the body, get its position
          ;; in FORM and split FORM at that point.
          (pos (elr--index-of split-point form))
          )
-    (cl-assert (integerp pos) "Unable to determine position of body within form %s" form)
+    (cl-assert (integerp pos) () "Unable find body in `%s`" form)
     (-split-at pos form)))
 
-(cl-defun elr--split-defvar ((def sym &optional value docstring))
-  "Split FORM into a list of (decl sym docstring)"
-  (list (list def sym) (list value) (list docstring)))
+(cl-defun elr--split-defvar (form)
+  "Split FORM into a list of (decl sym & docstring)"
+  (cl-destructuring-bind (def sym &optional value docstring)
+      (-remove 'elr--nl-or-comment? form)
+    `((,def ,sym :elr--newline) ,value (,docstring))))
 
 (defun elr--partition-body (form)
   "Splits the given form into a 2-item list at its body forms, if any."
   (cond ((elr--defun-form? form)          (elr--split-defun form))
         ((elr--variable-definition? form) (elr--split-defvar form))
         (t
+         ;; Supply a null item to signify an empty header.
          (list nil form))))
 
-;; (defvar hello (symbol x) "docstring")
+(cl-defun elr--recombine-forms (header body (&rest docstring))
+  (cond ((elr--defun-form? header) `(,@header ,body))
 
-(defun elr--refactor-let-binding (symbol value form)
-  "Insert (SYMBOL VALUE) into FORM, encapsulating FORM in a `let' expression if necessary."
-  (destructuring-bind (header body &optional epilogue) (elr--partition-body form)
-    (let ((updated
-           (->> ;; Unpack singleton form.
-               (if (equal 1 (length body)) (car body) body)
-             (elr--let-wrap)
-             (elr--insert-let-var symbol value)
-             ;; Insert body into original context.
-             (list))))
-      (-concat header updated epilogue))))
+        ((elr--variable-definition? header)
+         `(,@header ,body ; Put non-nil docstring on a new line.
+                    ,@(when docstring (cons :elr--newline docstring))))
+        (t
+         body)))
+
+(defun elr--add-let-binding (symbol value form)
+  "Insert (SYMBOL VALUE & DOC) into FORM, encapsulating FORM in a `let' expression if necessary."
+  (destructuring-bind (header body &optional docstring)
+      (elr--partition-body form)
+
+    (elr--recombine-forms
+     header
+
+     ;; Wrap BODY in a let expression.
+     ;; Defun forms should have their body spliced into the let form.
+     (->> (elr--defun-form? header)
+       (elr--let-wrap body)
+       (elr--insert-let-var symbol value ))
+
+     docstring)))
 
 (defun elr-extract-to-let (symbol)
   "Extract the form at point into a let expression.
@@ -640,7 +663,7 @@ The expression will be bound to SYMBOL."
 
     ;; Insert updated let-binding.
     (->> (elr--read (car kill-ring))
-      (elr--refactor-let-binding symbol sexp)
+      (elr--add-let-binding symbol sexp)
       ;; Pretty-format for insertion.
       (elr--print)
       (elr--format-defun)
@@ -652,7 +675,16 @@ The expression will be bound to SYMBOL."
     (search-forward-regexp
      (eval `(rx word-start ,(elr--print symbol) word-end))
      (save-excursion (end-of-defun))
-     t)))
+     'no-error)))
+
+;;; TODO: Use body form index instead of crazy parsing.
+;; (defun elr--fn-body-index (fn)
+;;   "Return the minimum position of the body or &rest args for function fn."
+;;   (when (fboundp fn)
+;;     (->> (help-function-arglist fn)
+;;       ;; &optional forms precede &rest forms.
+;;       (--remove (equal '&optional it))
+;;       (cl-position '&rest))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Declare commands with ELR.
@@ -666,9 +698,10 @@ The expression will be bound to SYMBOL."
   :predicate (not (elr--looking-at-definition?))
   :description "defun")
 
-;;; Extract variable
+;;; Let-bind variable.
 (elr-declare-action elr-extract-to-let emacs-lisp-mode "let-bind"
-  :predicate (not (elr--looking-at-definition?))
+  :predicate (or (not (elr--looking-at-definition?))
+                 (region-active-p))
   :description "let")
 
 ;;; Extract variable
@@ -682,9 +715,11 @@ The expression will be bound to SYMBOL."
   :predicate (not (elr--looking-at-definition?))
   :description "defconst")
 
+;;; Implement function.
 (elr-declare-action elr-implement-function emacs-lisp-mode "implement function"
   :predicate (and (not (elr--looking-at-string?))
                   (not (thing-at-point 'comment))
+                  (not (thing-at-point 'number))
                   (symbol-at-point)
                   (not (boundp (symbol-at-point)))
                   (not (fboundp (symbol-at-point)))))
@@ -702,17 +737,41 @@ The expression will be bound to SYMBOL."
                   (not (elr--autoload-exists? (symbol-at-point) (buffer-string)))))
 
 ;;; Comment-out form
+;;; Should be looking at a lisp list.
 (elr-declare-action elr-comment-form emacs-lisp-mode "comment"
-  :predicate t)
+  :predicate (and (thing-at-point 'defun)
+                  (not (elr--looking-at-comment?))))
+
+;;; Uncomment form.
+(defun elr--looking-at-comment? ()
+  "Non-nil if point is on a comment."
+  (when-let (comment (save-excursion
+                       (beginning-of-line)
+                       (comment-search-forward (point-at-eol) t)))
+    ;; Test if there is a comment-start before point.
+    (<= comment (point))))
+
+(defun elr--find-comment-block-start ()
+  (let (pos)
+    (save-excursion
+      (while (search-backward-regexp (eval `(rx bol (* space) ,comment-start))
+                                     (line-beginning-position) t)
+        (setq pos (point))))
+    pos))
+
+(defun elr-uncomment-form ()
+  (interactive)
+  (let nil
+
+    (elr--find-comment-block-start)))
+
+(elr-declare-action elr-uncomment-form emacs-lisp-mode "uncomment"
+  :predicate (elr--looking-at-comment?))
 
 (provide 'elr-elisp)
 
-;;; NB: callargs warnings disabled to prevent format warnings caused by
-;;; `cl-assert', as of Emacs 24.3.50 darwin.
-
 ;; Local Variables:
 ;; lexical-binding: t
-;; byte-compile-warnings: (not callargs)
 ;; End:
 
 ;;; elr-elisp.el ends here

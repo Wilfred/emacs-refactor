@@ -161,12 +161,8 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
 
 (provide 'elr)
 
-;;; NB: callargs warnings disabled to prevent format warnings caused by
-;;; `cl-assert', as of Emacs 24.3.50 darwin.
-
 ;; Local Variables:
 ;; lexical-binding: t
-;; byte-compile-warnings: (not callargs)
 ;; End:
 
 ;;; elisp-refactor.el ends here
