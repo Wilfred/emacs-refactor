@@ -127,6 +127,9 @@
     ;; Test if there is a comment-start before point.
     (<= comment (point))))
 
+(defun emr--looking-at-decl? ()
+  (-contains? '(interactive declare) (car-safe (emr--list-at-point))))
+
 (defun emr--goto-open-round ()
   "Move to the opening paren for the Lisp list at point."
   (interactive)
@@ -601,18 +604,24 @@ See `autoload' for details."
   (/= (length xs) (length (-distinct xs))))
 
 (defun emr--let-binding-list-symbols (binding-forms)
-  (->> binding-forms
-    (--map (or (car-safe it) it))
-    (-remove 'emr--nl-or-comment?)))
+  "Return the symbols defined in a let BINDING FORM."
+  (->> binding-forms (--map (or (car-safe it) it)) (-remove 'emr--nl-or-comment?)))
+
+(defun emr--let-binding-list-values (binding-forms)
+  "Return the values in a let BINDING FORM."
+  (->> binding-forms (-map 'cdr-safe) (-remove 'emr--nl-or-comment?)))
 
 (defun emr--recursive-bindings? (binding-forms)
   "Test whether let BINDING-FORMS are dependent on one-another."
-  (let ((syms (emr--let-binding-list-symbols binding-forms))
-        (vals (->> binding-forms
-                (-map 'cdr-safe)
-                (-remove 'emr--nl-or-comment?) )))
-    (or (emr--duplicates? syms)
-        (-intersection syms (-flatten vals)))))
+  (and
+   ;; Cannot be recursive if bindings are empty or singleton.
+   (< 1 (length binding-forms))
+
+   ;; Find references to declared syms in values.
+   (let ((syms (emr--let-binding-list-symbols binding-forms))
+         (vals (-flatten (emr--let-binding-list-values binding-forms))))
+     (or (emr--duplicates? syms)
+         (-intersection syms vals)))))
 
 ;;; Variable insertion.
 
@@ -803,7 +812,8 @@ The expression will be bound to SYMBOL."
 
 ;;; Let-bind variable.
 (emr-declare-action emr-extract-to-let emacs-lisp-mode "let-bind"
-  :predicate (not (emr--looking-at-definition?))
+  :predicate (not (or(emr--looking-at-definition?)
+                     (emr--looking-at-decl?)))
   :description "let")
 
 ;;; Extract variable

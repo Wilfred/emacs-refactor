@@ -94,6 +94,10 @@ BODY lists the forms to be executed."
 
    (emr--add-let-binding 'z 'y '(let ((z w)) body))))
 
+(check "uses let when there is a single bound item"
+  (should= '(let ((x x)))
+           (emr--add-let-binding 'x 'x nil)))
+
 (check "can let-extract atom where body is single form"
   (should= '(let ((x y)) :emr--newline body)
            (emr--add-let-binding 'x 'y 'body)))
