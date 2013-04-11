@@ -39,7 +39,7 @@
 
 (defun init-melpa ()
   "Configure package.el to use MELPA and initialize."
-  (setq package-archives '(("melpa" . "http://melpa.milkbox.net/packages/")))
+  (add-to-list 'package-archives '(("melpa" . "http://melpa.milkbox.net/packages/")))
   (package-initialize)
   (unless package-archive-contents
     (package-refresh-contents)))
