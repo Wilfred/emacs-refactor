@@ -143,11 +143,14 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
        ;; Define a function to encapsulate the predicate. Also ensures each
        ;; refactoring command is only added once.
        (defun ,fname nil
-         (when (and (derived-mode-p major-mode ',mode)
-                    (eval ,predicate))
+         (when (and (derived-mode-p ',mode)
+                    (ignore-errors
+                      (eval ,predicate)))
            (popup-make-item ,title :value ',function :summary ,description)))
        ;; Make this refactoring available in the popup menu.
        (add-to-list 'emr--refactor-commands ',fname t))))
+
+
 
 ;;;###autoload
 (defun emr-show-refactor-menu ()
