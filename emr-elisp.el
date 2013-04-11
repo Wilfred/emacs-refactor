@@ -658,16 +658,21 @@ The body is the part of FORM that can be safely transformed without breaking the
   (destructuring-bind (header body &optional docstring)
       (emr--partition-body form)
 
-    (emr--recombine-forms
-     header
+    (->> (emr--recombine-forms
+          header
 
-     ;; Wrap BODY in a let expression.
-     ;; Defun forms should have their body spliced into the let form.
-     (->> (emr--defun-form? header)
-       (emr--let-wrap body)
-       (emr--insert-let-var symbol value ))
+          ;; Wrap BODY in a let expression.
+          ;; Defun forms should have their body spliced into the let form.
+          (->> (emr--defun-form? header)
+            (emr--let-wrap body)
+            (emr--insert-let-var symbol value ))
 
-     docstring)))
+          docstring)
+
+      ;; Drop trailing newlines and nil forms.
+      (reverse)
+      (--drop-while (or (emr--newline? it) (null it)))
+      (reverse))))
 
 (defun emr-extract-to-let (symbol)
   "Extract the form at point into a let expression.

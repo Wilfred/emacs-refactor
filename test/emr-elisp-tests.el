@@ -46,6 +46,10 @@ BODY lists the forms to be executed."
 
 ;;; ----------------------------------------------------------------------------
 
+;;; Read/Print
+;;;
+;;; EMR Elisp uses custom read/print commands that tokenise whitespace and comments.
+
 (check "reading single-line form does not change input"
   (should= '(input) (emr--read "(input)")))
 
@@ -72,11 +76,12 @@ BODY lists the forms to be executed."
     (should-match (rx  "(list "(* space) ";;; Comment" (* space) eol)
                   line)))
 
+;;; Let-extraction
+
 (check "can match on recursive let-bindings 1"
   (should (emr--recursive-bindings? '((x y)
                                       z
                                       (x)))))
-
 
 (check "can match on recursive let-bindings 2"
   (should (emr--recursive-bindings? '((x y)
@@ -85,6 +90,72 @@ BODY lists the forms to be executed."
 
 (check "can match on non-recursive let-bindings"
   (should (not (emr--recursive-bindings? '((x y) z w)))))
+
+(check "can let-extract atom where body is single form"
+  (should= '(let ((x y)) :emr--newline body)
+           (emr--add-let-binding 'x 'y 'body)))
+
+(check "can let-extract single forms where body is list"
+  (should= '(let ((x y)) :emr--newline (body))
+           (emr--add-let-binding 'x 'y '(body))))
+
+(check "can let-extract defun string in the docstring position"
+  (should=
+   '(defun fn (args) (let ((x y)) :emr--newline
+                          "str"))
+
+   (emr--add-let-binding 'x 'y '(defun fn (args) "str"))))
+
+(check "can let-extract forms in defun body where no decls or docstring"
+  (should=
+   '(defun fn (args) (let ((x y)) :emr--newline
+                          (body)))
+
+   (emr--add-let-binding 'x 'y '(defun fn (args) (body)))))
+
+(check "can let-extract forms in single-form defun body"
+  (should=
+   '(defun fn (args) (let ((x y)) :emr--newline
+                          body))
+
+   (emr--add-let-binding 'x 'y '(defun fn (args) body))))
+
+(check "can let-extract forms in defun body where docstring exists"
+  (should= '(defun fn (args) "docstring"
+              (let ((x y)) :emr--newline
+                   (body)))
+           (emr--add-let-binding 'x 'y '(defun fn (args) "docstring" (body)))))
+
+(check "can let-extract forms in defun body where decls exists"
+  (should=
+   '(defun fn (args) "docstring" (interactive) (declare cthulhu) (let ((x y)) :emr--newline
+                                                                      (body)))
+   (emr--add-let-binding
+    'x 'y '(defun fn (args) "docstring" (interactive) (declare cthulhu) (body)))))
+
+(check "can let-extract list form in defvar body"
+  (should=
+   '(defvar variable :emr--newline
+      (let ((x y)) :emr--newline
+           (body)))
+
+   (emr--add-let-binding 'x 'y '(defvar variable (body)))))
+
+(check "can let-extract atom in defvar body"
+  (should=
+   '(defvar variable :emr--newline
+      (let ((x y)) :emr--newline
+           (body)))
+
+   (emr--add-let-binding 'x 'y '(defvar variable (body)))))
+
+(check "can let-extract atom form in defvar body where docstring exists"
+  (should=
+   '(defvar variable :emr--newline
+      (let ((x y)) :emr--newline
+           body) :emr--newline
+      "docstring")
+   (emr--add-let-binding 'x 'y '(defvar variable body "docstring"))))
 
 (provide 'emr-elisp-tests)
 
