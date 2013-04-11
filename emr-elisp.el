@@ -195,25 +195,54 @@ Return the position of the end of FORM-STR."
 (defvar emr--special-symbols '(&rest &optional &key &allow-other-keys \,\@ \,)
   "A list of symbols that should be ignored by variable searches.")
 
-;;; FIXME:
-;;; This needs more work to make it more accurate.
-(defun emr--unbound-symbols (form)
-  "Try to find the symbols in FORM that do not have variable bindings."
-  (->> (cl-list* form)
-    (-flatten)
-    (-filter 'symbolp)
-    (--remove
-     (or (symbol-function it)
-         (booleanp it)
-         (keywordp it)
-         (emr--global-var? it)
-         (-contains? emr--special-symbols it)))
-    (-uniq)))
+(cl-defun emr--bindings-in-lambda ((_lam arglist &rest body))
+  "Return all bound variables within a lambda form."
+  (let ((bs (-difference arglist emr--special-symbols)))
+    (-concat bs (emr--bound-variables body))))
 
-(defun emr--unbound-symbols-string ()
-  "Format a string of the unbound symbols in the list at point."
+(cl-defun emr--bindings-in-let ((_let bindings &rest body))
+  "Return the list of bound values in the given `let' or `let*' expression."
+  (-concat (emr--let-binding-list-symbols bindings)
+           (emr--bound-variables body)))
+
+(defun emr--bound-variables (form)
+  "Find the list of let- or lambda-bound variables in form."
+  (let ((hd (car-safe (macroexpand-all (cl-list* form)))))
+    (case hd
+      (nil   nil)
+      ('lambda    (emr--bindings-in-lambda form))
+      ('let  (emr--bindings-in-let form))
+      ('let* (emr--bindings-in-let form))
+      (otherwise
+       (when (consp hd)
+         (->> form
+           (-remove 'emr--nl-or-comment?)
+           (-mapcat 'emr--bound-variables)))))))
+
+(defun emr--free-variables (form)
+  "Try to find the symbols in FORM that do not have variable bindings."
+
+  ;; Marco-expand FORM and find the list of bound symbols. Diff this with the
+  ;; other symbols in FORM. Figure out which ones are not functions, keywords,
+  ;; special vars, etc. This should give a pretty good idea of which symbols are
+  ;; 'free'.
+  (let ((ls (cl-list* (macroexpand-all form)))
+        (vars (emr--bound-variables form)))
+    (->> ls
+      (-flatten)
+      (-filter 'symbolp)
+      (-distinct)
+      (--remove (or (-contains? vars it)
+                    (-contains? emr--special-symbols it)
+                    (booleanp it)
+                    (keywordp it)
+                    (special-variable-p it)
+                    (symbol-function it))))))
+
+(defun emr--free-variables-string ()
+  "Format a string of the free variables in the list at point."
   (->> (emr--list-at-point)
-    (emr--unbound-symbols)
+    (emr--free-variables)
     (-map 'symbol-name)
     (s-join " ")
     (s-trim)))
@@ -379,7 +408,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 
 (defun emr--read-args ()
   "Read an arglist from the user."
-  (let* ((syms (emr--unbound-symbols-string))
+  (let* ((syms (emr--free-variables-string))
          (input (emr--read-with-default "Arglist" syms)))
     (unless (or (s-blank? input)
                 (s-matches? (rx (or "()" "nil")) input))
@@ -538,11 +567,14 @@ See `autoload' for details."
   "Return non-nil if any elements in XS are duplicated."
   (/= (length xs) (length (-distinct xs))))
 
+(defun emr--let-binding-list-symbols (binding-forms)
+  (->> binding-forms
+    (--map (or (car-safe it) it))
+    (-remove 'emr--nl-or-comment?)))
+
 (defun emr--recursive-bindings? (binding-forms)
   "Test whether let BINDING-FORMS are dependent on one-another."
-  (let ((syms (->> binding-forms
-                (--map (or (car-safe it) it))
-                (-remove 'emr--nl-or-comment?)))
+  (let ((syms (emr--let-binding-list-symbols binding-forms))
         (vals (->> binding-forms
                 (-map 'cdr-safe)
                 (-remove 'emr--nl-or-comment?) )))
@@ -685,6 +717,7 @@ The body is the part of FORM that can be safely transformed without breaking the
       (--drop-while (or (emr--newline? it) (null it)))
       (reverse))))
 
+;;;###autoload
 (defun emr-extract-to-let (symbol)
   "Extract the form at point into a let expression.
 The expression will be bound to SYMBOL."
