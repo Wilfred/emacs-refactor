@@ -263,6 +263,18 @@ Report the changes made to the buffer at a result of executing BODY forms."
          (unless (emr--line-visible? line)
            (emr--report-action ,description line text))))))
 
+(defun emr--try-read-kill-ring ()
+  "Read that form in the kill ring, wrapping in a PROGN if necessary."
+  (let* (
+         ;; Wrap the last kill in a progn.
+         (form (emr--read (format "(progn \n %s)" (car kill-ring))))
+         ;; Point to the first non-newline item in the PROGN.
+         (beg (--drop-while (or (equal 'progn it) (emr--newline? it)) form)))
+    ;; Strip the PROGN if it only contains a single sexpr.
+    (if (= 1 (length (-remove 'emr--nl-or-comment? beg)))
+        (car beg)
+      form)))
+
 (cl-defmacro emr--extraction-refactor ((&optional binding) description &rest body)
   "Kill the sexp near point then execute forms.
 BINDING is the name to bind to the extracted form.
@@ -276,14 +288,12 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
      (if (region-active-p)
          (kill-region (region-beginning)
                       (region-end))
-
        (emr--goto-open-round-or-quote)
        (kill-sexp))
 
-
      (let
          ;; Define BINDING if supplied.
-         ,(when binding `((,binding (emr--read (car kill-ring)))))
+         ,(when binding `((,binding (emr--try-read-kill-ring))))
 
        ;; Revert kill-ring pointer.
        (setq kill-ring (cdr kill-ring))
