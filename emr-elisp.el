@@ -3,6 +3,10 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
+;; Version: 0.2
+;; Keywords: tools elisp convenience refactoring
+;; Package-Requires: ((s "20130320.1524") (dash "20130408.2132") (cl-lib "0.2") (popup "20130324.1305"))
+
 
 ;; This file is not part of GNU Emacs.
 
@@ -21,11 +25,12 @@
 
 ;;; Commentary:
 
-;;; Refactoring commands for Emacs Lisp. Part of the ELR suite.
+;;; Refactoring commands for Emacs Lisp. Part of the Emacs Refactoring suite.
 
 ;;; Code:
 
 (require 'cl-lib)
+(require 'emr)
 
 ;;; ----------------------------------------------------------------------------
 ;;; Read and write lisp forms.
@@ -113,6 +118,14 @@
     (let ((point (point)))
       (beginning-of-defun)
       (nth 3 (parse-partial-sexp (point) point)))))
+
+(defun emr--looking-at-comment? ()
+  "Non-nil if point is on a comment."
+  (when-let (comment (save-excursion
+                       (beginning-of-line)
+                       (comment-search-forward (point-at-eol) t)))
+    ;; Test if there is a comment-start before point.
+    (<= comment (point))))
 
 (defun emr--goto-open-round ()
   "Move to the opening paren for the Lisp list at point."
@@ -320,6 +333,7 @@ Returns a list of lines where changes were made."
           (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
         (nreverse lines)))))
 
+;;;###autoload
 (defun emr-inline-variable ()
   "Inline the variable at defined at point.
 Uses of the variable are replaced with the initvalue in the variable definition."
@@ -346,6 +360,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
         (error "No value to inline for %s" (car vals)))
       (error "Not a variable definition"))))
 
+;;;###autoload
 (defun emr-eval-and-replace ()
   "Replace the form at point with its value."
   (interactive)
@@ -377,6 +392,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
    "()"
    defun-str t nil 1))
 
+;;;###autoload
 (defun emr-extract-function (name arglist)
   "Extract a function from the sexp beginning at point.
 NAME is the name of the new function.
@@ -396,6 +412,7 @@ ARGLIST is its argument list."
             :emr--newline
             ,(-drop-while 'emr--newline? sexp))))))))
 
+;;;###autoload
 (defun emr-extract-variable (name)
   "Extract a form as the argument to a defvar named NAME."
   (interactive "sName: ")
@@ -408,6 +425,7 @@ ARGLIST is its argument list."
      (emr--print
       (list 'defvar (intern name) sexp)))))
 
+;;;###autoload
 (defun emr-extract-constant (name)
   "Extract a form as the argument to a defconst named NAME."
   (interactive "sName: ")
@@ -420,6 +438,7 @@ ARGLIST is its argument list."
      (emr--print
       (list 'defconst (intern name) sexp)))))
 
+;;;###autoload
 (defun emr-extract-autoload (function file)
   "Create an autoload for FUNCTION.
 FILE is the file that declares FUNCTION.
@@ -440,6 +459,7 @@ See `autoload' for details."
           (emr--insert-above
            (emr--print form)))))))
 
+;;;###autoload
 (defun emr-comment-form ()
   "Comment out the list at point."
   (interactive)
@@ -450,6 +470,7 @@ See `autoload' for details."
     (mark-sexp)
     (comment-region (region-beginning) (region-end))))
 
+;;;###autoload
 (defun emr-implement-function (name arglist)
   "Insert a function definition for NAME with ARGLIST."
   (interactive (list
@@ -741,32 +762,6 @@ The expression will be bound to SYMBOL."
 (emr-declare-action emr-comment-form emacs-lisp-mode "comment"
   :predicate (and (thing-at-point 'defun)
                   (not (emr--looking-at-comment?))))
-
-;;; Uncomment form.
-(defun emr--looking-at-comment? ()
-  "Non-nil if point is on a comment."
-  (when-let (comment (save-excursion
-                       (beginning-of-line)
-                       (comment-search-forward (point-at-eol) t)))
-    ;; Test if there is a comment-start before point.
-    (<= comment (point))))
-
-(defun emr--find-comment-block-start ()
-  (let (pos)
-    (save-excursion
-      (while (search-backward-regexp (eval `(rx bol (* space) ,comment-start))
-                                     (line-beginning-position) t)
-        (setq pos (point))))
-    pos))
-
-(defun emr-uncomment-form ()
-  (interactive)
-  (let nil
-
-    (emr--find-comment-block-start)))
-
-(emr-declare-action emr-uncomment-form emacs-lisp-mode "uncomment"
-  :predicate (emr--looking-at-comment?))
 
 (provide 'emr-elisp)
 

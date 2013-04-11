@@ -3,8 +3,9 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Keywords: tools, elisp, convenience
-;; Dependencies: s, dash, cl-lib, popup
+;; Version: 0.2
+;; Keywords: tools convenience refactoring
+;; Package-Requires: ((s "20130320.1524") (dash "20130408.2132") (cl-lib "0.2") (popup "20130324.1305"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -41,7 +42,7 @@
 (require 'popup)
 
 (defgroup emacs-refactor nil
-  "Provides refactoring tools for Emacs Lisp."
+  "Provides refactoring tools for Emacs."
   :group 'tools
   :prefix "emr-")
 
@@ -100,7 +101,8 @@ otherwise execute ELSE forms without bindings."
     str))
 
 (defun emr--indexed-lines (str)
-  "Split string STR into a list of conses.  The index is the car and the line is the cdr."
+  "Split string STR into a list of conses.
+The index is the car and the line is the cdr."
   (--map-indexed (cons it-index it) (s-lines str)))
 
 (defun emr--diff-lines (str1 str2)
@@ -126,6 +128,7 @@ otherwise execute ELSE forms without bindings."
 (defvar emr--refactor-commands '()
   "A list of refactoring commands used to build menu items.")
 
+;;;###autoload
 (cl-defmacro emr-declare-action (function mode title &key (predicate t) description)
   "Define a refactoring command.
 FUNCTION is the refactoring command to perform.
@@ -146,6 +149,7 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
        ;; Make this refactoring available in the popup menu.
        (add-to-list 'emr--refactor-commands ',fname t))))
 
+;;;###autoload
 (defun emr-show-refactor-menu ()
   "Show the extraction menu at point."
   (interactive)
@@ -156,8 +160,6 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
       (when-let (action (popup-menu* actions :isearch t))
         (call-interactively action)))
     (error "No refactorings available")))
-
-(require 'emr-elisp)
 
 (provide 'emr)
 
