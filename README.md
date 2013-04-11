@@ -39,12 +39,12 @@ to something convenient.
 (require 'emr-elisp)
 
 (add-hook 'prog-mode-hook
-	  (lambda () (local-set-key (kbd "M-RET") 'emr-show-refactor-menu)))
+      (lambda () (local-set-key (kbd "M-RET") 'emr-show-refactor-menu)))
 ```
 
 ## Extension
 
-Use the `emr-declare-action' macro to declare a refactoring action for a given
+Use the `emr-declare-action` macro to declare a refactoring action for a given
 mode. The action will automatically become available in the refactoring popup
 menu.
 

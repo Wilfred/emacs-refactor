@@ -25,8 +25,6 @@
 
 ;;; Code:
 
-(require 'ert)
-
 (defconst test-dependencies '(ert popup s dash))
 
 ;;; ----------------------------------------------------------------------------
@@ -58,9 +56,9 @@
   (add-to-list 'load-path (expand-file-name ".."))
   (add-to-list 'load-path (expand-file-name "."))
   (add-to-list 'load-path (expand-file-name "./test"))
-
   (load-packages)
-  (message "%s" load-path)
+
+  (require 'ert)
   (require 'emr)
   (require 'emr-elisp)
   (require 'emr-elisp-tests)
