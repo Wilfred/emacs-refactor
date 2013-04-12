@@ -178,6 +178,62 @@ BODY lists the forms to be executed."
    '(arg1 arg2)
    (emr--infer-arglist-for-usage '(hello 9 8))))
 
+;;; Bound variables
+
+(check "finds free vars in let form"
+  (should=
+   '(a b c d)
+
+   (emr--free-variables
+    '(let (x (y a))
+       b
+       (let (z w)
+         c
+         (list d))))))
+
+(check "finds free vars in let* form"
+  (should=
+   '(a b c d)
+
+   (emr--free-variables
+    '(let* (x (y a))
+       b
+       (let* (z w)
+         c
+         (list d))))))
+
+(check "finds free vars in lambda form"
+  (should=
+   '(a b c)
+
+   (emr--free-variables
+    '(lambda (x &rest y)
+       a
+       (list b)
+       (lambda (z w)
+         c)))))
+
+(check "finds free vars in progn form"
+  (should=
+   '(a b c)
+
+   (emr--free-variables
+    '(progn
+       a
+       (lambda (x &rest y) b)
+       (let (z w) c)))))
+
+(check "finds free vars in destructuring-bind"
+  (should=
+   '(a b c d)
+
+   (emr--free-variables
+    '(destructuring-bind (x y) (list 1 2)
+       a
+       (list b)
+       (cl-destructuring-bind (z . w) (list 3 4 5)
+         (list c d))))))
+
 (provide 'emr-elisp-tests)
 
 ;; Local Variables:

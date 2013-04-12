@@ -198,7 +198,8 @@ Return the position of the end of FORM-STR."
     (emr--read (buffer-substring-no-properties (region-beginning)
                                                (region-end)))))
 
-(defvar emr--special-symbols '(&rest &optional &key &allow-other-keys \,\@ \,)
+(defvar emr--special-symbols
+  '(--cl-rest-- &rest &optional &key &allow-other-keys \,\@ \,)
   "A list of symbols that should be ignored by variable searches.")
 
 (cl-defun emr--bindings-in-lambda ((_lam arglist &rest body))
@@ -214,25 +215,26 @@ Return the position of the end of FORM-STR."
 (defun emr--bound-variables (form)
   "Find the list of let- or lambda-bound variables in form."
   (-uniq
-   (let ((hd (car-safe
-              ;; This can errors, for instance, on syntax quote forms that
-              ;; perform insertions.
-              (or (ignore-errors (macroexpand-all form))
-                  (ignore-errors (macroexpand form))
-                  form))))
+   (let* (
+          ;; Handle errors in expansion. Expansion errors are common with syntax
+          ;; quotes, for example.
+          (form (or (ignore-errors (macroexpand-all form))
+                    (ignore-errors (macroexpand form))
+                    form))
+
+          (hd (car-safe form))
+          )
      (cond
       ;; FUNCTION is the quotation form for function objects.
-      ((equal 'function hd) (emr--bindings-in-lambda form))
+      ((equal 'function hd) (-mapcat 'emr--bindings-in-lambda (cdr form)))
       ((equal 'lambda hd) (emr--bindings-in-lambda form))
       ((equal 'let hd)  (emr--bindings-in-let form))
       ((equal 'let* hd) (emr--bindings-in-let form))
-      ;; Expands destructuring binds
-      ((equal 'progn hd) (emr--bound-variables (cdr (macroexpand-all form))))
-
       ;; FORM is probably a value if we're not looking at a list, and can be
       ;; ignored.
       ((listp form)
        (->> form
+         ;; Handle improper lists.
          (list-utils-make-proper-copy)
          (-remove 'emr--nl-or-comment?)
          (-mapcat 'emr--bound-variables)))))))
