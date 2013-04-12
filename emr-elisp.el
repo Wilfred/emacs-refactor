@@ -210,21 +210,24 @@ Return the position of the end of FORM-STR."
   (-concat (emr--let-binding-list-symbols bindings)
            (emr--bound-variables body)))
 
-;;; FIXME: Macro-expansion isn't working as documented for FORM. It would be
-;;; really nice if this were possible...
 (defun emr--bound-variables (form)
   "Find the list of let- or lambda-bound variables in form."
-  (case (car-safe form)
-    (lambda    (emr--bindings-in-lambda form))
-    (let  (emr--bindings-in-let form))
-    (let* (emr--bindings-in-let form))
-    (otherwise
-     ;; FORM is probably a value if we're not looking at a list, and can be
-     ;; ignored.
-     (when (listp form)
+  (-uniq
+   (let ((hd (car-safe (macroexpand-all form))))
+     (cond
+      ;; FUNCTION is the quotation form for function objects.
+      ((equal 'function hd) (emr--bindings-in-lambda form))
+      ((equal 'lambda hd) (emr--bindings-in-lambda form))
+
+      ((equal 'let hd)  (emr--bindings-in-let form))
+      ((equal 'let* hd) (emr--bindings-in-let form))
+
+      ;; FORM is probably a value if we're not looking at a list, and can be
+      ;; ignored.
+      ((listp form)
        (->> form
          (-remove 'emr--nl-or-comment?)
-         (-mapcat 'emr--bound-variables))))))
+         (-mapcat 'emr--bound-variables)))))))
 
 (defun emr--free-variables (form)
   "Try to find the symbols in FORM that do not have variable bindings."
@@ -479,8 +482,6 @@ Uses of the variable are replaced with the initvalue in the variable definition.
          (->> form
            (emr--free-variables)
            (-map 'symbol-name)
-           ;; Drop function name.
-           (-drop 1)
            (s-join " ")
            (s-trim)
            ;; Read user input, supplying default arglist.
