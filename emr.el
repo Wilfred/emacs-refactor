@@ -38,7 +38,6 @@
 (require 'dash)
 (require 's)
 (require 'cl-lib)
-(require 'thingatpt)
 (require 'popup)
 
 (defgroup emacs-refactor nil

@@ -30,6 +30,9 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'dash)
+(require 's)
+(require 'thingatpt)
 (require 'emr)
 
 ;;; ----------------------------------------------------------------------------
@@ -151,14 +154,16 @@
 ;;; ----------------------------------------------------------------------------
 ;;; Formatting commands
 
+(defun emr--reindent-defun ()
+  "Reindent the current top-level form."
+  (end-of-defun) (beginning-of-defun) (indent-sexp))
+
 (defun emr--reindent-string (form-str)
   "Reformat FORM-STRING, assuming it is a Lisp fragment."
   (with-temp-buffer
     (lisp-mode-variables)
     (insert form-str)
-    ;; Indent each line.
-    (mark-whole-buffer)
-    (indent-for-tab-command)
+    (emr--reindent-defun)
     (buffer-string)))
 
 (defun emr--insert-above (form-str)
@@ -309,10 +314,11 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
 
      ;; Either extract the active region or the sexp near point.
      (if (region-active-p)
-         (kill-region (region-beginning)
-                      (region-end))
+         (kill-region (region-beginning) (region-end))
        (emr--goto-open-round-or-quote)
        (kill-sexp))
+
+     (emr--reindent-defun)
 
      (let
          ;; Define BINDING if supplied.
@@ -397,7 +403,7 @@ Returns a list of lines where changes were made."
 
 ;;;###autoload
 (defun emr-inline-variable ()
-  "Inline the variable at defined at point.
+  "Inline the variable defined at point.
 Uses of the variable are replaced with the initvalue in the variable definition."
   (interactive)
   (save-excursion
@@ -424,7 +430,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 
 ;;;###autoload
 (defun emr-eval-and-replace ()
-  "Replace the form at point with its value."
+  "Replace the current region or the form at point with its value."
   (interactive)
   (emr--extraction-refactor (sexp) "Replacement at"
     (let ((str (prin1-to-string (eval sexp))))
@@ -464,7 +470,7 @@ Ensures the result is in a list, regardless of whether a progn was found."
 
 ;;;###autoload
 (defun emr-extract-function (name arglist)
-  "Extract a function from the sexp beginning at point.
+  "Extract a function, using the current region or form point as the body.
 NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
@@ -484,7 +490,8 @@ ARGLIST is its argument list."
 
 ;;;###autoload
 (defun emr-extract-variable (name)
-  "Extract a form as the argument to a defvar named NAME."
+  "Extract the current region or form at point to a special variable.
+The variable will be called NAME."
   (interactive "sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr--extraction-refactor (sexp) "Extracted to"
@@ -497,7 +504,8 @@ ARGLIST is its argument list."
 
 ;;;###autoload
 (defun emr-extract-constant (name)
-  "Extract a form as the argument to a defconst named NAME."
+  "Extract the current region or form at point to a constant special variable.
+The variable will be called NAME."
   (interactive "sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr--extraction-refactor (sexp) "Extracted to"
@@ -531,7 +539,7 @@ See `autoload' for details."
 
 ;;;###autoload
 (defun emr-comment-form ()
-  "Comment out the list at point."
+  "Comment out the current region or from at point."
   (interactive)
   (if (region-active-p)
       (comment-region (region-beginning)
@@ -542,7 +550,8 @@ See `autoload' for details."
 
 ;;;###autoload
 (defun emr-implement-function (name arglist)
-  "Insert a function definition for NAME with ARGLIST."
+  "Create a function definition for the symbol at point.
+The function will be called NAME and have the given ARGLIST. "
   (interactive (list
                 (emr--read (emr--read-with-default "Name" (symbol-at-point)))
                 (emr--read-args)))
@@ -766,7 +775,8 @@ The body is the part of FORM that can be safely transformed without breaking the
 
 ;;;###autoload
 (defun emr-extract-to-let (symbol)
-  "Extract the form at point into a let expression.
+  "Extract the current region or form at point into a let-bound variable.
+A let form will be created if one does not exist.
 The expression will be bound to SYMBOL."
   (interactive "SSymbol: ")
   (emr--extraction-refactor (sexp) "Extracted to let expression"
@@ -804,7 +814,7 @@ The expression will be bound to SYMBOL."
 ;;       (cl-position '&rest))))
 
 ;;; ----------------------------------------------------------------------------
-;;; Declare commands with ELR.
+;;; Declare commands with EMR.
 
 ;;; Inline variable
 (emr-declare-action emr-inline-variable emacs-lisp-mode "inline"
@@ -815,7 +825,7 @@ The expression will be bound to SYMBOL."
   :predicate (not (emr--looking-at-definition?))
   :description "defun")
 
-;;; Let-bind variable.
+;;; Let-bind variable
 (emr-declare-action emr-extract-to-let emacs-lisp-mode "let-bind"
   :predicate (not (or(emr--looking-at-definition?)
                      (emr--looking-at-decl?)))
@@ -832,7 +842,7 @@ The expression will be bound to SYMBOL."
   :predicate (not (emr--looking-at-definition?))
   :description "defconst")
 
-;;; Implement function.
+;;; Implement function
 (emr-declare-action emr-implement-function emacs-lisp-mode "implement function"
   :predicate (and (not (emr--looking-at-string?))
                   (not (thing-at-point 'comment))
