@@ -16,8 +16,9 @@ EMR ships with useful refactorings for Emacs Lisp, including:
 * let-bind variable
 * evalute expression and replace it with the result.
 
-More languages are forthcoming. See *Extension* for details on extending EMR to
-other language modes. It's easy (honest!).
+More languages are forthcoming. See
+[Extension](https://github.com/chrisbarrett/emacs-refactor#extension) for
+details on extending EMR to other language modes. It's easy (honest!).
 
 ## Dependencies
 
