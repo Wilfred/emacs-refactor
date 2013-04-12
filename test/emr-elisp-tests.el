@@ -39,9 +39,11 @@ BODY lists the forms to be executed."
      ,@body))
 
 (defun should= (x y)
+  "Assert that objects X and Y are equal."
   (should (equal x y)))
 
 (defun should-match (regex str)
+  "Assert that string STR matches REGEX."
   (should (string-match-p regex str)))
 
 ;;; ----------------------------------------------------------------------------
@@ -163,6 +165,18 @@ BODY lists the forms to be executed."
            body) :emr--newline
       "docstring")
    (emr--add-let-binding 'x 'y '(defvar variable body "docstring"))))
+
+;;; Function implementation.
+
+(check "uses symbol names when inferring arglists from callsites"
+  (should=
+   '(x y)
+   (emr--infer-arglist-for-usage '(hello x y))))
+
+(check "uses argn for non-symbol names when inferring arglists from callsites"
+  (should=
+   '(arg1 arg2)
+   (emr--infer-arglist-for-usage '(hello 9 8))))
 
 (provide 'emr-elisp-tests)
 

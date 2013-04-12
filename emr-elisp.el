@@ -459,6 +459,16 @@ Uses of the variable are replaced with the initvalue in the variable definition.
          (read-string (format "%s:  " prompt))
        (read-string (format "%s (default: %s): "  prompt val) nil nil val)))))
 
+(defun emr--format-submitted-arglist (input)
+  "Format a user-submitted arglist, raising an error if it is malformed."
+  (unless (or (s-blank? input)
+              (s-matches? (rx (or "()" "nil")) input))
+    (condition-case _err
+        (read (format "(%s)" input))
+      (error
+       ;; Rethrow reader errors as something more informative.
+       (error "Malformed arglist")))))
+
 (defun emr--read-args (form)
   "Read an arglist from the user, using FORM to generate a suggestion."
   (let ((input
@@ -473,9 +483,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
            ;; Read user input, supplying default arglist.
            (emr--read-with-default "Arglist" )))
         )
-    (unless (or (s-blank? input)
-                (s-matches? (rx (or "()" "nil")) input))
-      (read (format "(%s)" input)))))
+    (emr--format-submitted-arglist input)))
 
 (defun emr--format-defun (defun-str)
   "Format DEFUN-STR to a prettier defun representation."
@@ -572,13 +580,28 @@ See `autoload' for details."
     (mark-sexp)
     (comment-region (region-beginning) (region-end))))
 
+(defun emr--infer-arglist-for-usage (form)
+  "Suggest a suitable arglist for the given function application FORM."
+  (->> form
+    ;; Anything that isn't a symbol becomes 'argn'.
+    (--map-indexed (if (symbolp it) it (intern (format "arg%s" it-index))))
+    ;; Drop function name.
+    (-drop 1)))
+
 ;;;###autoload
 (defun emr-implement-function (name arglist)
   "Create a function definition for the symbol at point.
 The function will be called NAME and have the given ARGLIST. "
   (interactive (list
                 (emr--read (emr--read-with-default "Name" (symbol-at-point)))
-                (emr--read-args (list-at-point))))
+                ;; Infer arglist from usage.
+                (->> (list-at-point)
+                  (emr--infer-arglist-for-usage)
+                  (-map 'symbol-name)
+                  (s-join " ")
+                  (s-trim)
+                  (emr--read-with-default "Arglist")
+                  (emr--format-submitted-arglist))))
 
   ;; Save position after insertion so we can move to the defun's body.
   (let (pos)
