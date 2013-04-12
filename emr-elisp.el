@@ -285,7 +285,7 @@ Report the changes made to the buffer at a result of executing BODY forms."
 
 (defun emr--collapse-leading-newlines (form)
   "Find the first instance of newlines in FORM and collapse any newlines in sequence."
-  (if-let (pos (cl-position :emr--newline form))
+  (if-let (pos (and (listp form) (cl-position :emr--newline form)))
     ;; Find the first newline, split FORM and drop newlines before splicing the
     ;; parts back together with a newline separator.
     (cl-destructuring-bind (hd tl) (-split-at pos form)
