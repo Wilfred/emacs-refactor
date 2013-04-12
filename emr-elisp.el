@@ -156,7 +156,7 @@
 
 (defun emr--reindent-defun ()
   "Reindent the current top-level form."
-  (end-of-defun) (beginning-of-defun) (indent-sexp))
+  (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
 
 (defun emr--reindent-string (form-str)
   "Reformat FORM-STRING, assuming it is a Lisp fragment."
@@ -218,9 +218,12 @@ Return the position of the end of FORM-STR."
                  (cl-list* form)))))
     (case hd
       (nil   nil)
+      ;; NB: Defun forms expand to defalias+lambda.
       ('lambda    (emr--bindings-in-lambda form))
       ('let  (emr--bindings-in-let form))
       ('let* (emr--bindings-in-let form))
+      ;; FORM is probably a value if we're not looking at a list, and can be
+      ;; ignored.
       (otherwise
        (when (consp hd)
          (->> form
@@ -247,14 +250,6 @@ Return the position of the end of FORM-STR."
                     (keywordp it)
                     (special-variable-p it)
                     (symbol-function it))))))
-
-(defun emr--free-variables-string ()
-  "Format a string of the free variables in the list at point."
-  (->> (emr--list-at-point)
-    (emr--free-variables)
-    (-map 'symbol-name)
-    (s-join " ")
-    (s-trim)))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Refactoring Macros
@@ -427,13 +422,33 @@ Uses of the variable are replaced with the initvalue in the variable definition.
         (error "No value to inline for %s" (car vals)))
       (error "Not a variable definition"))))
 
+(defun emr--eval-and-print-progn (prog)
+  "Eval and print each form in sexp PROG."
+  (->> prog
+    (emr--unprogn)
+    (-map 'eval)
+    (-remove 'null)
+    (-map 'emr--print)))
+
+(defun emr--multiline-region? ()
+  (when (region-active-p)
+    (/= (line-number-at-pos (region-beginning))
+        (line-number-at-pos (region-end)))))
+
+;;; TODO: insert above should skip comments.
+
 ;;;###autoload
 (defun emr-eval-and-replace ()
   "Replace the current region or the form at point with its value."
   (interactive)
-  (emr--extraction-refactor (sexp) "Replacement at"
-    (let ((str (prin1-to-string (eval sexp))))
-      (insert str)
+  (let ((multline? (emr--multiline-region?)))
+    (emr--extraction-refactor (sexp) "Replacement at"
+      (--each (emr--eval-and-print-progn sexp)
+        (insert it)
+        (indent-for-tab-command))
+      ;; the extraction internally trims newlines. If this was an eval'ed
+      ;; region, we want a single new line afterwards.
+      (when multline? (newline-and-indent))
       (emr--reindent-defun))))
 
 (defun emr--read-with-default (prompt value)
@@ -444,10 +459,20 @@ Uses of the variable are replaced with the initvalue in the variable definition.
          (read-string (format "%s:  " prompt))
        (read-string (format "%s (default: %s): "  prompt val) nil nil val)))))
 
-(defun emr--read-args ()
-  "Read an arglist from the user."
-  (let* ((syms (emr--free-variables-string))
-         (input (emr--read-with-default "Arglist" syms)))
+(defun emr--read-args (form)
+  "Read an arglist from the user, using FORM to generate a suggestion."
+  (let ((input
+         ;; Generate suggested arglist for prompt.
+         (->> form
+           (emr--free-variables)
+           (-map 'symbol-name)
+           ;; Drop function name.
+           (-drop 1)
+           (s-join " ")
+           (s-trim)
+           ;; Read user input, supplying default arglist.
+           (emr--read-with-default "Arglist" )))
+        )
     (unless (or (s-blank? input)
                 (s-matches? (rx (or "()" "nil")) input))
       (read (format "(%s)" input)))))
@@ -473,7 +498,7 @@ Ensures the result is in a list, regardless of whether a progn was found."
 NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
-                     (emr--read-args)))
+                     (emr--read-args (list-at-point))))
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr--extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name)))
@@ -553,7 +578,7 @@ See `autoload' for details."
 The function will be called NAME and have the given ARGLIST. "
   (interactive (list
                 (emr--read (emr--read-with-default "Name" (symbol-at-point)))
-                (emr--read-args)))
+                (emr--read-args (list-at-point))))
 
   ;; Save position after insertion so we can move to the defun's body.
   (let (pos)
