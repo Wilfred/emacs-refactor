@@ -397,8 +397,7 @@ Returns a list of lines where changes were made."
           (setq lines (cons (line-number-at-pos) lines))
           ;; Perform replacement.
           (replace-match (emr--print value) t nil nil 1)
-          ;; Try to pretty-format.
-          (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
+          (emr--reindent-defun))
         (nreverse lines)))))
 
 ;;;###autoload
@@ -435,7 +434,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
   (emr--extraction-refactor (sexp) "Replacement at"
     (let ((str (prin1-to-string (eval sexp))))
       (insert str)
-      (indent-for-tab-command))))
+      (emr--reindent-defun))))
 
 (defun emr--read-with-default (prompt value)
   "Prompt for user input, showing PROMPT with an inline default VALUE."
