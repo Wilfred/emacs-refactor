@@ -234,6 +234,13 @@ BODY lists the forms to be executed."
        (cl-destructuring-bind (z . w) (list 3 4 5)
          (list c d))))))
 
+(check "survives function symbol ollowed by non-lambda term"
+  (should=
+   '(hello)
+
+   (emr--free-variables
+    '(function hello))))
+
 (provide 'emr-elisp-tests)
 
 ;; Local Variables:

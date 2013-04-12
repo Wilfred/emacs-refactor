@@ -226,7 +226,12 @@ Return the position of the end of FORM-STR."
           )
      (cond
       ;; FUNCTION is the quotation form for function objects.
-      ((equal 'function hd) (-mapcat 'emr--bindings-in-lambda (cdr form)))
+      ;; Do not bail if the next item is not a lambda.
+      ((equal 'function hd) (condition-case _err
+                                (-mapcat 'emr--bindings-in-lambda (cdr form))
+                              (error
+                               (-mapcat 'emr--bound-variables (cdr form)))))
+
       ((equal 'lambda hd) (emr--bindings-in-lambda form))
       ((equal 'let hd)  (emr--bindings-in-let form))
       ((equal 'let* hd) (emr--bindings-in-let form))
