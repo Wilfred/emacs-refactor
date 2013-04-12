@@ -225,7 +225,7 @@ Return the position of the end of FORM-STR."
       ;; FORM is probably a value if we're not looking at a list, and can be
       ;; ignored.
       (otherwise
-       (when (consp hd)
+       (when (listp form)
          (->> form
            (-remove 'emr--nl-or-comment?)
            (-mapcat 'emr--bound-variables)))))))
