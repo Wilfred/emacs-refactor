@@ -210,25 +210,21 @@ Return the position of the end of FORM-STR."
   (-concat (emr--let-binding-list-symbols bindings)
            (emr--bound-variables body)))
 
+;;; FIXME: Macro-expansion isn't working as documented for FORM. It would be
+;;; really nice if this were possible...
 (defun emr--bound-variables (form)
   "Find the list of let- or lambda-bound variables in form."
-  (let ((hd (car-safe
-             ;; Continue valiantly if a form fails to macroexpand.
-             (or (ignore-errors (macroexpand-all (cl-list* form)))
-                 (cl-list* form)))))
-    (case hd
-      (nil   nil)
-      ;; NB: Defun forms expand to defalias+lambda.
-      ('lambda    (emr--bindings-in-lambda form))
-      ('let  (emr--bindings-in-let form))
-      ('let* (emr--bindings-in-let form))
-      ;; FORM is probably a value if we're not looking at a list, and can be
-      ;; ignored.
-      (otherwise
-       (when (listp form)
-         (->> form
-           (-remove 'emr--nl-or-comment?)
-           (-mapcat 'emr--bound-variables)))))))
+  (case (car-safe form)
+    (lambda    (emr--bindings-in-lambda form))
+    (let  (emr--bindings-in-let form))
+    (let* (emr--bindings-in-let form))
+    (otherwise
+     ;; FORM is probably a value if we're not looking at a list, and can be
+     ;; ignored.
+     (when (listp form)
+       (->> form
+         (-remove 'emr--nl-or-comment?)
+         (-mapcat 'emr--bound-variables))))))
 
 (defun emr--free-variables (form)
   "Try to find the symbols in FORM that do not have variable bindings."
@@ -237,14 +233,21 @@ Return the position of the end of FORM-STR."
   ;; other symbols in FORM. Figure out which ones are not functions, keywords,
   ;; special vars, etc. This should give a pretty good idea of which symbols are
   ;; 'free'.
-  (let ((ls (cl-list* (or (ignore-errors (macroexpand-all form))
-                          form)))
-        (vars (emr--bound-variables form)))
-    (->> ls
+
+  (let ((bound-vars (emr--bound-variables form))
+        (form-syms (->> form (list) (-flatten) (-filter 'symbolp)))
+        )
+    (->> (or (ignore-errors (macroexpand-all form)) form)
+      ;; Get all symbols from FORM's macro-expansion.
+      (list)
       (-flatten)
       (-filter 'symbolp)
       (-distinct)
-      (--remove (or (-contains? vars it)
+      ;; Only use symbols present in the original form. This prevents free vars
+      ;; from the macro-expansion leaking in.
+      (--filter (-contains? form-syms it))
+      ;; Finally, reduce the candidates.
+      (--remove (or (-contains? bound-vars it)
                     (-contains? emr--special-symbols it)
                     (booleanp it)
                     (keywordp it)
@@ -666,7 +669,10 @@ The function will be called NAME and have the given ARGLIST. "
 
 (defun emr--let-binding-list-symbols (binding-forms)
   "Return the symbols defined in a let BINDING FORM."
-  (->> binding-forms (--map (or (car-safe it) it)) (-remove 'emr--nl-or-comment?)))
+  (->> binding-forms
+    (--map (or (car-safe it) it))
+    (-remove 'emr--nl-or-comment?)
+    (-remove 'null)))
 
 (defun emr--let-binding-list-values (binding-forms)
   "Return the values in a let BINDING FORM."
