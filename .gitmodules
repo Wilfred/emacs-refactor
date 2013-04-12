@@ -13,3 +13,6 @@
 [submodule "lib/cl-lib"]
 	path = lib/cl-lib
 	url = git://github.com/emacsmirror/cl-lib.git
+[submodule "lib/list-utils"]
+	path = lib/list-utils
+	url = https://github.com/rolandwalker/list-utils

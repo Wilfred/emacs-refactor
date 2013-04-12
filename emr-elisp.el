@@ -31,6 +31,7 @@
 
 (require 'cl-lib)
 (require 'dash)
+(require 'list-utils)
 (require 's)
 (require 'thingatpt)
 (require 'emr)
@@ -216,20 +217,23 @@ Return the position of the end of FORM-STR."
    (let ((hd (car-safe
               ;; This can errors, for instance, on syntax quote forms that
               ;; perform insertions.
-              (or (ignore-errors (macroexpand form))
-                           form))))
+              (or (ignore-errors (macroexpand-all form))
+                  (ignore-errors (macroexpand form))
+                  form))))
      (cond
       ;; FUNCTION is the quotation form for function objects.
       ((equal 'function hd) (emr--bindings-in-lambda form))
       ((equal 'lambda hd) (emr--bindings-in-lambda form))
-
       ((equal 'let hd)  (emr--bindings-in-let form))
       ((equal 'let* hd) (emr--bindings-in-let form))
+      ;; Expands destructuring binds
+      ((equal 'progn hd) (emr--bound-variables (cdr (macroexpand-all form))))
 
       ;; FORM is probably a value if we're not looking at a list, and can be
       ;; ignored.
       ((listp form)
        (->> form
+         (list-utils-make-proper-copy)
          (-remove 'emr--nl-or-comment?)
          (-mapcat 'emr--bound-variables)))))))
 
@@ -247,6 +251,7 @@ Return the position of the end of FORM-STR."
     (->> (or (ignore-errors (macroexpand-all form)) form)
       ;; Get all symbols from FORM's macro-expansion.
       (list)
+      (list-utils-make-proper-inplace)
       (-flatten)
       (-filter 'symbolp)
       (-distinct)

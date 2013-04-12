@@ -1,4 +1,4 @@
-;;; emr --- Emacs refactoring system.
+;;; emr.el --- Emacs refactoring system.
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -169,4 +169,4 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
 ;; lexical-binding: t
 ;; End:
 
-;;; emacs-refactor.el ends here
+;;; emr.el ends here
