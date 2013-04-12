@@ -213,7 +213,11 @@ Return the position of the end of FORM-STR."
 (defun emr--bound-variables (form)
   "Find the list of let- or lambda-bound variables in form."
   (-uniq
-   (let ((hd (car-safe (macroexpand-all form))))
+   (let ((hd (car-safe
+              ;; This can errors, for instance, on syntax quote forms that
+              ;; perform insertions.
+              (or (ignore-errors (macroexpand form))
+                           form))))
      (cond
       ;; FUNCTION is the quotation form for function objects.
       ((equal 'function hd) (emr--bindings-in-lambda form))
