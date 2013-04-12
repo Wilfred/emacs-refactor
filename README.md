@@ -72,7 +72,6 @@ simple to wire them up with EMR using this interface.
 
 * Elisp:
    * inline function
-   * remove PROGN on function extraction.
 
 ## Contributing
 
