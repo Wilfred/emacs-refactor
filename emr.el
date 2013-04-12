@@ -111,13 +111,15 @@ The index is the car and the line is the cdr."
 
 (cl-defun emr--report-action (description line text)
   "Report the action that occured at the point of difference."
-  (message
-   (emr--ellipsize
-    (format "%s line %s: %s"
-            description
-            line
-            (if (s-blank? text) "nil"
-              (replace-regexp-in-string "[ \n\r\t]+" " " text))))))
+  (when emr-report-actions
+
+    (->> (if (s-blank? text)
+             "nil"
+           (replace-regexp-in-string "[ \n\r\t]+" " " text))
+
+      (format "%s line %s: %s" description line)
+      (emr--ellipsize)
+      (message))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Popup menu
