@@ -76,7 +76,7 @@
       str)))
 
 (defun emr--unescape-question-marks (str)
-  "Unescape question marks that were escaped by the reader."
+  "Unescape question marks in string STR that were escaped by the reader."
   (with-temp-buffer
     (lisp-mode-variables)
     (insert str)
@@ -172,6 +172,7 @@ Return the position of the end of FORM-STR."
       (newline)
       (forward-line -1)
       (back-to-indentation)
+      ;; Perform insertion.
       (insert (emr--reindent-string form-str))
       (prog1 (point)
         (newline-and-indent)))))
@@ -267,26 +268,35 @@ Report the changes made to the buffer at a result of executing BODY forms."
            (emr--report-action ,description line text))))))
 
 (defun emr--remove-trailing-newlines (form)
+  "Remove newlines from the end of FORM."
   (if (listp form)
-      (->> form (reverse) (-remove 'emr--newline?) (reverse))
+      (->> form (reverse) (-drop-while 'emr--newline?) (reverse))
     form))
 
-(defun emr--try-read-kill-ring ()
-  "Read that form in the kill ring, wrapping in a PROGN if necessary."
+(defun emr--collapse-leading-newlines (form)
+  "Find the first instance of newlines in FORM and collapse any newlines in sequence."
+  (if-let (pos (cl-position :emr--newline form))
+    ;; Find the first newline, split FORM and drop newlines before splicing the
+    ;; parts back together with a newline separator.
+    (cl-destructuring-bind (hd tl) (-split-at pos form)
+      `(,@hd :emr--newline ,@(-drop-while 'emr--newline? tl)))
+    form))
+
+(defun emr--wrapping-read (str)
+  "Try to read string STR, wrapping in a PROGN if necessary."
   (let* (
          ;; Wrap the last kill in a progn.
-         (form (emr--read (format "(progn \n %s)" (car kill-ring))))
+         (form (emr--read (format "(progn \n %s)" str)))
          ;; Point to the first non-newline item in the PROGN.
          (beg (--drop-while (or (equal 'progn it) (emr--newline? it)) form))
          )
-    (emr--remove-trailing-newlines
-     (cond ((atom beg)
-            beg)
-           ;; Strip the PROGN if it only contains a single sexpr.
-           ((= 1 (length (-remove 'emr--nl-or-comment? beg)))
-            (car beg))
-           (t
-            form)))))
+    ;; Remove PROGN form if it is unneccesary and tidy newlines.
+    (->> (cond ((atom beg) beg)
+               ;; Strip the PROGN if it only contains a single sexpr.
+               ((= 1 (length (-remove 'emr--nl-or-comment? beg))) (car beg))
+               (t form))
+      (emr--collapse-leading-newlines)
+      (emr--remove-trailing-newlines))))
 
 (cl-defmacro emr--extraction-refactor ((&optional binding) description &rest body)
   "Kill the sexp near point then execute forms.
@@ -306,7 +316,7 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
 
      (let
          ;; Define BINDING if supplied.
-         ,(when binding `((,binding (emr--try-read-kill-ring))))
+         ,(when binding `((,binding (emr--wrapping-read (car kill-ring)))))
 
        ;; Revert kill-ring pointer.
        (setq kill-ring (cdr kill-ring))
@@ -446,7 +456,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 
 (defun emr--unprogn (body)
   "Remove a `progn' if it is the first non-whitespace symbol in BODY.
-Wraps the result in another list regardless of whether a progn was found."
+Ensures the result is in a list, regardless of whether a progn was found."
   (->> (cl-list* body)
     (-drop-while 'emr--newline?)
     (macroexp-unprogn)
