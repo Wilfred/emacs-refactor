@@ -680,11 +680,6 @@ The function will be called NAME and have the given ARGLIST. "
     (--split-with (equal sym (emr--first-atom it)))
     (cdr)))
 
-(defun emr--find-binding-references (current-form binding-forms)
-  (let* ((sym (emr--first-atom current-form))
-         (rest (emr--bindings-after sym binding-forms)))
-    (-contains? rest sym)))
-
 (defun emr--duplicates? (xs)
   "Return non-nil if any elements in XS are duplicated."
   (/= (length xs) (length (-distinct xs))))
