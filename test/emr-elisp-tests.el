@@ -234,7 +234,17 @@ BODY lists the forms to be executed."
        (cl-destructuring-bind (z . w) (list 3 4 5)
          (list c d))))))
 
-(check "survives function symbol ollowed by non-lambda term"
+(check "finds free vars in defun form"
+  (should=
+   '(a b)
+
+   (emr--free-variables
+    '(defun hello (x y)
+       (list a x)
+       (progn
+         (list b y))))))
+
+(check "survives function symbol followed by non-lambda term"
   (should=
    '(hello)
 

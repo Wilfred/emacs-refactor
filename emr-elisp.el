@@ -212,6 +212,10 @@ Return the position of the end of FORM-STR."
   (-concat (emr--let-binding-list-symbols bindings)
            (emr--bound-variables body)))
 
+(cl-defun emr--bindings-in-defalias ((_def (_quote sym) func))
+  "Return the bindings in a defalias form, including the named alias."
+  (cons sym (emr--bound-variables func)))
+
 (defun emr--bound-variables (form)
   "Find the list of let- or lambda-bound variables in form."
   (-uniq
@@ -228,6 +232,7 @@ Return the position of the end of FORM-STR."
       ((equal 'lambda hd) (emr--bindings-in-lambda form))
       ((equal 'let hd)  (emr--bindings-in-let form))
       ((equal 'let* hd) (emr--bindings-in-let form))
+      ((equal 'defalias hd) (emr--bindings-in-defalias form))
       ;; FUNCTION is the quotation form for function objects.
       ;; Do not bail if the next item is not a lambda.
       ((equal 'function hd) (condition-case _err
