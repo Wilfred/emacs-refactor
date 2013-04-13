@@ -244,7 +244,7 @@ Return the position of the end of FORM-STR."
          (-remove 'emr--nl-or-comment?)
          (-mapcat 'emr--bound-variables)))))))
 
-(defun emr--free-variables (form)
+(defun emr--free-variables (form &optional context)
   "Try to find the symbols in FORM that do not have variable bindings."
 
   ;; Marco-expand FORM and find the list of bound symbols. Diff this with the
@@ -253,6 +253,7 @@ Return the position of the end of FORM-STR."
   ;; 'free'.
 
   (let ((bound-vars (emr--bound-variables form))
+        (ctx-bound (emr--bound-variables context))
         (form-syms (->> form (list) (-flatten) (-filter 'symbolp)))
         )
     (->> (or (ignore-errors (macroexpand-all form)) form)
@@ -270,8 +271,12 @@ Return the position of the end of FORM-STR."
                     (-contains? emr--special-symbols it)
                     (booleanp it)
                     (keywordp it)
-                    (special-variable-p it)
-                    (symbol-function it))))))
+                    ;; Remove special vars and function names, unless they've
+                    ;; been bound in the enclosing form.
+                    (unless (-contains? ctx-bound it)
+                      (or
+                       (special-variable-p it)
+                       (symbol-function it))))))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Refactoring Macros

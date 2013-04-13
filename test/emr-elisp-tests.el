@@ -241,6 +241,14 @@ BODY lists the forms to be executed."
    (emr--free-variables
     '(function hello))))
 
+(check "checks outer scope for bindings that share names with functions"
+  (should=
+   '(message y)
+
+   (emr--free-variables '(funcall message y)
+                        '(let (message)
+                           (funcall message y)))))
+
 (provide 'emr-elisp-tests)
 
 ;; Local Variables:
