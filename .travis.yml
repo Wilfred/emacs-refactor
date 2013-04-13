@@ -1,8 +1,8 @@
 language: emacs-lisp
 
 env:
-  #EMACS=emacs24
-  EMACS=emacs-snapshot
+  EMACS=emacs24
+  #EMACS=emacs-snapshot
 
 before_install:
   - git submodule --quiet update --init --recursive
@@ -23,5 +23,5 @@ install:
 script:
   $EMACS --version && make test
 
-notifications:
-  email: false
+# notifications:
+#   email: false
