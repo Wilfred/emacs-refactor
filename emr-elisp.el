@@ -685,9 +685,9 @@ The function will be called NAME and have the given ARGLIST. "
     (--split-with (equal sym (emr--first-atom it)))
     (cdr)))
 
-(defun emr--duplicates? (xs)
-  "Return non-nil if any elements in XS are duplicated."
-  (/= (length xs) (length (-distinct xs))))
+(defun emr--duplicates? (ls)
+  "Return non-nil if any elements in LS are duplicated."
+  (/= (length ls) (length (-distinct ls))))
 
 (defun emr--let-binding-list-symbols (binding-forms)
   "Return the symbols defined in a let BINDING FORM."
@@ -715,18 +715,13 @@ The function will be called NAME and have the given ARGLIST. "
 ;;; Variable insertion.
 
 (defun emr--let-wrap (form &optional splice?)
-  "Ensure FORM is wrapped with a `let' form. No change if FORM is already a let form."
-  ;; Trim leading newlines.
-  (let ((ls (if (listp form) (-drop-while 'emr--newline? form) form)))
+  "Ensure FORM is wrapped with a `let' form. No change if FORM is already a let form.
+SPLICE? determines whether FORM should be directly spliced into the let BODY."
+  (let ((nonl (if (listp form) (-drop-while 'emr--newline? form) form)))
     (cond
-     ((emr--let-form? ls)
-      ls)
-
-     (splice?
-      (cl-list* 'let nil :emr--newline ls))
-
-     (t
-      (list     'let nil :emr--newline ls)))))
+     ((emr--let-form? nonl) nonl)
+     (splice? (cl-list* 'let nil :emr--newline nonl))
+     (t (list 'let nil :emr--newline nonl)))))
 
 (defun emr--pad-top (form)
   "Ensure FORM begins with a newline."
@@ -751,13 +746,13 @@ If BINDINGS-LIST is nil, just return the new bindings."
       ,updated
       ,@(emr--pad-top body))))
 
-(defun emr--maybe-skip-docstring (xs)
-  "Skip docstring if it is at the head of XS.
-If there are forms afterwards, do not skip."
-  (if (and (stringp (car-safe xs))
-           (-remove 'emr--newline? (cdr xs)))
-      (cdr xs)
-    xs))
+(defun emr--maybe-skip-docstring (form)
+  "Skip docstring if it is at the head of FORM.
+Do not skip if there are no forms afterwards. "
+  (if (and (stringp (car-safe form))
+           (-remove 'emr--newline? (cdr form)))
+      (cdr form)
+    form))
 
 (defun emr--decl-form? (form)
   "Non-nil if form is an `interactive' spec, assertion, or `declare' form."
@@ -766,36 +761,29 @@ If there are forms afterwards, do not skip."
 
 (defun emr--nl-or-comment? (form)
   (or (equal :emr--newline form)
-      (equal :emr--comment form)))
+      (equal :emr--comment (car-safe form))))
 
 (defun emr--split-defun (form)
   "Split a defun FORM into a list of (header body).
 The body is the part of FORM that can be safely transformed without breaking the definition."
-  (cl-assert (emr--defun-form? form) () "Not a recognised definition form.")
-  (let* (
-         ;; Inspect the structure of the form. A definition contains an optional
-         ;; docstring and interactive/declare specs which should not be changed
-         ;; by operations to the body, so we skip those.
+  (cl-assert (emr--defun-form? form) () "Not a recognised definition form")
 
-         (split-point
-
-          (->> form
-            ;; Newlines and comments not semantically useful here.
-            (-remove 'emr--nl-or-comment?)
-            ;; Skip defun, symbol and arglist.
-            (-drop 3)
-            (emr--maybe-skip-docstring)
-            ;; Skip comments, INTERACTIVE, DECLARE and assertion forms.
-            (--drop-while (or (emr--nl-or-comment? it) (emr--decl-form? it)))
-            ;; We should now be pointed at the first body form.
-            (car)))
-
-         ;; Now that we know which form is probably the body, get its position
-         ;; in FORM and split FORM at that point.
-         (pos (cl-position split-point form :test 'equal))
-         )
-    (cl-assert (integerp pos) () "Unable find body in `%s`" form)
-    (-split-at pos form)))
+  (-> ;; Inspect the structure of the form. A definition contains an optional
+      ;; docstring and interactive/declare specs which should not be changed
+      ;; by operations to the body, so we skip those.
+      (->> form
+        ;; Newlines and comments not semantically useful here.
+        (-remove 'emr--nl-or-comment?)
+        ;; Skip defun, symbol and arglist.
+        (-drop 3)
+        (emr--maybe-skip-docstring)
+        ;; Skip comments, INTERACTIVE, DECLARE and assertion forms.
+        (--drop-while (or (emr--nl-or-comment? it) (emr--decl-form? it))))
+    ;; We should now be pointed at the first body form.
+    (car)
+    ;; Get the position of the body in FORM and split at that point.
+    (cl-position form)
+    (-split-at form)))
 
 (cl-defun emr--split-defvar (form)
   "Split FORM into a list of (decl sym & docstring)"
@@ -811,35 +799,36 @@ The body is the part of FORM that can be safely transformed without breaking the
          ;; Supply a null item to signify an empty header.
          (list nil form))))
 
-(cl-defun emr--recombine-forms (header body (&rest docstring))
+(cl-defun emr--recombine-forms ((header body &optional rem))
   (cond ((emr--defun-form? header) `(,@header ,body))
-
         ((emr--variable-definition? header)
-         `(,@header ,body ; Put non-nil docstring on a new line.
-                    ,@(when docstring (cons :emr--newline docstring))))
+         ;; If REM args exist, put them on a new line.
+         `(,@header ,body ,@(when rem (cons :emr--newline rem))))
         (t
          body)))
 
+(cl-defun emr--let-format-body (symbol value (header body &optional rest))
+  "Wrap BODY in a let expression."
+  ;; Defun forms should have their body spliced into the let form.
+  (list header
+        (->> (emr--defun-form? header)
+          (emr--let-wrap body)
+          (emr--insert-let-var symbol value))
+        rest))
+
 (defun emr--add-let-binding (symbol value form)
-  "Insert (SYMBOL VALUE & DOC) into FORM, encapsulating FORM in a `let' expression if necessary."
-  (destructuring-bind (header body &optional docstring)
-      (emr--partition-body form)
-
-    (->> (emr--recombine-forms
-          header
-
-          ;; Wrap BODY in a let expression.
-          ;; Defun forms should have their body spliced into the let form.
-          (->> (emr--defun-form? header)
-            (emr--let-wrap body)
-            (emr--insert-let-var symbol value ))
-
-          docstring)
-
-      ;; Drop trailing newlines and nil forms.
-      (reverse)
-      (--drop-while (or (emr--newline? it) (null it)))
-      (reverse))))
+  "Insert a let-binding for SYMBOL with VALUE into FORM.
+Wraps FORM with a let form if necessary."
+  (->> form
+    ;; Determine which part of FORM is the body, and apply let-insertion to that
+    ;; form.
+    (emr--partition-body)
+    (emr--let-format-body symbol value)
+    (emr--recombine-forms)
+    ;; Drop trailing newlines and nil forms.
+    (reverse)
+    (--drop-while (or (emr--newline? it) (null it)))
+    (reverse)))
 
 ;;;###autoload
 (defun emr-extract-to-let (symbol)
