@@ -1,5 +1,6 @@
 # emacs-refactor
-[![Build Status](https://travis-ci.org/chrisbarrett/emacs-refactor.png?branch=master)](https://travis-ci.org/chrisbarrett/emacs-refactor)
+<!-- Travis builds are disabled until cassou/emacs updates to Emacs 24.3 -->
+<!-- [![Build Status](https://travis-ci.org/chrisbarrett/emacs-refactor.png?branch=master)](https://travis-ci.org/chrisbarrett/emacs-refactor) -->
 
 EMR allows you to define language-specific refactoring commands in Emacs. It has
 a simple declarative interface for easy extension.
@@ -20,6 +21,8 @@ More languages are forthcoming. See
 [Extension](https://github.com/chrisbarrett/emacs-refactor#extension) for
 details on extending EMR to other language modes. It's easy (honest!).
 
+Tested on Emacs 24.3.
+
 ## Dependencies
 
 * [s](https://github.com/magnars/s.el)
@@ -27,7 +30,7 @@ details on extending EMR to other language modes. It's easy (honest!).
 * [popup](https://github.com/auto-complete/popup-el)
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
 
-Shout out to [@magnars](https://twitter.com/magnars) for those awesome libraries.
+Shout out to [@magnars](https://twitter.com/magnars) for some awesome libraries.
 
 ## Installation
 
