@@ -764,13 +764,6 @@ If there are forms afterwards, do not skip."
   (-contains? '(interactive declare assert cl-assert)
                (or (car-safe form) form)))
 
-(defun emr--index-of (elt coll)
-  "Find the index of ELT in COLL, or nil if not found."
-  (->> coll
-    (--map-indexed (cons it-index it))
-    (--first (equal elt (cdr it)))
-    (car)))
-
 (defun emr--nl-or-comment? (form)
   (or (equal :emr--newline form)
       (equal :emr--comment form)))
@@ -799,7 +792,7 @@ The body is the part of FORM that can be safely transformed without breaking the
 
          ;; Now that we know which form is probably the body, get its position
          ;; in FORM and split FORM at that point.
-         (pos (emr--index-of split-point form))
+         (pos (cl-position split-point form :test 'equal))
          )
     (cl-assert (integerp pos) () "Unable find body in `%s`" form)
     (-split-at pos form)))
