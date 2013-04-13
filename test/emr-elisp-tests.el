@@ -142,6 +142,20 @@ BODY lists the forms to be executed."
    (emr--add-let-binding
     'x 'y '(defun fn (args) "docstring" (interactive) (declare cthulhu) (body)))))
 
+(check "adds new bindings to existing let form in defun body"
+  (should=
+
+   '(defun fn (args) :emr--newline
+      (let ((x y) :emr--newline
+            (z w)) :emr--newline
+        (body)))
+
+   (emr--add-let-binding
+    'z 'w
+    '(defun fn (args) :emr--newline
+       (let ((x y)) :emr--newline
+           (body))))))
+
 (check "can let-extract list form in defvar body"
   (should=
    '(defvar variable :emr--newline

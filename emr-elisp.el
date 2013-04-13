@@ -719,8 +719,19 @@ The function will be called NAME and have the given ARGLIST. "
 SPLICE? determines whether FORM should be directly spliced into the let BODY."
   (let ((nonl (if (listp form) (-drop-while 'emr--newline? form) form)))
     (cond
-     ((emr--let-form? nonl) nonl)
-     (splice? (cl-list* 'let nil :emr--newline nonl))
+     ;; No need to wrap existing let-forms.
+     ((emr--let-form? nonl)
+      nonl)
+     ;; Return car if FORM is a singleton list containing a let expr.
+     ((and (listp form)
+           (equal 1 (length form))
+           (emr--let-form? (car form)))
+      (car nonl))
+     ;; It's not a let form, and the caller has opted to splice form into the
+     ;; let body.
+     (splice?
+      (cl-list* 'let nil :emr--newline nonl))
+     ;; In all other cases, wrap with a let expression.
      (t (list 'let nil :emr--newline nonl)))))
 
 (defun emr--pad-top (form)
@@ -829,6 +840,16 @@ Wraps FORM with a let form if necessary."
     (reverse)
     (--drop-while (or (emr--newline? it) (null it)))
     (reverse)))
+
+;; (nthcdr 9 (emr--add-let-binding
+;;            'x 'y
+
+;;            '(defun fn (args) :emr--newline
+;;               "docstring" :emr--newline
+;;               (:emr--comment ";; hello!")
+;;               (interactive) :emr--newline
+;;               (let () :emr--newline
+;;                    (body)))))
 
 ;;;###autoload
 (defun emr-extract-to-let (symbol)
