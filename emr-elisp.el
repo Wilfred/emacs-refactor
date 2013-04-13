@@ -225,16 +225,15 @@ Return the position of the end of FORM-STR."
           (hd (car-safe form))
           )
      (cond
+      ((equal 'lambda hd) (emr--bindings-in-lambda form))
+      ((equal 'let hd)  (emr--bindings-in-let form))
+      ((equal 'let* hd) (emr--bindings-in-let form))
       ;; FUNCTION is the quotation form for function objects.
       ;; Do not bail if the next item is not a lambda.
       ((equal 'function hd) (condition-case _err
                                 (-mapcat 'emr--bindings-in-lambda (cdr form))
                               (error
                                (-mapcat 'emr--bound-variables (cdr form)))))
-
-      ((equal 'lambda hd) (emr--bindings-in-lambda form))
-      ((equal 'let hd)  (emr--bindings-in-let form))
-      ((equal 'let* hd) (emr--bindings-in-let form))
       ;; FORM is probably a value if we're not looking at a list, and can be
       ;; ignored.
       ((listp form)
@@ -245,7 +244,8 @@ Return the position of the end of FORM-STR."
          (-mapcat 'emr--bound-variables)))))))
 
 (defun emr--free-variables (form &optional context)
-  "Try to find the symbols in FORM that do not have variable bindings."
+  "Try to find the symbols in FORM that do not have variable bindings.
+CONTEXT is the top-level form that encloses FORM."
 
   ;; Marco-expand FORM and find the list of bound symbols. Diff this with the
   ;; other symbols in FORM. Figure out which ones are not functions, keywords,
@@ -496,12 +496,12 @@ Uses of the variable are replaced with the initvalue in the variable definition.
        ;; Rethrow reader errors as something more informative.
        (error "Malformed arglist")))))
 
-(defun emr--read-args (form)
-  "Read an arglist from the user, using FORM to generate a suggestion."
+(defun emr--read-args (form context)
+  "Read an arglist from the user, using FORM to generate a suggestion.
+CONTEXT is the top-level form that encloses FORM."
   (let ((input
          ;; Generate suggested arglist for prompt.
-         (->> form
-           (emr--free-variables)
+         (->> (emr--free-variables form context)
            (-map 'symbol-name)
            (s-join " ")
            (s-trim)
@@ -531,7 +531,7 @@ Ensures the result is in a list, regardless of whether a progn was found."
 NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
-                     (emr--read-args (list-at-point))))
+                     (emr--read-args (list-at-point) (thing-at-point 'defun))))
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr--extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name)))
