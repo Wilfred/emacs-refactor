@@ -885,7 +885,7 @@ The expression will be bound to SYMBOL."
   (save-match-data
     (search-forward-regexp
      (eval `(rx word-start ,(emr--print symbol) word-end))
-     (save-excursion (end-of-defun))
+     (save-excursion (end-of-defun) (point))
      'no-error)))
 
 ;;; TODO: Use body form index instead of crazy parsing.
@@ -899,6 +899,15 @@ The expression will be bound to SYMBOL."
 
 ;;; ----------------------------------------------------------------------------
 ;;; Declare commands with EMR.
+
+;;; Implement function
+(emr-declare-action emr-implement-function emacs-lisp-mode "implement function"
+  :predicate (and (not (emr--looking-at-string?))
+                  (not (thing-at-point 'comment))
+                  (not (thing-at-point 'number))
+                  (symbol-at-point)
+                  (not (boundp (symbol-at-point)))
+                  (not (fboundp (symbol-at-point)))))
 
 ;;; Inline variable
 (emr-declare-action emr-inline-variable emacs-lisp-mode "inline"
@@ -925,15 +934,6 @@ The expression will be bound to SYMBOL."
 (emr-declare-action emr-extract-constant emacs-lisp-mode "constant"
   :predicate (not (emr--looking-at-definition?))
   :description "defconst")
-
-;;; Implement function
-(emr-declare-action emr-implement-function emacs-lisp-mode "implement function"
-  :predicate (and (not (emr--looking-at-string?))
-                  (not (thing-at-point 'comment))
-                  (not (thing-at-point 'number))
-                  (symbol-at-point)
-                  (not (boundp (symbol-at-point)))
-                  (not (fboundp (symbol-at-point)))))
 
 ;;; Eval and replace expression
 (emr-declare-action emr-eval-and-replace emacs-lisp-mode "eval"
