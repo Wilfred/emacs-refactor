@@ -78,6 +78,11 @@ BODY lists the forms to be executed."
     (should-match (rx  "(list "(* space) ";;; Comment" (* space) eol)
                   line)))
 
+(check "preserves semicolons in strings"
+  (let* ((expr "(list \";\")")
+         (output (emr--print (emr--read expr))))
+    (should= expr output)))
+
 ;;; Let-extraction
 
 (check "let-extracted variables use let when bindings are not recursive"

@@ -48,13 +48,29 @@
 
 (defun emr--format-comments (line)
   "Wrap any comments at the end of LINE in a comment form.  Otherwise return LINE unchanged."
-  (if-let (pos (s-index-of ";" line))
-    (let ((code    (substring line 0 (1- pos)))
-          (comment (substring line pos)))
-      (concat
-       code
-       (if (s-blank? comment) "" (format " (%s %S)" :emr--comment comment))))
-    line))
+
+  ;; Comment extraction, the Cthulhu way. We search for the start of a comment
+  ;; in LINE, then wrap everything from that index in a list form beginning with
+  ;; the :emr--comment token.
+  (save-match-data
+    (with-temp-buffer
+      (lisp-mode-variables t)
+      (insert line)
+
+      (if (comment-beginning)
+          (progn
+            ;; POINT is now inside the comment.
+            ;; Move to the start of the comment chars.
+            (goto-char (search-backward-regexp
+                        (eval `(rx (not (any ,comment-start)) ,comment-start))))
+            (forward-char 1)
+            ;; Split at the location of the comment. Format the line so that the
+            ;; comment is inside a lisp list form.
+            (let ((code (buffer-substring (line-beginning-position) (point)))
+                  (cmt  (buffer-substring (point) (line-end-position))))
+              (format "%s (%s \"%s\")" code :emr--comment cmt)))
+        ;; No processing necessary - return the argument unchanged.
+        line))))
 
 (defun emr--read (str)
   "Read the given string STR as a Lisp expression, inserting tokens to represent whitespace."
