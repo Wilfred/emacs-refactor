@@ -192,7 +192,7 @@ BODY lists the forms to be executed."
                 (-flatten (emr--inline-let-binding 'x '(let ((x y)))))
                 'x))))
 
-(check "let-inlining inlines binding value form in body 1"
+(check "let-inlining inlines binding value form in body"
   (should=
    '(let ((z w))
       (message y))
@@ -203,7 +203,7 @@ BODY lists the forms to be executed."
            (z w))
        (message x)))))
 
-(check "let-inlining inlines binding value form in body 2"
+(check "let-inlining inlines binding value form in body - reversed binding order"
   (should=
    '(let ((x y))
       (message w))
@@ -213,6 +213,12 @@ BODY lists the forms to be executed."
     '(let ((x y)
            (z w))
        (message z)))))
+
+(check "let-inlining does not modify comments"
+  (should (not (-contains?
+                (-flatten (emr--inline-let-binding 'x '(let ((x y))
+                                                         (:emr--comment ";; y"))))
+                'y))))
 
 ;;; Function implementation.
 
