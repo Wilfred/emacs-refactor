@@ -14,7 +14,7 @@ EMR ships with useful refactorings for Emacs Lisp, including:
 * extract expression to function
 * extract and inline variables
 * extract autoloads for functions
-* let-bind variable
+* extract to let-bound variable, inline let-bound variable
 * evalute expression and replace it with the result.
 
 More languages are forthcoming. See
@@ -30,7 +30,7 @@ Tested on Emacs 24.3.
 * [popup](https://github.com/auto-complete/popup-el)
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
 
-Shout out to [@magnars](https://twitter.com/magnars) for some awesome libraries.
+Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
 ## Installation
 
@@ -80,6 +80,11 @@ simple to wire them up with EMR using this interface.
 ## Contributing
 
 Pull requests are totally welcome. :D
+
+## Bug Reports
+
+Please include backtraces with errors if applicable, as well as the simplest
+code possible that will reproduce the issue.
 
 ## License
 
