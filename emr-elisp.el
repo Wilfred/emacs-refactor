@@ -907,6 +907,92 @@ The expression will be bound to SYMBOL."
      (save-excursion (end-of-defun) (point))
      'no-error)))
 
+;;; Let inlining
+
+(defun emr--goto-start-of-let-binding ()
+  "Move point to the opening paren of the let-expression at
+point, or the previous one in the current top-level form."
+  (save-match-data
+    ;; If we're on a let-form, move fowards so the subsequent regex motion works.
+    (when (or (equal (symbol-at-point) 'let)
+              (equal (symbol-at-point) 'let*))
+      (forward-whitespace 1))
+    ;; Find start of let-expression, bounded to the current top-level-form.
+    (search-backward-regexp (rx "(" (or "let" "let*") (or "\n" " " "("))
+                            (save-excursion (beginning-of-defun) (point))
+                            t)))
+
+(defun emr--find-in-tree (elt tree)
+  "Return non-nil if ELT is in TREE."
+  (cond ((equal elt tree) elt)
+        ((listp tree)
+         (--reduce-from (or acc (emr--find-in-tree elt it))
+                        nil tree))))
+
+(defun emr--looking-at-bound-var-in-let-bindings? ()
+  "Non-nil if point is on the bound symbol in a let-binding form."
+  (let* ((form (emr--list-at-point))
+         (sym (car-safe form)))
+    (save-excursion
+      ;; Select binding list for the let expression.
+      (emr--goto-start-of-let-binding)
+      (let ((bindings (emr--let-binding-list (emr--list-at-point))))
+        (and
+         ;; List at point is part of the bindings list?
+         (emr--find-in-tree form bindings)
+         ;; Head of the list is a symbol in the binding list?
+         (-contains? (emr--let-binding-list-symbols bindings) sym))))))
+
+(defun emr--replace-in-tree (symbol value form)
+  "Replace usages of SYMBOL with value in FORM."
+  (cond
+   ((listp form) (--map (emr--replace-in-tree symbol value it) form))
+   ((equal symbol form) value)
+   (t
+    form)))
+
+(cl-defun emr--remove-let-binding (symbol (let &optional bindings &rest body))
+  "Remove the binding for SYMBOL from the given binding form.
+Return a list where the car is the value binding that was removed
+and the cdr is the updated input form."
+  (let* ((b (assoc symbol bindings))
+         (updated (delete b bindings)))
+    (list b `(,let ,updated ,@body))))
+
+(cl-defun emr--update-let-body (binding-elt (let &optional bindings &rest body))
+  "Replace usages of a binding in BODY forms.
+  BINDING-ELT is a list of the form (symbol &optional value)"
+  (let* ((symbol (cl-first binding-elt))
+         (value  (cl-second binding-elt))
+         ;; Update body references to bindings.
+         (body (if binding-elt
+                   (emr--replace-in-tree symbol value body)
+                 body)))
+    `(,let ,bindings ,@body)))
+
+(defun emr--inline-let-binding (symbol form)
+  "Replace usages of SYMBOL with VALUE in FORM and update the bindings list."
+  (->> form
+    (emr--remove-let-binding symbol)
+    (apply 'emr--update-let-body)))
+
+;;;###autoload
+(defun emr-inline-let-variable (symbol)
+  "Inlines the let-bound variable at point."
+  (interactive (list (symbol-at-point)))
+  (cl-assert (emr--looking-at-bound-var-in-let-bindings?))
+
+  (save-excursion
+    (emr--goto-start-of-let-binding)
+    (emr--extraction-refactor (form) "Inlined let-bound symbol"
+      ;; Insert updated let-binding.
+      (->> (emr--inline-let-binding symbol form)
+        ;; Pretty-format for insertion.
+        (emr--print)
+        (emr--format-defun)
+        (emr--reindent-string)
+        (insert)))))
+
 ;;; TODO: Use body form index instead of crazy parsing.
 ;; (defun emr--fn-body-index (fn)
 ;;   "Return the minimum position of the body or &rest args for function fn."
@@ -924,6 +1010,7 @@ The expression will be bound to SYMBOL."
   :predicate (and (not (emr--looking-at-string?))
                   (not (thing-at-point 'comment))
                   (not (thing-at-point 'number))
+                  (not (emr--looking-at-bound-var-in-let-bindings?))
                   (symbol-at-point)
                   (not (boundp (symbol-at-point)))
                   (not (fboundp (symbol-at-point)))))
@@ -934,29 +1021,38 @@ The expression will be bound to SYMBOL."
 
 ;;; Extract function
 (emr-declare-action emr-extract-function emacs-lisp-mode "function"
-  :predicate (not (emr--looking-at-definition?))
+  :predicate (not (or (emr--looking-at-definition?)
+                      (emr--looking-at-bound-var-in-let-bindings?)))
   :description "defun")
 
 ;;; Let-bind variable
 (emr-declare-action emr-extract-to-let emacs-lisp-mode "let-bind"
   :predicate (not (or (emr--looking-at-definition?)
-                      (emr--looking-at-decl?)))
+                      (emr--looking-at-decl?)
+                      (emr--looking-at-bound-var-in-let-bindings?)))
   :description "let")
+
+;;; Inline let-binding
+(emr-declare-action emr-inline-let-variable emacs-lisp-mode "inline binding"
+  :predicate (emr--looking-at-bound-var-in-let-bindings?))
 
 ;;; Extract variable
 (emr-declare-action emr-extract-variable emacs-lisp-mode "variable"
   :predicate (and (not (emr--looking-at-definition?))
+                  (not (emr--looking-at-bound-var-in-let-bindings?))
                   (thing-at-point 'defun))
   :description "defvar")
 
 ;;; Extract constant
 (emr-declare-action emr-extract-constant emacs-lisp-mode "constant"
-  :predicate (not (emr--looking-at-definition?))
+  :predicate (not (or (emr--looking-at-definition?)
+                      (emr--looking-at-bound-var-in-let-bindings?)))
   :description "defconst")
 
 ;;; Eval and replace expression
 (emr-declare-action emr-eval-and-replace emacs-lisp-mode "eval"
-  :predicate (not (emr--looking-at-definition?))
+  :predicate (not (or (emr--looking-at-definition?)
+                      (emr--looking-at-bound-var-in-let-bindings?)))
   :description "value")
 
 ;;; Extract autoload

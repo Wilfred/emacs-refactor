@@ -185,6 +185,35 @@ BODY lists the forms to be executed."
       "docstring")
    (emr--add-let-binding 'x 'y '(defvar variable body "docstring"))))
 
+;;; Let-inlining
+
+(check "let-inlining removes symbol from the let expression"
+  (should (not (-contains?
+                (-flatten (emr--inline-let-binding 'x '(let ((x y)))))
+                'x))))
+
+(check "let-inlining inlines binding value form in body 1"
+  (should=
+   '(let ((z w))
+      (message y))
+
+   (emr--inline-let-binding
+    'x
+    '(let ((x y)
+           (z w))
+       (message x)))))
+
+(check "let-inlining inlines binding value form in body 2"
+  (should=
+   '(let ((x y))
+      (message w))
+
+   (emr--inline-let-binding
+    'z
+    '(let ((x y)
+           (z w))
+       (message z)))))
+
 ;;; Function implementation.
 
 (check "uses symbol names when inferring arglists from callsites"
