@@ -730,7 +730,7 @@ The function will be called NAME and have the given ARGLIST. "
   "Return the values in a let BINDING FORM."
   (->> binding-forms (-map 'cdr-safe) (-remove 'emr--nl-or-comment?)))
 
-(cl-defun emr--let-binding-list ((_let &optional bindings &rest _body))
+(cl-defun emr--let-binding-list ((_let &optional bindings &rest body))
   "Return the bindings list in the given let form."
   bindings)
 
