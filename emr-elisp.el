@@ -546,8 +546,8 @@ Ensures the result is in a list, regardless of whether a progn was found."
     (macroexp-unprogn)
     (-drop-while 'emr--newline?)))
 
-;;;###autoload
 (defun emr--form-extent-for-extraction ()
+  "Return either the current region or the list at point."
   (or
    ;; Find symbols within the marked region.
    (when (region-active-p)
@@ -556,26 +556,29 @@ Ensures the result is in a list, regardless of whether a progn was found."
    ;; Find symbols within the form around point.
    (list-at-point)))
 
+;;;###autoload
 (defun emr-extract-function (name arglist)
   "Extract a function, using the current region or form point as the body.
 NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
-                     (emr--read-args (emr--form-extent-for-extraction) (thing-at-point 'defun))))
+                     ;; Prompt user with default arglist.
+                     (emr--read-args (emr--form-extent-for-extraction)
+                                     (thing-at-point 'defun))))
+
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
+
   (emr--extraction-refactor (sexp) "Extracted to"
-    (let ((name (intern name)))
+    (let ((name (intern name))
+          (defun-form (if (-any? 'listp arglist) 'cl-defun 'defun))
+          (body (if (listp sexp) (emr--unprogn sexp) (list sexp))))
       ;; Insert usage.
       (insert (emr--print (cl-list* name arglist)))
       ;; Insert defun.
-      (emr--insert-above
-       (emr--format-defun
-        (emr--print
-         `(defun ,name ,arglist
-            :emr--newline
-            ,@(if (listp sexp)
-                  (emr--unprogn sexp)
-                (list sexp)))))))))
+      (->> `(,defun-form ,name ,arglist :emr--newline ,@body)
+        (emr--print)
+        (emr--format-defun)
+        (emr--insert-above)))))
 
 ;;;###autoload
 (defun emr-extract-variable (name)
@@ -659,29 +662,29 @@ The function will be called NAME and have the given ARGLIST. "
                   (s-trim)
                   (emr--read-with-default "Arglist")
                   (emr--format-submitted-arglist))))
+  ;; Determine which defun form to use.
+  (let ((defun-form (if (-any? 'listp arglist) 'cl-defun 'defun))
+        pos)
 
-  ;; Save position after insertion so we can move to the defun's body.
-  (let (pos)
+    ;; Insert usage and defun, then move to the point to the body of the defun.
+
     (save-excursion
-
-      ;; Mark whole sexp at point.
+      ;; Mark whole list at point.
       (beginning-of-thing 'sexp)
       (mark-sexp)
 
       (emr--extraction-refactor ()  "Defined function"
-
         ;; Insert reference.
         (insert (format "%s" name))
-
         ;; Insert definition.
-        (->> (list 'defun name arglist :emr--newline)
-          (emr--print)
-          (emr--format-defun)
-          (emr--insert-above)
-          (setq pos))))
+        (setq pos (->> `(,defun-form ,name ,arglist :emr--newline)
+                    (emr--print)
+                    (emr--format-defun)
+                    (emr--insert-above)))))
 
-    ;; Move to body position.
+    ;; Move to end of inserted form.
     (goto-char pos)
+    ;; Move to body position.
     (beginning-of-defun)
     (forward-line 1)
     (indent-for-tab-command)))
@@ -726,6 +729,10 @@ The function will be called NAME and have the given ARGLIST. "
 (defun emr--let-binding-list-values (binding-forms)
   "Return the values in a let BINDING FORM."
   (->> binding-forms (-map 'cdr-safe) (-remove 'emr--nl-or-comment?)))
+
+(cl-defun emr--let-binding-list ((_let &optional bindings &rest _body))
+  "Return the bindings list in the given let form."
+  bindings)
 
 (defun emr--recursive-bindings? (binding-forms)
   "Test whether let BINDING-FORMS are dependent on one-another."
@@ -798,6 +805,7 @@ Do not skip if there are no forms afterwards. "
                (or (car-safe form) form)))
 
 (defun emr--nl-or-comment? (form)
+  "Return non-nil if FORM is an emr newline or comment keyword."
   (or (equal :emr--newline form)
       (equal :emr--comment (car-safe form))))
 
@@ -931,8 +939,8 @@ The expression will be bound to SYMBOL."
 
 ;;; Let-bind variable
 (emr-declare-action emr-extract-to-let emacs-lisp-mode "let-bind"
-  :predicate (not (or(emr--looking-at-definition?)
-                     (emr--looking-at-decl?)))
+  :predicate (not (or (emr--looking-at-definition?)
+                      (emr--looking-at-decl?)))
   :description "let")
 
 ;;; Extract variable
