@@ -951,13 +951,21 @@ point, or the previous one in the current top-level form."
    (t
     form)))
 
-(cl-defun emr--remove-let-binding (symbol (let &optional bindings &rest body))
+(cl-defun emr--remove-let-binding (symbol (&optional let bindings &rest body))
   "Remove the binding for SYMBOL from the given binding form.
 Return a list where the car is the value binding that was removed
 and the cdr is the updated input form."
-  (let* ((b (assoc symbol bindings))
-         (updated (delete b bindings)))
-    (list b `(,let ,updated ,@body))))
+  (let* (;; Remove SYMBOL from BINDINGS, then reformat.
+         (updated (->> bindings
+                    (--remove (equal symbol (car-safe it)))
+                    (-interpose :emr--newline)))
+
+         ;; Get the bindings form.
+         (binding (->> bindings
+                    (-remove 'emr--nl-or-comment?)
+                    (assoc symbol)))
+         )
+    (list binding `(,let ,updated ,@body))))
 
 (cl-defun emr--update-let-body (binding-elt (_let &optional bindings &rest body))
   "Replace usages of a binding in BODY forms.
