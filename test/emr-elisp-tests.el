@@ -192,6 +192,21 @@ BODY lists the forms to be executed."
                 (-flatten (emr--inline-let-binding 'x '(let ((x y)))))
                 'x))))
 
+(check "let-inlining demotes let* to let if possible"
+  (should= 'let
+           (car (emr--inline-let-binding
+                 'x
+                 '(let* ((x y)
+                         (z w)))))))
+
+(check "let-inlining does not change let* to let if bindings are recursive"
+  (should= 'let*
+           (car (emr--inline-let-binding
+                 'x
+                 '(let* ((x y)
+                         (z x)
+                         (z w)))))))
+
 (check "let-inlining inlines binding value form in body"
   (should=
    '(let ((z w))

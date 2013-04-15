@@ -959,15 +959,16 @@ and the cdr is the updated input form."
          (updated (delete b bindings)))
     (list b `(,let ,updated ,@body))))
 
-(cl-defun emr--update-let-body (binding-elt (let &optional bindings &rest body))
+(cl-defun emr--update-let-body (binding-elt (_let &optional bindings &rest body))
   "Replace usages of a binding in BODY forms.
   BINDING-ELT is a list of the form (symbol &optional value)"
-  (let* ((symbol (cl-first binding-elt))
+  (let* (;; Replace `let*' with `let' if possible.
+         (let-form (if (emr--recursive-bindings? bindings) 'let* 'let))
+         ;; Perform inlining if BINDING-ELT can be destructured.
+         (symbol (cl-first binding-elt))
          (value  (cl-second binding-elt))
-         (body (if binding-elt
-                   (emr--replace-in-tree symbol value body)
-                 body)))
-    `(,let ,bindings ,@body)))
+         (body   (if binding-elt (emr--replace-in-tree symbol value body) body)))
+    `(,let-form ,bindings ,@body)))
 
 (defun emr--inline-let-binding (symbol form)
   "Replace usages of SYMBOL with VALUE in FORM and update the bindings list."
