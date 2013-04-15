@@ -964,7 +964,6 @@ and the cdr is the updated input form."
   BINDING-ELT is a list of the form (symbol &optional value)"
   (let* ((symbol (cl-first binding-elt))
          (value  (cl-second binding-elt))
-         ;; Update body references to bindings.
          (body (if binding-elt
                    (emr--replace-in-tree symbol value body)
                  body)))
@@ -983,6 +982,9 @@ and the cdr is the updated input form."
   (cl-assert (emr--looking-at-bound-var-in-let-bindings?))
 
   (save-excursion
+    ;; Clean up after kill.
+    (join-line)
+
     (emr--goto-start-of-let-binding)
     (emr--extraction-refactor (form) "Inlined let-bound symbol"
       ;; Insert updated let-binding.
@@ -991,7 +993,11 @@ and the cdr is the updated input form."
         (emr--print)
         (emr--format-defun)
         (emr--reindent-string)
-        (insert)))))
+        (insert)))
+
+    ;; Ensure whole form is correctly reindented.
+    (mark-defun)
+    (indent-region (region-beginning) (region-end))))
 
 ;;; TODO: Use body form index instead of crazy parsing.
 ;; (defun emr--fn-body-index (fn)

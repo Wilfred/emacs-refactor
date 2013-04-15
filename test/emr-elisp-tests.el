@@ -203,17 +203,6 @@ BODY lists the forms to be executed."
            (z w))
        (message x)))))
 
-(check "let-inlining inlines binding value form in body - reversed binding order"
-  (should=
-   '(let ((x y))
-      (message w))
-
-   (emr--inline-let-binding
-    'z
-    '(let ((x y)
-           (z w))
-       (message z)))))
-
 (check "let-inlining does not modify comments"
   (should (not (-contains?
                 (-flatten (emr--inline-let-binding 'x '(let ((x y))
