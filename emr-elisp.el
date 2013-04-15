@@ -961,7 +961,7 @@ and the cdr is the updated input form."
 
 (cl-defun emr--update-let-body (binding-elt (_let &optional bindings &rest body))
   "Replace usages of a binding in BODY forms.
-  BINDING-ELT is a list of the form (symbol &optional value)"
+BINDING-ELT is a list of the form (symbol &optional value)"
   (let* (;; Replace `let*' with `let' if possible.
          (let-form (if (emr--recursive-bindings? bindings) 'let* 'let))
          ;; Perform inlining if BINDING-ELT can be destructured.
@@ -970,11 +970,25 @@ and the cdr is the updated input form."
          (body   (if binding-elt (emr--replace-in-tree symbol value body) body)))
     `(,let-form ,bindings ,@body)))
 
+(cl-defun emr--simplify-let-form ((let &optional bindings &rest body))
+  "Simplfies a `let' or `let*' form if there are no bindings.
+Returns the body form if it is a single value.
+Changes to a `progn' if is more than one value."
+  (cond
+   ;; Return form unchanged if there are let bindings after inlining.
+   (bindings `(,let ,bindings ,@body))
+   ;; Return body form if it is a singleton list.
+   ((= 1 (length body)) (car body))
+   ;; Use progn if no bindings and multiple body forms.
+   ((null body) nil)
+   (t           `(progn ,@body))))
+
 (defun emr--inline-let-binding (symbol form)
   "Replace usages of SYMBOL with VALUE in FORM and update the bindings list."
   (->> form
     (emr--remove-let-binding symbol)
-    (apply 'emr--update-let-body)))
+    (apply 'emr--update-let-body)
+    (emr--simplify-let-form)))
 
 ;;;###autoload
 (defun emr-inline-let-variable (symbol)

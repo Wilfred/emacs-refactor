@@ -224,6 +224,18 @@ BODY lists the forms to be executed."
                                                          (:emr--comment ";; y"))))
                 'y))))
 
+(check "let-inlining replaces empty let expression with progn"
+  (should=
+   '(progn f g)
+
+   (emr--inline-let-binding
+    'x
+    '(let ((x y)) f g))))
+
+(check "let-inlining replaces empty let expression with body value"
+  (should= 'val
+           (emr--inline-let-binding 'x '(let ((x y)) val))))
+
 ;;; Function implementation.
 
 (check "uses symbol names when inferring arglists from callsites"
