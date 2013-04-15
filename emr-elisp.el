@@ -541,18 +541,27 @@ CONTEXT is the top-level form that encloses FORM."
 (defun emr--unprogn (body)
   "Remove a `progn' if it is the first non-whitespace symbol in BODY.
 Ensures the result is in a list, regardless of whether a progn was found."
-  (->> (cl-list* body)
+  (->> body
     (-drop-while 'emr--newline?)
     (macroexp-unprogn)
     (-drop-while 'emr--newline?)))
 
 ;;;###autoload
+(defun emr--form-extent-for-extraction ()
+  (or
+   ;; Find symbols within the marked region.
+   (when (region-active-p)
+     (ignore-errors
+       (emr--wrapping-read (buffer-substring (region-beginning) (region-end)))))
+   ;; Find symbols within the form around point.
+   (list-at-point)))
+
 (defun emr-extract-function (name arglist)
   "Extract a function, using the current region or form point as the body.
 NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
-                     (emr--read-args (list-at-point) (thing-at-point 'defun))))
+                     (emr--read-args (emr--form-extent-for-extraction) (thing-at-point 'defun))))
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr--extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name)))
@@ -564,7 +573,9 @@ ARGLIST is its argument list."
         (emr--print
          `(defun ,name ,arglist
             :emr--newline
-            ,@(emr--unprogn sexp))))))))
+            ,@(if (listp sexp)
+                  (emr--unprogn sexp)
+                (list sexp)))))))))
 
 ;;;###autoload
 (defun emr-extract-variable (name)
@@ -728,7 +739,7 @@ The function will be called NAME and have the given ARGLIST. "
      (or (emr--duplicates? syms)
          (-intersection syms vals)))))
 
-;;; Variable insertion.
+;;; Let extraction.
 
 (defun emr--let-wrap (form &optional splice?)
   "Ensure FORM is wrapped with a `let' form. No change if FORM is already a let form.
