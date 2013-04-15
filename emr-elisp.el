@@ -409,8 +409,10 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
       (emr--function-definition? form)))
 
 (defun emr--looking-at-definition? ()
-  "Return non-nil if point is at a definition form."
-  (emr--definition? (emr--list-at-point)))
+  "return non-nil if point is at a definition form."
+  (or (emr--definition? (list-at-point))
+      (when-let (def (read (thing-at-point 'defun)))
+        (emr--find-in-tree (list-at-point) (cl-third def)))))
 
 (defun emr--autoload-exists? (function str)
   "Returns true if an autoload for FUNCTION exists in string STR."
@@ -1035,11 +1037,12 @@ BINDING-ELT is a list of the form (symbol &optional value)"
 
 ;;; Implement function
 (emr-declare-action emr-implement-function emacs-lisp-mode "implement function"
-  :predicate (and (not (emr--looking-at-string?))
+  :predicate (and (symbol-at-point)
+                  (not (emr--looking-at-string?))
                   (not (thing-at-point 'comment))
                   (not (thing-at-point 'number))
+                  (not (emr--looking-at-definition?))
                   (not (emr--looking-at-bound-var-in-let-bindings?))
-                  (symbol-at-point)
                   (not (boundp (symbol-at-point)))
                   (not (fboundp (symbol-at-point)))))
 
