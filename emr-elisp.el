@@ -945,6 +945,10 @@ point, or the previous one in the current top-level form."
          ;; Head of the list is a symbol in the binding list?
          (-contains? (emr--let-binding-list-symbols bindings) sym))))))
 
+(cl-defun emr--let-body-contains-usage? (symbol (_let &optional _bindings &rest body))
+  "Non-nil if SYMBOL is used in the body of the given let expression."
+  (-contains? (-flatten body) symbol))
+
 (defun emr--replace-in-tree (symbol value form)
   "Replace usages of SYMBOL with value in FORM."
   (cond
@@ -1006,14 +1010,10 @@ BINDING-ELT is a list of the form (symbol &optional value)"
   (cl-assert (emr--looking-at-bound-var-in-let-bindings?))
 
   (save-excursion
-    ;; Clean up after kill.
-    (join-line)
-
     (emr--goto-start-of-let-binding)
     (emr--extraction-refactor (form) "Inlined let-bound symbol"
       ;; Insert updated let-binding.
       (->> (emr--inline-let-binding symbol form)
-        ;; Pretty-format for insertion.
         (emr--print)
         (emr--format-defun)
         (emr--reindent-string)
@@ -1065,7 +1065,13 @@ BINDING-ELT is a list of the form (symbol &optional value)"
 
 ;;; Inline let-binding
 (emr-declare-action emr-inline-let-variable emacs-lisp-mode "inline binding"
-  :predicate (emr--looking-at-bound-var-in-let-bindings?))
+  :predicate (and (emr--looking-at-bound-var-in-let-bindings?)
+                  ;; Symbol has usages?
+                  (save-excursion
+                    (let ((sym (symbol-at-point)))
+                      (emr--goto-start-of-let-binding)
+                      (forward-symbol 1)
+                      (emr--let-body-contains-usage? sym (list-at-point))))))
 
 ;;; Extract variable
 (emr-declare-action emr-extract-variable emacs-lisp-mode "variable"
