@@ -239,9 +239,10 @@ BODY lists the forms to be executed."
 ;;; Function implementation.
 
 (check "uses symbol names when inferring arglists from callsites"
-  (should=
-   '(x y)
-   (emr--infer-arglist-for-usage '(hello x y))))
+  (let ((fname (cl-gensym)))
+    (should=
+     '(x y)
+     (emr--infer-arglist-for-usage `(,fname x y)))))
 
 (check "uses argn for non-symbol names when inferring arglists from callsites"
   (should=
@@ -315,11 +316,12 @@ BODY lists the forms to be executed."
          (list b y))))))
 
 (check "survives function symbol followed by non-lambda term"
-  (should=
-   '(hello)
+  (let ((fname (cl-gensym)))
+    (should=
+     `(,fname)
 
-   (emr--free-variables
-    '(function hello))))
+     (emr--free-variables
+      `(function ,fname)))))
 
 (check "checks outer scope for bindings that share names with functions"
   (should=
