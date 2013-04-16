@@ -29,6 +29,7 @@ Tested on Emacs 24.3.
 * [dash](https://github.com/magnars/dash.el)
 * [popup](https://github.com/auto-complete/popup-el)
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
+* [list-utils](https://github.com/rolandwalker/list-utils)
 
 Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
