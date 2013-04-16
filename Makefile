@@ -1,5 +1,6 @@
-emacs = emacs
-testd = $(abspath test)/
+emacs  = emacs
+carton = carton
+testd  = $(abspath test)/
 test-runner = $(testd)test-runner.el
 
 # ============================================================================
@@ -20,4 +21,4 @@ clean-flycheck :
 # Run unit tests.
 test :
 	$(emacs) --version
-	$(emacs) --batch -l $(test-runner) -f run-tests
+	$(carton) exec $(emacs) -Q --no-site-lisp --script $(test-runner)

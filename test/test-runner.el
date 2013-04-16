@@ -25,53 +25,23 @@
 
 ;;; Code:
 
-(require 'cl)
+(message "Running EMR tests")
 
-;;; ----------------------------------------------------------------------------
-;;; Load path processing.
+;; Set up the environment and run unit tests.
+(message "--> Configuring load path...")
+(add-to-list 'load-path (expand-file-name "./"))
+(add-to-list 'load-path (expand-file-name "test"))
 
-(defun directory-p (f)
-  "Test whether F is a directory.  Return nil for '.' and '..'."
-  (and (file-directory-p f) (not (string-match "/[.]+$" f))))
+(message "--> Requiring features...")
+(require 'ert)
+(require 'emr)
+(require 'emr-elisp)
 
-(defun directory-subfolders (path)
-  "Return a flat list of all subfolders of PATH."
-  (unless (string-match-p ".git" path)
-    (flatten
-     (mapcar
-      (lambda (d) (cons d (directory-subfolders d)))
-      (remove-if-not 'directory-p (directory-files path t))))))
+(message "--> Loading tests...")
+(require 'emr-elisp-tests)
 
-(defun flatten (ls)
-  (cond ((null ls) nil)
-        ((atom ls) (list ls))
-        (t (append (flatten (car ls)) (flatten (cdr ls))))))
-
-(defun add-tree-to-load-path (dir)
-  (let ((dir (expand-file-name dir)))
-    (mapc (lambda (s) (add-to-list 'load-path s))
-          (cons dir (directory-subfolders dir)))))
-
-;;; ----------------------------------------------------------------------------
-
-(defun run-tests ()
-  "Set up the environment and run unit tests."
-  (message "Configuring load path...")
-  (add-tree-to-load-path "../")
-  (add-tree-to-load-path "./")
-
-  (message "Requiring features...")
-  (require 'ert)
-  (require 'emr)
-  (require 'emr-elisp)
-
-  (message "Loading tests...")
-  (require 'emr-elisp-tests)
-
-  (message "Running tests...")
-  (ert-run-tests-batch-and-exit nil))
-
-(provide 'test-runner)
+(message "--> Running tests...")
+(ert-run-tests-batch-and-exit nil)
 
 ;; Local Variables:
 ;; lexical-binding: t
