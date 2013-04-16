@@ -3,10 +3,8 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.3
+;; Version: 0.2.1
 ;; Keywords: tools elisp convenience refactoring
-;; Package-Requires: ((s "20130320.1524") (dash "20130408.2132") (cl-lib "0.2") (popup "20130324.1305") (emacs "24.3"))
-
 
 ;; This file is not part of GNU Emacs.
 

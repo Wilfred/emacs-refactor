@@ -1,7 +1,5 @@
 emacs = emacs
 testd = $(abspath test)/
-tmpd  = $(abspath tmp)/
-
 test-runner = $(testd)test-runner.el
 
 # ============================================================================
@@ -11,21 +9,15 @@ test-runner = $(testd)test-runner.el
 all : test
 
 # Cleaning tasks.
-clean : clean-elc clean-flycheck clean-tmp
+clean : clean-elc clean-flycheck
 clean-elc :
 	rm -f *.elc
 	rm -f $(testd)*.elc
 clean-flycheck :
 	rm -f *flycheck
 	rm -f $(testd)*flycheck
-clean-tmp :
-	rm -fr $(tmpd)
 
 # Run unit tests.
-test : $(tmpd)
+test :
 	$(emacs) --version
-	HOME=$(tmpd) ;\
 	$(emacs) --batch -l $(test-runner) -f run-tests
-
-# Create dir to hold test .emacs.d
-$(tmpd) :; mkdir -p $(tmpd)

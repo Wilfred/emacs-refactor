@@ -3,10 +3,9 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.2
+;; Version: 0.2.1
 ;; Keywords: tools convenience refactoring
-;; Package-Requires: ((s "20130320.1524") (dash "20130408.2132") (cl-lib "0.2") (popup "20130324.1305") (emacs "24.3"))
-
+;; Package-Requires: ((s "1.3.1") (dash "1.1.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0"))
 ;; This file is not part of GNU Emacs.
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -139,7 +138,7 @@ PREDICATE is a condition that must be satisfied to display this item.
 If PREDICATE is not supplied, the item will always be visible for this mode.
 DESCRIPTION is shown to the left of the titile in the popup menu."
   (declare (indent 3))
-  (let ((fname (intern (format "emr--gen--%s--%s" mode title))))
+  (let ((fname (intern (format "emr--gen--%s--%s--%s" mode function title))))
     `(progn
        ;; Define a function to encapsulate the predicate. Also ensures each
        ;; refactoring command is only added once.
