@@ -947,6 +947,7 @@ point, or the previous one in the current top-level form."
            (-contains? (emr--let-binding-list-symbols bindings) sym)))))))
 
 (defun emr--let-bindings-recursively-depend? (elt bindings)
+  "Non-nil if the given let bindings list has recursive dependency on ELT."
   (when-let   (b   (--first (equal elt (emr--first-atom it)) bindings))
     (when-let (pos (cl-position b bindings :test 'equal))
       (-> (-split-at (1+ pos) bindings)
@@ -978,9 +979,7 @@ and the cdr is the updated input form."
          (updated (->> bindings (--remove (equal symbol (car-safe it)))))
 
          ;; Get the bindings form.
-         (binding (->> bindings
-                    (-remove 'emr--nl-or-comment?)
-                    (assoc symbol)))
+         (binding (->> bindings (-remove 'emr--nl-or-comment?) (assoc symbol)))
          )
     (list binding `(,let ,updated ,@body))))
 
@@ -996,7 +995,7 @@ BINDING-ELT is a list of the form (symbol &optional value)"
     `(,let-form ,bindings ,@body)))
 
 (cl-defun emr--simplify-let-form ((let &optional bindings &rest body))
-  "Simplfies a `let' or `let*' form if there are no bindings.
+  "Simplifies a `let' or `let*' form if there are no bindings.
 When there are no bindings:
 * Returns the body form if it is a single value.
 * Changes to a `progn' if is more than one value."
@@ -1019,7 +1018,9 @@ When there are no bindings:
 
 (cl-defun emr--reformat-let-binding-list ((let &optional bindings &rest body))
   "Ensure the bindings list in the given let expression is well-formatted."
-  `(,let ,(->> (-drop-while 'emr--newline? bindings)
+  `(,let ,(->> bindings
+            ;; Trim whitespace at beginning and end of list.
+            (-drop-while 'emr--newline?)
             (reverse)
             (-drop-while 'emr--newline?)
             (reverse))
