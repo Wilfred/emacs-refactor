@@ -311,7 +311,7 @@ Report the changes made to the buffer at a result of executing BODY forms."
      ;; Report changes.
      (when-let (diff (and emr-report-actions
                           (car (emr--diff-lines before-changes (buffer-string)))))
-       (destructuring-bind (_ . (line . text)) diff
+       (cl-destructuring-bind (_ . (line . text)) diff
          (unless (emr--line-visible? line)
            (emr--report-action ,description line text))))))
 
