@@ -1013,7 +1013,17 @@ When there are no bindings:
 (defun emr--inline-let-binding (symbol form)
   "Replace usages of SYMBOL with VALUE in FORM and update the bindings list."
   (cl-destructuring-bind (b-elt updated) (emr--remove-let-binding symbol form)
-    (-> (emr--update-let-body b-elt updated) (emr--simplify-let-form))))
+    (-> (emr--update-let-body b-elt updated)
+      (emr--reformat-let-binding-list)
+      (emr--simplify-let-form))))
+
+(cl-defun emr--reformat-let-binding-list ((let &optional bindings &rest body))
+  "Ensure the bindings list in the given let expression is well-formatted."
+  `(,let ,(->> (-drop-while 'emr--newline? bindings)
+            (reverse)
+            (-drop-while 'emr--newline?)
+            (reverse))
+     ,@body))
 
 ;;;###autoload
 (defun emr-inline-let-variable (symbol)
@@ -1068,7 +1078,9 @@ bindings or body of the enclosing let expression."
           ;; Simplify and tidy let expression.
           (emr--goto-start-of-let-binding)
           (kill-sexp)
-          (->> (emr--simplify-let-form (emr--read (car kill-ring)))
+          (->> (emr--read (car kill-ring))
+            (emr--reformat-let-binding-list)
+            (emr--simplify-let-form)
             (emr--print)
             (emr--format-defun)
             (emr--reindent-string)
