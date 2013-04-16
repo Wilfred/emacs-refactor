@@ -934,7 +934,7 @@ point, or the previous one in the current top-level form."
 (defun emr--looking-at-let-binding-symbol? ()
   "Non-nil if point is on the binding symbol in a let-binding form."
   (ignore-errors
-    (let* ((form (emr--list-at-point))
+    (let* ((form (save-excursion (emr--goto-open-round) (emr--list-at-point)))
            (sym (car-safe form)))
       (save-excursion
         ;; Select binding list for the let expression.
@@ -1033,7 +1033,10 @@ When there are no bindings:
 
     ;; Ensure whole form is correctly reindented.
     (mark-defun)
-    (indent-region (region-beginning) (region-end))))
+    (indent-region (region-beginning) (region-end)))
+
+  ;; Move back into bindings or body.
+  (forward-symbol 2))
 
 ;;; Let deletion
 
@@ -1046,11 +1049,6 @@ bindings or body of the enclosing let expression."
            (emr--goto-start-of-let-binding)
            (forward-symbol 1)
            (emr--let-binding-is-used? sym (list-at-point))))))
-
-(defun hello ()
-  (let ((xs '(1 2 3))
-        (ys '(2 3 4)))
-    (-intersection xs ys)))
 
 ;;;###autoload
 (defun emr-delete-let-binding-form ()
