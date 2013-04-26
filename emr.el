@@ -3,9 +3,9 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.2.1
+;; Version: 0.2.2
 ;; Keywords: tools convenience refactoring
-;; Package-Requires: ((s "1.3.1") (dash "1.1.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0"))
+;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0"))
 ;; This file is not part of GNU Emacs.
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -48,44 +48,6 @@
   "Non-nil means display an indication when a refactoring results in an insertion."
   :type 'checkbox
   :group 'emacs-refactor)
-
-;;; ----------------------------------------------------------------------------
-;;; Macros
-;;;
-;;; Convenience macros.
-
-(defun emr--macro-boundp (symbol)
-  "Test whether SYMBOL is bound as a macro."
-  (and (functionp symbol)
-       ;; This may throw an error if it's a normal function.
-       (ignore-errors
-         (eq (car (symbol-function symbol)) 'macro))))
-
-(defmacro emr--defmacro-safe (symbol arglist &rest body)
-  "Define the given macro only if it is not already defined.
-SYMBOL is the name of the macro.
-ARGLIST is a cl-style argument list.
-BODY is the body of the macro.
-See `cl-defmacro'."
-  (declare (doc-string 3) (indent defun))
-  (cl-assert (symbolp symbol))
-  (cl-assert (listp arglist))
-  `(unless (emr--macro-boundp ',symbol)
-     (cl-defmacro ,symbol ,arglist ,@body)))
-
-(emr--defmacro-safe when-let ((var form) &rest body)
-  "Execute BODY forms with bindings only if FORM evaluates to a non-nil value."
-  (declare (indent 1))
-  `(let ((,var ,form))
-     (when ,var
-       ,@body)))
-
-(emr--defmacro-safe if-let ((var form) then &rest else)
-  "Execute THEN form with bindings if FORM evaluates to a non-nil value,
-otherwise execute ELSE forms without bindings."
-  (declare (indent 1))
-  `(let ((,var ,form))
-     (if ,var ,then ,@else)))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Reporting
@@ -156,11 +118,11 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
 (defun emr-show-refactor-menu ()
   "Show the extraction menu at point."
   (interactive)
-  (if-let (actions (->> emr--refactor-commands
-                     (-map 'funcall)
-                     (-remove 'null)))
+  (-if-let (actions (->> emr--refactor-commands
+                      (-map 'funcall)
+                      (-remove 'null)))
     (atomic-change-group
-      (when-let (action (popup-menu* actions :isearch t))
+      (-when-let (action (popup-menu* actions :isearch t))
         (call-interactively action)))
     (error "No refactorings available")))
 

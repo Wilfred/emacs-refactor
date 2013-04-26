@@ -3,7 +3,7 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.2.1
+;; Version: 0.2.2
 ;; Keywords: tools elisp convenience refactoring
 
 ;; This file is not part of GNU Emacs.
@@ -94,7 +94,7 @@
       str)))
 
 (defun emr--unescape-question-marks (str)
-  "Unescape question marks in string STR that were escaped by the reader."
+  "Unescape questionmarks in string STR that were escaped by the reader."
   (with-temp-buffer
     (lisp-mode-variables)
     (insert str)
@@ -139,9 +139,9 @@
 
 (defun emr--looking-at-comment? ()
   "Non-nil if point is on a comment."
-  (when-let (comment (save-excursion
-                       (beginning-of-line)
-                       (comment-search-forward (point-at-eol) t)))
+  (-when-let (comment (save-excursion
+                        (beginning-of-line)
+                        (comment-search-forward (point-at-eol) t)))
     ;; Test if there is a comment-start before point.
     (<= comment (point))))
 
@@ -170,11 +170,11 @@
 ;;; Formatting commands
 
 (defun emr--reindent-defun ()
-  "Reindent the current top-level form."
+  "Reindent the current top level form."
   (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
 
 (defun emr--reindent-string (form-str)
-  "Reformat FORM-STRING, assuming it is a Lisp fragment."
+  "Reformat FORM-STR, assuming it is a Lisp fragment."
   (with-temp-buffer
     (lisp-mode-variables)
     (insert form-str)
@@ -199,7 +199,7 @@ Return the position of the end of FORM-STR."
 
 (defun emr--symbol-file-name (fn)
   "Find the name of the file that declares function FN."
-  (when-let (file (find-lisp-object-file-name fn (symbol-function fn)))
+  (-when-let (file (find-lisp-object-file-name fn (symbol-function fn)))
     (and (stringp file)
          (file-name-nondirectory (file-name-sans-extension file)))))
 
@@ -231,7 +231,7 @@ Return the position of the end of FORM-STR."
   (cons sym (emr--bound-variables func)))
 
 (defun emr--bound-variables (form)
-  "Find the list of let- or lambda-bound variables in form."
+  "Find the list of let- or lambda-bound variables in FORM."
   (-uniq
    (let* (
           ;; Handle errors in expansion. Expansion errors are common with syntax
@@ -264,7 +264,7 @@ Return the position of the end of FORM-STR."
 
 (defun emr--free-variables (form &optional context)
   "Try to find the symbols in FORM that do not have variable bindings.
-CONTEXT is the top-level form that encloses FORM."
+CONTEXT is the top level form that encloses FORM."
 
   ;; Marco-expand FORM and find the list of bound symbols. Diff this with the
   ;; other symbols in FORM. Figure out which ones are not functions, keywords,
@@ -307,8 +307,8 @@ Report the changes made to the buffer at a result of executing BODY forms."
   `(let ((before-changes (buffer-string)))
      ,@body
      ;; Report changes.
-     (when-let (diff (and emr-report-actions
-                          (car (emr--diff-lines before-changes (buffer-string)))))
+     (-when-let (diff (and emr-report-actions
+                           (car (emr--diff-lines before-changes (buffer-string)))))
        (cl-destructuring-bind (_ . (line . text)) diff
          (unless (emr--line-visible? line)
            (emr--report-action ,description line text))))))
@@ -321,7 +321,7 @@ Report the changes made to the buffer at a result of executing BODY forms."
 
 (defun emr--collapse-leading-newlines (form)
   "Find the first instance of newlines in FORM and collapse any newlines in sequence."
-  (if-let (pos (and (listp form) (cl-position :emr--newline form)))
+  (-if-let (pos (and (listp form) (cl-position :emr--newline form)))
     ;; Find the first newline, split FORM and drop newlines before splicing the
     ;; parts back together with a newline separator.
     (cl-destructuring-bind (hd tl) (-split-at pos form)
@@ -409,7 +409,7 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
 (defun emr--looking-at-definition? ()
   "return non-nil if point is at a definition form."
   (or (emr--definition? (list-at-point))
-      (when-let (def (read (thing-at-point 'defun)))
+      (-when-let (def (read (thing-at-point 'defun)))
         (emr--find-in-tree (list-at-point) (cl-third def)))))
 
 (defun emr--autoload-exists? (function str)
@@ -450,7 +450,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
   (interactive)
   (save-excursion
     (emr--goto-open-round)
-    (if-let (vals (emr--extract-var-values (emr--list-at-point)))
+    (-if-let (vals (emr--extract-var-values (emr--list-at-point)))
       (if (> (length vals) 1)
           (emr--extraction-refactor () "Inlining applied at"
 
@@ -462,7 +462,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
             ;; Perform inlining.
             ;; emr--extraction-refactor will report the first insertion. If
             ;; there are none or more than one insertion, override this report.
-            (if-let (lines (-map 'int-to-string (emr--replace-usages vals)))
+            (-if-let (lines (-map 'int-to-string (emr--replace-usages vals)))
               (when (> (length lines) 1)
                 (message "Inlining applied at lines %s" (s-join ", " lines)))
               (message "No usages found")))
@@ -507,19 +507,19 @@ Uses of the variable are replaced with the initvalue in the variable definition.
          (read-string (format "%s:  " prompt))
        (read-string (format "%s (default: %s): "  prompt val) nil nil val)))))
 
-(defun emr--format-submitted-arglist (input)
-  "Format a user-submitted arglist, raising an error if it is malformed."
-  (unless (or (s-blank? input)
-              (s-matches? (rx (or "()" "nil")) input))
+(defun emr--format-submitted-arglist (arglist)
+  "Format a user-submitted ARGLIST, raising an error if it is malformed."
+  (unless (or (s-blank? arglist)
+              (s-matches? (rx (or "()" "nil")) arglist))
     (condition-case _err
-        (read (format "(%s)" input))
+        (read (format "(%s)" arglist))
       (error
        ;; Rethrow reader errors as something more informative.
        (error "Malformed arglist")))))
 
 (defun emr--read-args (form context)
   "Read an arglist from the user, using FORM to generate a suggestion.
-CONTEXT is the top-level form that encloses FORM."
+CONTEXT is the top level form that encloses FORM."
   (let ((input
          ;; Generate suggested arglist for prompt.
          (->> (emr--free-variables form context)
@@ -651,7 +651,7 @@ See `autoload' for details."
 ;;;###autoload
 (defun emr-implement-function (name arglist)
   "Create a function definition for the symbol at point.
-The function will be called NAME and have the given ARGLIST. "
+The function will be called NAME and have the given ARGLIST."
   (interactive (list
                 (emr--read (emr--read-with-default "Name" (symbol-at-point)))
                 ;; Infer arglist from usage.
@@ -704,7 +704,7 @@ The function will be called NAME and have the given ARGLIST. "
 ;;; Binding membership tests.
 
 (defun emr--first-atom (form)
-  "Returns the first atom the car of FORM, at any level of nesting."
+  "Return the first atom the car of FORM, at any level of nesting."
   (if (listp form)
       (car-safe (-flatten form))
     form))
@@ -720,14 +720,14 @@ The function will be called NAME and have the given ARGLIST. "
   (/= (length ls) (length (-distinct ls))))
 
 (defun emr--let-binding-list-symbols (binding-forms)
-  "Return the symbols defined in a let BINDING FORM."
+  "Return the symbols defined in the given let BINDING-FORMS."
   (->> binding-forms
     (--map (or (car-safe it) it))
     (-remove 'emr--nl-or-comment?)
     (-remove 'null)))
 
 (defun emr--let-binding-list-values (binding-forms)
-  "Return the values in a let BINDING FORM."
+  "Return the values in the given let BINDING-FORMS."
   (->> binding-forms (-map 'cdr-safe) (-remove 'emr--nl-or-comment?)))
 
 (cl-defun emr--let-binding-list ((_let &optional bindings &rest body))
@@ -749,7 +749,8 @@ The function will be called NAME and have the given ARGLIST. "
 ;;; Let extraction.
 
 (defun emr--let-wrap (form &optional splice?)
-  "Ensure FORM is wrapped with a `let' form. No change if FORM is already a let form.
+  "Ensure FORM is wrapped with a `let' form.
+No changes if FORM is already a let form.
 SPLICE? determines whether FORM should be directly spliced into the let BODY."
   (let ((nonl (if (listp form) (-drop-while 'emr--newline? form) form)))
     (cond
@@ -793,7 +794,7 @@ If BINDINGS-LIST is nil, just return the new bindings."
 
 (defun emr--maybe-skip-docstring (form)
   "Skip docstring if it is at the head of FORM.
-Do not skip if there are no forms afterwards. "
+Do not skip if there are no forms afterwards."
   (if (and (stringp (car-safe form))
            (-remove 'emr--newline? (cdr form)))
       (cdr form)
@@ -838,7 +839,7 @@ The body is the part of FORM that can be safely transformed without breaking the
     `((,def ,sym :emr--newline) ,value (,docstring))))
 
 (defun emr--partition-body (form)
-  "Splits the given form into a 2-item list at its body forms, if any."
+  "Split FORM into a 2-item list at its body forms, if any."
   (cond ((emr--defun-form? form)          (emr--split-defun form))
         ((emr--variable-definition? form) (emr--split-defvar form))
         (t
@@ -910,14 +911,14 @@ The expression will be bound to SYMBOL."
 ;;; Let inlining
 
 (defun emr--goto-start-of-let-binding ()
-  "Move point to the opening paren of the let-expression at
-point, or the previous one in the current top-level form."
+  "Move to the opening paren of the let-expression at point.
+Otherwise move to the previous one in the current top level form."
   (save-match-data
     ;; If we're on a let-form, move fowards so the subsequent regex motion works.
     (when (or (equal (symbol-at-point) 'let)
               (equal (symbol-at-point) 'let*))
       (forward-whitespace 1))
-    ;; Find start of let-expression, bounded to the current top-level-form.
+    ;; Find start of let-expression, bounded to the current top-level form.
     (search-backward-regexp (rx "(" (or "let" "let*") (or "\n" " " "("))
                             (save-excursion (beginning-of-defun) (point))
                             t)))
@@ -946,12 +947,12 @@ point, or the previous one in the current top-level form."
 
 (defun emr--let-bindings-recursively-depend? (elt bindings)
   "Non-nil if the given let bindings list has recursive dependency on ELT."
-  (when-let   (b   (--first (equal elt (emr--first-atom it)) bindings))
-    (when-let (pos (cl-position b bindings :test 'equal))
-      (-> (-split-at (1+ pos) bindings)
-        (cl-second)
-        (-flatten)
-        (-contains? elt)))))
+  (-when-let* ((b   (--first (equal elt (emr--first-atom it)) bindings))
+               (pos (cl-position b bindings :test 'equal)))
+    (-> (-split-at (1+ pos) bindings)
+      (cl-second)
+      (-flatten)
+      (-contains? elt))))
 
 (cl-defun emr--let-binding-is-used? (symbol (_let &optional bindings &rest body))
   "Non-nil if SYMBOL is used in the body or other bindings of the given let expression."
@@ -962,7 +963,7 @@ point, or the previous one in the current top-level form."
    (-contains? (-flatten body) symbol)))
 
 (defun emr--replace-in-tree (symbol value form)
-  "Replace usages of SYMBOL with value in FORM."
+  "Replace usages of SYMBOL with VALUE in FORM."
   (cond
    ((listp form) (--map (emr--replace-in-tree symbol value it) form))
    ((equal symbol form) value)
@@ -1026,7 +1027,7 @@ When there are no bindings:
 
 ;;;###autoload
 (defun emr-inline-let-variable (symbol)
-  "Inlines the let-bound variable at point."
+  "Inline the let-bound variable named SYMBOL at point."
   (interactive (list (symbol-at-point)))
   (cl-assert (emr--looking-at-let-binding-symbol?))
 
