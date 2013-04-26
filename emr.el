@@ -55,22 +55,22 @@
 ;;; These commands may be used to describe the changes made to buffers. See
 ;;; example in emr-elisp.
 
-(cl-defun emr--ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
+(defun* emr:ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
   (if (> (length str) maxlen)
       (concat (substring-no-properties str 0 (1- maxlen)) "…")
     str))
 
-(defun emr--indexed-lines (str)
+(defun emr:indexed-lines (str)
   "Split string STR into a list of conses.
 The index is the car and the line is the cdr."
   (--map-indexed (cons it-index it) (s-lines str)))
 
-(defun emr--diff-lines (str1 str2)
+(defun emr:diff-lines (str1 str2)
   "Get the lines that differ between strings STR1 and STR2."
   (--remove (equal (car it) (cdr it))
-            (-zip (emr--indexed-lines str1) (emr--indexed-lines str2))))
+            (-zip (emr:indexed-lines str1) (emr:indexed-lines str2))))
 
-(cl-defun emr--report-action (description line text)
+(defun* emr:report-action (description line text)
   "Report the action that occured at the point of difference."
   (when emr-report-actions
 
@@ -79,7 +79,7 @@ The index is the car and the line is the cdr."
            (replace-regexp-in-string "[ \n\r\t]+" " " text))
 
       (format "%s line %s: %s" description line)
-      (emr--ellipsize)
+      (emr:ellipsize)
       (message))))
 
 ;;; ----------------------------------------------------------------------------
@@ -87,7 +87,7 @@ The index is the car and the line is the cdr."
 ;;; Items to be displayed in the refactoring popup menu are added using the
 ;;; `emr-declare-action' macro.
 
-(defvar emr--refactor-commands '()
+(defvar emr:refactor-commands '()
   "A list of refactoring commands used to build menu items.")
 
 ;;;###autoload
@@ -100,7 +100,7 @@ PREDICATE is a condition that must be satisfied to display this item.
 If PREDICATE is not supplied, the item will always be visible for this mode.
 DESCRIPTION is shown to the left of the titile in the popup menu."
   (declare (indent 3))
-  (let ((fname (intern (format "emr--gen--%s--%s--%s" mode function title))))
+  (let ((fname (intern (format "emr:gen--%s--%s--%s" mode function title))))
     `(progn
        ;; Define a function to encapsulate the predicate. Also ensures each
        ;; refactoring command is only added once.
@@ -110,7 +110,7 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
                       (eval ,predicate)))
            (popup-make-item ,title :value ',function :summary ,description)))
        ;; Make this refactoring available in the popup menu.
-       (add-to-list 'emr--refactor-commands ',fname t))))
+       (add-to-list 'emr:refactor-commands ',fname t))))
 
 
 
@@ -118,7 +118,7 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
 (defun emr-show-refactor-menu ()
   "Show the extraction menu at point."
   (interactive)
-  (-if-let (actions (->> emr--refactor-commands
+  (-if-let (actions (->> emr:refactor-commands
                       (-map 'funcall)
                       (-remove 'null)))
     (atomic-change-group
