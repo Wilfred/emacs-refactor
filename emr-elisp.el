@@ -380,6 +380,11 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
 ;;; ----------------------------------------------------------------------------
 ;;; Definition site tests.
 
+(defun emr:macro-boundp (symbol)
+  "Test whether SYMBOL is bound as a macro."
+  (and (fboundp symbol)
+       (eq (car (symbol-function symbol)) 'macro)))
+
 (defun emr:macro-definition? (form)
   "Return t if FORM expands to a macro definition."
   (ignore-errors
@@ -618,16 +623,21 @@ See `autoload' for details."
           (file (or (emr:symbol-file-name sym)
                     (read-string "File: "))))
      (list sym file)))
-  (let ((form `(autoload ',function ,file)))
-    (save-excursion
-      (emr:reporting-buffer-changes "Extracted to"
-        ;; Put the extraction next to existing autoloads if any, otherwise
-        ;; insert above top-level form.
-        (if (emr:goto-first-match "^(autoload ")
-            (progn (forward-line 1) (end-of-line) (newline)
-                   (insert (emr:print form)))
-          (emr:insert-above
-           (emr:print form)))))))
+
+  ;; Bail if there is already an autoload for that symbol.
+  (if (emr:autoload-exists? (symbol-at-point) (buffer-string))
+      (error "Autoload already exists")
+
+    (let ((form `(autoload ',function ,file)))
+      (save-excursion
+        (emr:reporting-buffer-changes "Extracted to"
+          ;; Put the extraction next to existing autoloads if any, otherwise
+          ;; insert above top-level form.
+          (if (emr:goto-first-match "^(autoload ")
+              (progn (forward-line 1) (end-of-line) (newline)
+                     (insert (emr:print form)))
+            (emr:insert-above
+             (emr:print form))))))))
 
 ;;;###autoload
 (defun emr-comment-form ()
@@ -1166,9 +1176,9 @@ bindings or body of the enclosing let expression."
 ;;; Extract autoload
 (emr-declare-action emr-extract-autoload emacs-lisp-mode "autoload"
   :description "autoload"
-  :predicate (and (functionp (symbol-at-point))
-                  (not (emr:variable-definition? (emr:list-at-point)))
-                  (not (emr:autoload-exists? (symbol-at-point) (buffer-string)))))
+  :predicate (and (or (functionp (symbol-at-point))
+                      (emr:macro-boundp (symbol-at-point)))
+                  (not (emr:variable-definition? (emr:list-at-point)))))
 
 ;;; Comment-out form
 ;;; Should be looking at a lisp list.
