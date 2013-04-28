@@ -7,7 +7,7 @@ a simple declarative interface for easy extension.
 
 To use EMR when editing, simply move point to an expression and invoke the refactor menu.
 
-![Refactoring menu example](https://raw.github.com/chrisbarrett/emacs-refactor/master/emr.png)
+![Refactoring menu example](https://raw.github.com/chrisbarrett/emacs-refactor/master/assets/emr.png)
 
 EMR ships with useful refactorings for Emacs Lisp, including:
 
