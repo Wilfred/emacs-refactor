@@ -1,7 +1,5 @@
 *~
 *.elc
-.DS_Store
-\#*
-TAGS
-tmp
 elpa
+*.tar
+*-pkg.el
