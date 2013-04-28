@@ -27,8 +27,8 @@ Tested on Emacs 24.3.
 
 ## Package
 
-`emacs-refactor` is available on [MELPA](http://melpa.milkbox.net/). This is
-the easiest way to install.
+`emr` is available on [MELPA](http://melpa.milkbox.net/). This is the easiest
+way to install.
 
 If you haven't set up MELPA, you'll need to add the following to your init.el
 
@@ -43,7 +43,7 @@ If you haven't set up MELPA, you'll need to add the following to your init.el
 
 Once MELPA is configured:
 
-1. `M-x package-install emacs-refactor`.
+1. `M-x package-install emr`
 
 2. Configure your init.el:
 
