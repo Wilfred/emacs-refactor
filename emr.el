@@ -50,6 +50,24 @@
   :group 'emacs-refactor)
 
 ;;; ----------------------------------------------------------------------------
+;;; Utility functions
+;;;
+;;; Useful functions when writing refactoring commands.
+
+(defun emr-looking-at-string? ()
+  "Return non-nil if point is inside a string."
+  (equal (face-at-point) 'font-lock-string-face))
+
+(defun emr-looking-at-comment? ()
+  "Non-nil if point is on a comment."
+  (equal (face-at-point) 'font-lock-comment-face))
+
+(defun emr-blank? (str)
+  "Non-nil if STR is null, empty or whitespace-only."
+  (or (s-blank? str)
+      (s-matches? (rx bol (* space) eol) str)))
+
+;;; ----------------------------------------------------------------------------
 ;;; Reporting
 ;;;
 ;;; These commands may be used to describe the changes made to buffers. See
@@ -130,8 +148,6 @@ DESCRIPTION is shown to the left of the titile in the popup menu."
            (popup-make-item ,title :value ',function :summary ,description)))
        ;; Make this refactoring available in the popup menu.
        (add-to-list 'emr:refactor-commands ',fname t))))
-
-
 
 ;;;###autoload
 (defun emr-show-refactor-menu ()

@@ -1,4 +1,4 @@
-;;; emr-c.el --- Refactorings for C
+;;; emr-c.el --- Refactoring commands for C
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -21,25 +21,28 @@
 
 ;;; Commentary:
 
-;; Refactorings for C
+;; Refactoring commands for C.
 
 ;;; Code:
 
 (require 'emr)
+(require 's)
+(require 'dash)
+
+(autoload 'c-indent-defun "cc-cmds")
+(autoload 'c-get-style-variables "cc-styles")
 
 (defun emr-c:extract-above (desc str)
   "Insert STR above the current defun."
   (declare (indent 1))
   (save-excursion
     (beginning-of-defun)
+    (while (emr-looking-at-comment?)
+      (forward-line -1))
     (open-line 2)
     (emr-reporting-buffer-changes desc
       (insert str)
       (c-indent-defun))))
-
-(defun emr-c:blank? (str)
-  (or (s-blank? str)
-      (s-matches? (rx bol (* space) eol) str)))
 
 (defun emr-c:add-return-statement (str)
   "Prepend a return statement to the last line of STR."
@@ -47,9 +50,9 @@
       ;; Clean up lines and reverse for processing.
       (->> (s-split "\n" str)
         (-map 's-trim)
-        (-drop-while 'emr-c:blank?)
+        (-drop-while 'emr-blank?)
         (nreverse)
-        (-drop-while 'emr-c:blank?))
+        (-drop-while 'emr-blank?))
     ;; Add return statement.
     (unless (and last (s-matches? (rx bol "return") last))
       (setq last (format "return %s" (s-trim last))))
@@ -63,7 +66,8 @@
 
 (defun emr-c:spacing-before-function-curly ()
   "Use the current style to format the spacing between the arglist and body."
-  (let* ((vars (c-get-style-variables c-indentation-style nil))
+  (let* ((vars (and (boundp 'c-indentation-style)
+                    (c-get-style-variables c-indentation-style nil)))
          (spaces
           (->> (assoc 'c-offsets-alist vars) (cdr)
                (assoc 'defun-open) (cdr)))
@@ -73,6 +77,13 @@
     (concat (s-repeat (or spaces 0) " ")
             (s-repeat (or newlines 0) " "))))
 
+(defun emr-c:format-function-usage (name arglist)
+  (let ((args (->> (s-split "," arglist)
+                (-map 's-trim)
+                (--map (car (last (s-split-words it))))
+                (s-join ", "))))
+    (format "%s(%s)" name args)))
+
 ;;;###autoload
 (defun emr-c-extract-function (name return arglist)
   "Extract the current region as a new function.
@@ -81,22 +92,31 @@
 * ARGLIST is the argument list."
   (interactive
    (list
-    (s-trim (read-string "Name: " nil t "fn"))
-    (s-trim (read-string "Return type: " nil t "void"))
+    ;; Read name, ensuring it is not blank.
+    (let ((input (s-trim (read-string "Name: " nil t))))
+      (if (s-blank? input)
+          (user-error "Must enter a function name")
+        input))
+    (s-trim (read-string "Return type (default: void): " nil t "void"))
     (s-trim (read-string "Arglist: "))))
   (cl-assert (region-active-p))
+
   (atomic-change-group
     (kill-region (region-beginning) (region-end))
-    ;; Insert usage.
-    (insert (format "%s()" name))
-    ;; Insert a newline, possibly with semicolon.
-    (if (save-excursion
-          (goto-char (region-end))
-          (emr-c:blank? (buffer-substring (point) (line-end-position))))
-        (insert ";\n")
-      (insert "\n"))
 
-    (indent-for-tab-command)
+    ;; Insert usage. Place point inside opening brace.
+    (insert (emr-c:format-function-usage name arglist))
+    (search-backward "(")
+    (forward-char)
+
+    ;; Insert a semicolon and newline if there's nothing else on this line.
+    (save-excursion
+      (search-forward ")")
+      (when (s-matches? (rx (* space) "}" eol)
+                        (buffer-substring (point) (line-end-position)))
+        (insert ";\n"))
+      (indent-for-tab-command))
+
     ;; Insert declaration.
     (emr-c:extract-above "Extracted function"
       (format
@@ -116,6 +136,6 @@
 
 ;; Local Variables:
 ;; lexical-binding: t
-;; End:
+; End:
 
 ;;; emr-c.el ends here

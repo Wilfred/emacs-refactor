@@ -128,21 +128,6 @@
     (when (string-match regex (buffer-string) 0)
       (goto-char (match-beginning 0)))))
 
-(defun emr:looking-at-string? ()
-  "Return non-nil if point is inside a string."
-  (save-excursion
-    (let ((point (point)))
-      (beginning-of-defun)
-      (nth 3 (parse-partial-sexp (point) point)))))
-
-(defun emr:looking-at-comment? ()
-  "Non-nil if point is on a comment."
-  (-when-let (comment (save-excursion
-                        (beginning-of-line)
-                        (comment-search-forward (point-at-eol) t)))
-    ;; Test if there is a comment-start before point.
-    (<= comment (point))))
-
 (defun emr:looking-at-decl? ()
   (-contains? '(interactive declare) (car-safe (emr:list-at-point))))
 
@@ -150,7 +135,7 @@
   "Move to the opening paren for the Lisp list at point."
   (interactive)
   (when (or (not (equal "(" (thing-at-point 'char)))
-            (emr:looking-at-string?))
+            (emr-looking-at-string?))
     (beginning-of-sexp)
     (unless (equal "(" (thing-at-point 'char))
       (search-backward "("))))
@@ -161,7 +146,7 @@
   (emr:goto-open-round)
   (when (or (thing-at-point-looking-at "'")
             (thing-at-point-looking-at "`")
-            (emr:looking-at-string?))
+            (emr-looking-at-string?))
     (search-backward-regexp (rx (or "'" "`")))))
 
 ;;; ----------------------------------------------------------------------------
@@ -1097,7 +1082,7 @@ bindings or body of the enclosing let expression."
 ;;; Implement function
 (emr-declare-action emr-implement-function emacs-lisp-mode "implement function"
   :predicate (and (symbol-at-point)
-                  (not (emr:looking-at-string?))
+                  (not (emr-looking-at-string?))
                   (not (thing-at-point 'comment))
                   (not (thing-at-point 'number))
                   (not (emr:looking-at-definition?))
@@ -1163,7 +1148,7 @@ bindings or body of the enclosing let expression."
 ;;; Should be looking at a lisp list.
 (emr-declare-action emr-comment-form emacs-lisp-mode "comment"
   :predicate (and (thing-at-point 'defun)
-                  (not (emr:looking-at-comment?))))
+                  (not (emr-looking-at-comment?))))
 
 (provide 'emr-elisp)
 
