@@ -28,8 +28,8 @@
 (require 'emr)
 (require 's)
 (require 'dash)
-
-(autoload 'c-indent-defun "cc-cmds")
+(require 'thingatpt)
+(require 'cc-cmds)
 (autoload 'c-get-style-variables "cc-styles")
 
 (defun emr-c:extract-above (desc str)
