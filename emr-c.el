@@ -34,7 +34,8 @@
     (beginning-of-defun)
     (open-line 2)
     (emr-reporting-buffer-changes desc
-      (insert str))))
+      (insert str)
+      (c-indent-defun))))
 
 (defun emr-c:blank? (str)
   (or (s-blank? str)
@@ -60,6 +61,18 @@
       (--map (concat (s-repeat tab-width " ") it))
       (s-join "\n"))))
 
+(defun emr-c:spacing-before-function-curly ()
+  "Use the current style to format the spacing between the arglist and body."
+  (let* ((vars (c-get-style-variables c-indentation-style nil))
+         (spaces
+          (->> (assoc 'c-offsets-alist vars) (cdr)
+               (assoc 'defun-open) (cdr)))
+         (newlines
+          (->> (assoc 'c-hanging-braces-alist vars) (cdr)
+               (assoc 'defun-open) (cdr))))
+    (concat (s-repeat (or spaces 0) " ")
+            (s-repeat (or newlines 0) " "))))
+
 ;;;###autoload
 (defun emr-c-extract-function (name return arglist)
   "Extract the current region as a new function.
@@ -76,20 +89,23 @@
     (kill-region (region-beginning) (region-end))
     ;; Insert usage.
     (insert (format "%s()" name))
-    (when (save-excursion
-            (goto-char (region-end))
-            (emr-c:blank? (buffer-substring (point) (line-end-position))))
-      (insert ";\n"))
+    ;; Insert a newline, possibly with semicolon.
+    (if (save-excursion
+          (goto-char (region-end))
+          (emr-c:blank? (buffer-substring (point) (line-end-position))))
+        (insert ";\n")
+      (insert "\n"))
 
     (indent-for-tab-command)
     ;; Insert declaration.
     (emr-c:extract-above "Extracted function"
       (format
-       "%s %s(%s){\n%s\n}"
+       "%s %s(%s)%s{\n%s\n}"
        return name arglist
+       (emr-c:spacing-before-function-curly)
        ;; Add a return statement if not a void function.
        (if (equal "void" return)
-           (car kill-ring)
+           (s-trim (car kill-ring))
          (emr-c:add-return-statement (car kill-ring)))))
     (setq kill-ring (cdr kill-ring))))
 
