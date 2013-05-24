@@ -26,27 +26,9 @@
 ;;; Code:
 
 (require 'ert)
+(require 'test-utils (expand-file-name "./test-utils.el"))
 (require 'emr (expand-file-name "../emr.el"))
 (require 'emr-elisp (expand-file-name "../emr-elisp.el"))
-
-(defmacro check (desc &rest body)
-  "Wrap `ert-deftest' with a simpler interface.
-DESC is a string describing the test.
-BODY lists the forms to be executed."
-  (declare (indent 1))
-  `(ert-deftest
-       ,(intern (replace-regexp-in-string "[ .]" "_" desc)) ()
-     ,@body))
-
-(defun should= (x y)
-  "Assert that objects X and Y are equal."
-  (should (equal x y)))
-
-(defun should-match (regex str)
-  "Assert that string STR matches REGEX."
-  (should (string-match-p regex str)))
-
-;;; ----------------------------------------------------------------------------
 
 ;;; Read/Print
 ;;;

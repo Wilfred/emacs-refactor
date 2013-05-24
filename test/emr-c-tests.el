@@ -1,4 +1,4 @@
-;;; test-runner --- Runs emr tests.
+;;; emr-c-tests.el --- Tests for emr-c
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -21,34 +21,19 @@
 
 ;;; Commentary:
 
-;; Runs emr tests.
+;; Tests for emr-c
 
 ;;; Code:
 
-(message "Running EMR tests")
-
-;; Set up the environment and run unit tests.
-(message "--> Configuring load path...")
-(add-to-list 'load-path (expand-file-name "./"))
-(add-to-list 'load-path (expand-file-name "test"))
-
-(message "--> Requiring features...")
 (require 'ert)
-(require 'emr)
-(require 'emr-elisp)
-(require 'emr-c)
+(require 'test-utils (expand-file-name "./test-utils.el"))
+(require 'emr (expand-file-name "../emr.el"))
+(require 'emr-c (expand-file-name "../emr-c.el"))
 
-(message "--> Loading tests...")
-(require 'test-utils)
-(require 'emr-elisp-tests)
-(require 'emr-c-tests)
-
-(message "--> Running tests...")
-(ert-run-tests-batch-and-exit nil)
+(provide 'emr-c-tests)
 
 ;; Local Variables:
 ;; lexical-binding: t
-;; byte-compile-warnings: (not cl-functions)
 ;; End:
 
-;;; test-runner.el ends here
+;;; emr-c-tests.el ends here

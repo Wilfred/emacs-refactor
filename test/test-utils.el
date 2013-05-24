@@ -1,4 +1,4 @@
-;;; test-runner --- Runs emr tests.
+;;; test-utils.el --- Common utilities for emr tests
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -21,34 +21,31 @@
 
 ;;; Commentary:
 
-;; Runs emr tests.
+;; Common utilities for emr tests
 
 ;;; Code:
 
-(message "Running EMR tests")
+(defmacro check (desc &rest body)
+  "Wrap `ert-deftest' with a simpler interface.
+DESC is a string describing the test.
+BODY lists the forms to be executed."
+  (declare (indent 1))
+  `(ert-deftest
+       ,(intern (replace-regexp-in-string "[ .]" "_" desc)) ()
+     ,@body))
 
-;; Set up the environment and run unit tests.
-(message "--> Configuring load path...")
-(add-to-list 'load-path (expand-file-name "./"))
-(add-to-list 'load-path (expand-file-name "test"))
+(defun should= (x y)
+  "Assert that objects X and Y are equal."
+  (should (equal x y)))
 
-(message "--> Requiring features...")
-(require 'ert)
-(require 'emr)
-(require 'emr-elisp)
-(require 'emr-c)
+(defun should-match (regex str)
+  "Assert that string STR matches REGEX."
+  (should (string-match-p regex str)))
 
-(message "--> Loading tests...")
-(require 'test-utils)
-(require 'emr-elisp-tests)
-(require 'emr-c-tests)
-
-(message "--> Running tests...")
-(ert-run-tests-batch-and-exit nil)
+(provide 'test-utils)
 
 ;; Local Variables:
 ;; lexical-binding: t
-;; byte-compile-warnings: (not cl-functions)
 ;; End:
 
-;;; test-runner.el ends here
+;;; test-utils.el ends here
