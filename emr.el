@@ -27,8 +27,8 @@
 ;; Bind the `emr-show-refactor-menu` command to something convenient.
 ;;
 ;; (autoload 'emr-show-refactor-menu "emr")
-;; (add-hook 'prog-mode-hook
-;;           (lambda () (local-set-key (kbd "M-RET") 'emr-show-refactor-menu)))
+;; (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
+;; (eval-after-load "emr" '(emr-initialize))
 ;;
 ;; See README.md for more information.
 
@@ -126,6 +126,12 @@ Report the changes made to the buffer at a result of executing BODY forms."
 
 (defvar emr:refactor-commands '()
   "A list of refactoring commands used to build menu items.")
+
+;;;###autoload
+(defun emr-initialize ()
+  "Activate language support for EMR."
+  (eval-after-load "lisp-mode" '(require 'emr-elisp))
+  (eval-after-load "cc-mode" '(require 'emr-c)))
 
 ;;;###autoload
 (cl-defmacro emr-declare-action (function mode title &key (predicate t) description)

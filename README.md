@@ -47,11 +47,10 @@ Once MELPA is configured:
 
 2. Configure your init.el:
 
-   ```lisp
-   (add-hook 'prog-mode-hook
-      (lambda () (local-set-key (kbd "M-RET") 'emr-show-refactor-menu)))
+  ```lisp
+ (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
+ (eval-after-load "emr" '(emr-initialize))
    ```
-
 
 ## Manual
 
