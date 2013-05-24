@@ -165,7 +165,7 @@ The index is the car and the line is the cdr."
   (eval-after-load "cc-mode" '(require 'emr-c)))
 
 ;;;###autoload
-(cl-defmacro emr-declare-action (function mode title &key (predicate t) description)
+(defmacro* emr-declare-action (function &key modes title (predicate t) description)
   "Define a refactoring command.
 FUNCTION is the refactoring command to perform.
 MODE is the major mode in which this
@@ -173,18 +173,22 @@ TITLE is the name of the command that will be displayed in the popup menu.
 PREDICATE is a condition that must be satisfied to display this item.
 If PREDICATE is not supplied, the item will always be visible for this mode.
 DESCRIPTION is shown to the left of the titile in the popup menu."
-  (declare (indent 3))
-  (let ((fname (intern (format "emr:gen--%s--%s--%s" mode function title))))
+  (declare (indent 1))
+  (cl-assert modes)
+  (cl-assert title)
+  (let ((fname (intern (format "emr:gen--%s--%s" function title)))
+        (modes (if (symbolp modes) (list modes) modes)))
     `(progn
        ;; Define a function to encapsulate the predicate. Also ensures each
        ;; refactoring command is only added once.
        (defun ,fname nil
-         (when (and (derived-mode-p ',mode)
+         (when (and (apply 'derived-mode-p ',modes)
                     (ignore-errors
                       (eval ,predicate)))
            (popup-make-item ,title :value ',function :summary ,description)))
        ;; Make this refactoring available in the popup menu.
-       (add-to-list 'emr:refactor-commands ',fname t))))
+       (add-to-list 'emr:refactor-commands ',fname t)
+       ',function)))
 
 ;;;###autoload
 (defun emr-show-refactor-menu ()

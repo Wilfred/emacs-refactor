@@ -97,9 +97,11 @@ As an example, here is the declaration for a refactoring that ships with EMR:
 
 ```lisp
 ;;; Extract constant
-(emr-declare-action emr-extract-constant emacs-lisp-mode "constant"
-  :predicate (not (emr--looking-at-definition?))
-  :description "defconst")
+(emr-declare-action emr-extract-constant
+  :title"constant"
+  :description "defconst"
+  :modes emacs-lisp-mode
+  :predicate (not (emr--looking-at-definition?)))
 ```
 
 This wires the `emr-extract-constant` function to be displayed in

@@ -156,13 +156,16 @@ If there is no assignment, extract the whole line."
   (c-end-of-statement)
   (call-interactively 'emr-c-extract-function))
 
-(emr-declare-action emr-c-extract-function c-mode "function"
+(emr-declare-action emr-c-extract-function
+  :title "function"
   :description "region"
+  :modes c-mode
   :predicate (region-active-p))
 
 (emr-declare-action emr-c-extract-function-from-expression
-    c-mode "function"
+  :title "function"
   :description "expression"
+  :modes c-mode
   :predicate (not (region-active-p)))
 
 (provide 'emr-c)

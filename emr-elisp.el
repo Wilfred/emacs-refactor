@@ -1069,7 +1069,9 @@ bindings or body of the enclosing let expression."
 ;;; Declare commands with EMR.
 
 ;;; Implement function
-(emr-declare-action emr-implement-function emacs-lisp-mode "implement function"
+(emr-declare-action emr-implement-function
+  :title "implement function"
+  :modes emacs-lisp-mode
   :predicate (and (symbol-at-point)
                   (not (emr-looking-at-string?))
                   (not (thing-at-point 'comment))
@@ -1080,62 +1082,83 @@ bindings or body of the enclosing let expression."
                   (not (fboundp (symbol-at-point)))))
 
 ;;; Inline variable
-(emr-declare-action emr-inline-variable emacs-lisp-mode "inline"
+(emr-declare-action emr-inline-variable
+  :title "inline"
+  :modes emacs-lisp-mode
   :predicate (emr:variable-definition? (emr:list-at-point)))
 
 ;;; Extract function
-(emr-declare-action emr-extract-function emacs-lisp-mode "function"
+(emr-declare-action emr-extract-function
+  :title "function"
+  :description "defun"
+  :modes emacs-lisp-mode
   :predicate (not (or (emr:looking-at-definition?)
-                      (emr:looking-at-let-binding-symbol?)))
-  :description "defun")
+                      (emr:looking-at-let-binding-symbol?))))
 
 ;;; Let-bind variable
-(emr-declare-action emr-extract-to-let emacs-lisp-mode "let-bind"
+(emr-declare-action emr-extract-to-let
+  :title "let-bind"
+  :description "let"
+  :modes emacs-lisp-mode
   :predicate (not (or (emr:looking-at-definition?)
                       (emr:looking-at-decl?)
-                      (emr:looking-at-let-binding-symbol?)))
-  :description "let")
+                      (emr:looking-at-let-binding-symbol?))))
 
 ;;; Inline let-binding
-(emr-declare-action emr-inline-let-variable emacs-lisp-mode "inline binding"
+(emr-declare-action emr-inline-let-variable
+  :title "inline binding"
+  :modes emacs-lisp-mode
   :predicate (and (emr:looking-at-let-binding-symbol?)
                   (emr:let-bound-var-at-point-has-usages?)))
 
 ;;; Delete unused let-binding
-(emr-declare-action emr-delete-let-binding-form emacs-lisp-mode "delete binding"
+(emr-declare-action emr-delete-let-binding-form
+  :title "delete binding"
   :description "unused"
+  :modes emacs-lisp-mode
   :predicate (and (emr:looking-at-let-binding-symbol?)
                   (not (emr:let-bound-var-at-point-has-usages?))))
 
 ;;; Extract variable
-(emr-declare-action emr-extract-variable emacs-lisp-mode "variable"
+(emr-declare-action emr-extract-variable
+  :title "variable"
+  :description "defvar"
+  :modes emacs-lisp-mode
   :predicate (and (not (emr:looking-at-definition?))
                   (not (emr:looking-at-let-binding-symbol?))
-                  (thing-at-point 'defun))
-  :description "defvar")
+                  (thing-at-point 'defun)))
 
 ;;; Extract constant
-(emr-declare-action emr-extract-constant emacs-lisp-mode "constant"
+(emr-declare-action emr-extract-constant
+  :title "constant"
+  :description "defconst"
+  :modes emacs-lisp-mode
   :predicate (not (or (emr:looking-at-definition?)
-                      (emr:looking-at-let-binding-symbol?)))
-  :description "defconst")
+                      (emr:looking-at-let-binding-symbol?))))
 
 ;;; Eval and replace expression
-(emr-declare-action emr-eval-and-replace emacs-lisp-mode "eval"
+(emr-declare-action emr-eval-and-replace
+  :title "eval"
+  :description "value"
+  :modes emacs-lisp-mode
   :predicate (not (or (emr:looking-at-definition?)
                       (emr:looking-at-let-binding-symbol?)))
-  :description "value")
+  )
 
 ;;; Extract autoload
-(emr-declare-action emr-extract-autoload emacs-lisp-mode "autoload"
+(emr-declare-action emr-extract-autoload
+  :title "autoload"
   :description "autoload"
+  :modes emacs-lisp-mode
   :predicate (and (or (functionp (symbol-at-point))
                       (emr:macro-boundp (symbol-at-point)))
                   (not (emr:variable-definition? (emr:list-at-point)))))
 
 ;;; Comment-out form
 ;;; Should be looking at a lisp list.
-(emr-declare-action emr-comment-form emacs-lisp-mode "comment"
+(emr-declare-action emr-comment-form
+  :title "comment"
+  :modes emacs-lisp-mode
   :predicate (and (thing-at-point 'defun)
                   (not (emr-looking-at-comment?))))
 
