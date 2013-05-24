@@ -107,8 +107,9 @@ The index is the car and the line is the cdr."
     (and (>= line min) (<= line max))))
 
 (defmacro emr-reporting-buffer-changes (description &rest body)
-  "Execute forms producing an effect described by DESCRIPTION.
-Report the changes made to the buffer at a result of executing BODY forms."
+  "Perform a refactoring action and notify the user of changes that were made.
+* DESCRIPTION describes the overall action, and is shown to the user.
+* BODY forms perform the refactor action."
   (declare (indent 1))
   `(let ((before-changes (buffer-string)))
      ,@body
