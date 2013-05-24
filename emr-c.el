@@ -42,6 +42,16 @@
       (insert str)
       (c-indent-defun))))
 
+(defun emr-c:maybe-append-semicolon (str)
+  (if (s-ends-with? ";" str)
+      str
+    (s-append ";" str)))
+
+(defun emr-c:maybe-prepend-return (str)
+  (if (s-matches? (rx bol (* space) "return") str)
+      str
+    (format "return %s" (s-trim str))))
+
 (defun emr-c:add-return-statement (str)
   "Prepend a return statement to the last line of STR."
   (destructuring-bind (&optional last &rest rest)
@@ -52,10 +62,8 @@
         (nreverse)
         (-drop-while 'emr-blank?))
     ;; Add return statement.
-    (unless (and last (s-matches? (rx bol "return") last))
-      (setq last (format "return %s" (s-trim last))))
-    (unless (s-ends-with? ";" last)
-      (setq last (s-append ";" last)))
+    (emr-c:maybe-prepend-return last)
+    (emr-c:maybe-append-semicolon str)
     ;; Rejoin with left padding.
     (->> (cl-list* last rest)
       (nreverse)
@@ -77,8 +85,7 @@
 
 (defun emr-c:format-function-usage (name arglist)
   (let ((args (->> (s-split "," arglist)
-                (-map 's-trim)
-                (--map (car (last (s-split-words it))))
+                (--map (-> (s-trim it) (split-string (rx (any space "*")) t) (cadr)))
                 (s-join ", "))))
     (format "%s(%s)" name args)))
 
@@ -97,25 +104,26 @@
         input))
     (s-trim (read-string "Return type (default: void): " nil t "void"))
     (s-trim (read-string "Arglist: "))))
-  (cl-assert (region-active-p))
 
   (atomic-change-group
     (kill-region (region-beginning) (region-end))
 
     ;; Insert usage. Place point inside opening brace.
+    (unless (thing-at-point-looking-at (rx space))
+      (just-one-space))
     (insert (emr-c:format-function-usage name arglist))
     (search-backward "(")
     (forward-char)
-
-    ;; Insert a semicolon and newline if there's nothing else on this line.
+    ;; Tidy usage site.
     (save-excursion
       (search-forward ")")
-      (when (s-matches? (rx (* space) "}" eol)
-                        (buffer-substring (point) (line-end-position)))
-        (insert ";\n"))
+      (when (s-ends-with? ";" (s-trim (car kill-ring)))
+        (insert ";"))
+      (when (s-ends-with? "}" (s-trim (thing-at-point 'line)))
+        (insert "\n"))
       (indent-for-tab-command))
 
-    ;; Insert declaration.
+    ;; Insert function definition.
     (emr-c:extract-above "Extracted function"
       (format
        "%s %s(%s)%s{\n%s\n}"
@@ -128,27 +136,25 @@
     (setq kill-ring (cdr kill-ring))))
 
 (defun emr-c:expr-start ()
-  (or (save-excursion
-        (search-backward "=" (line-beginning-position) t))
-      (line-beginning-position)))
-
-(defun emr-c:expr-end ()
-  (or (save-excursion
-        (search-forward ";" (line-end-position) t))
-      (line-end-position)))
+  "Return either the start of the right side of an assignment, or
+the start of the current statement."
+  (interactive)
+  (max (or (save-excursion
+             (when (search-backward "=" (line-beginning-position) t)
+               (forward-char)
+               (point))) 0)
+       (or (c-beginning-of-statement 1) 0)
+       (line-beginning-position)))
 
 ;;;###autoload
 (defun emr-c-extract-function-from-expression ()
   "Extract a function from right side of the assignment at point.
 If there is no assignment, extract the whole line."
   (interactive)
-  (let ((beg (emr-c:expr-start))
-        (end (emr-c:expr-end)))
-    (save-excursion
-      (push-mark (emr-c:expr-end) t)
-      (push-mark (emr-c:expr-start) t)
-      (activate-mark)
-      (call-interactively 'emr-c-extract-function))))
+  (goto-char (emr-c:expr-start))
+  (set-mark-command nil)
+  (c-end-of-statement)
+  (call-interactively 'emr-c-extract-function))
 
 (emr-declare-action emr-c-extract-function c-mode "function"
   :description "region"
