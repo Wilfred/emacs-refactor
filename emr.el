@@ -82,6 +82,25 @@ The index is the car and the line is the cdr."
       (emr:ellipsize)
       (message))))
 
+(defun emr:line-visible? (line)
+  "Return true if LINE is within the visible bounds of the current window."
+  (let* ((min (line-number-at-pos (window-start)))
+         (max (line-number-at-pos (window-end))))
+    (and (>= line min) (<= line max))))
+
+(defmacro emr-reporting-buffer-changes (description &rest body)
+  "Execute forms producing an effect described by DESCRIPTION.
+Report the changes made to the buffer at a result of executing BODY forms."
+  (declare (indent 1))
+  `(let ((before-changes (buffer-string)))
+     ,@body
+     ;; Report changes.
+     (-when-let (diff (and emr-report-actions
+                           (car (emr:diff-lines before-changes (buffer-string)))))
+       (cl-destructuring-bind (_ . (line . text)) diff
+         (unless (emr:line-visible? line)
+           (emr:report-action ,description line text))))))
+
 ;;; ----------------------------------------------------------------------------
 ;;; Popup menu
 ;;; Items to be displayed in the refactoring popup menu are added using the

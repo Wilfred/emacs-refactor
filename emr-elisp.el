@@ -3,8 +3,6 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.2.2
-;; Keywords: tools elisp convenience refactoring
 
 ;; This file is not part of GNU Emacs.
 
@@ -300,19 +298,6 @@ CONTEXT is the top level form that encloses FORM."
 ;;; ----------------------------------------------------------------------------
 ;;; Refactoring Macros
 
-(defmacro emr:reporting-buffer-changes (description &rest body)
-  "Execute forms producing an effect described by DESCRIPTION.
-Report the changes made to the buffer at a result of executing BODY forms."
-  (declare (indent 1))
-  `(let ((before-changes (buffer-string)))
-     ,@body
-     ;; Report changes.
-     (-when-let (diff (and emr-report-actions
-                           (car (emr:diff-lines before-changes (buffer-string)))))
-       (cl-destructuring-bind (_ . (line . text)) diff
-         (unless (emr:line-visible? line)
-           (emr:report-action ,description line text))))))
-
 (defun emr:remove-trailing-newlines (form)
   "Remove newlines from the end of FORM."
   (if (listp form)
@@ -368,14 +353,8 @@ The extracted expression is bound to the symbol 'extracted-sexp'."
        ;; Revert kill-ring pointer.
        (setq kill-ring (cdr kill-ring))
        (save-excursion
-         (emr:reporting-buffer-changes ,description
+         (emr-reporting-buffer-changes ,description
            ,@body)))))
-
-(defun emr:line-visible? (line)
-  "Return true if LINE is within the visible bounds of the current window."
-  (let* ((min (line-number-at-pos (window-start)))
-         (max (line-number-at-pos (window-end))))
-    (and (>= line min) (<= line max))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Definition site tests.
@@ -630,7 +609,7 @@ See `autoload' for details."
 
     (let ((form `(autoload ',function ,file)))
       (save-excursion
-        (emr:reporting-buffer-changes "Extracted to"
+        (emr-reporting-buffer-changes "Extracted to"
           ;; Put the extraction next to existing autoloads if any, otherwise
           ;; insert above top-level form.
           (if (emr:goto-first-match "^(autoload ")
