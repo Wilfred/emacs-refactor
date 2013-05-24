@@ -9,13 +9,9 @@ To use EMR when editing, simply move point to an expression and invoke the refac
 
 ![Refactoring menu example](https://raw.github.com/chrisbarrett/emacs-refactor/master/assets/emr.png)
 
-EMR ships with useful refactorings for Emacs Lisp, including:
-
-* extract expression to function
-* extract and inline variables
-* extract autoloads for functions
-* extract to let-bound variable, inline let-bound variable
-* evalute expression and replace it with the result.
+EMR ships with useful refactorings for the following languages:
+* Elisp
+* C
 
 More languages are forthcoming. See
 [Extension](https://github.com/chrisbarrett/emacs-refactor#extension) for
@@ -114,14 +110,11 @@ simple to wire them up with EMR using this interface.
 
 # Contributing
 
-Pull requests are totally welcome. :D
+Pull requests are welcome. If appropriate, please add unit tests. See the tests for `emr-elisp` for examples.
 
 ## TODO
 
 * Support for other languages (esp. Clojure, Python, Ruby)
-
-* Elisp:
-   * inline function
 
 ## Bug Reports
 
