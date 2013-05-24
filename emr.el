@@ -52,7 +52,17 @@
 ;;; ----------------------------------------------------------------------------
 ;;; Utility functions
 ;;;
-;;; Useful functions when writing refactoring commands.
+;;; Functions that could be useful to extensions.
+
+(defun emr-move-above-defun ()
+  "Move to the start of the current defun.
+If the defun is preceded by comments, move above them."
+  (interactive)
+  (beginning-of-defun)
+  (while (save-excursion
+           (forward-line -1)
+           (emr-looking-at-comment?))
+    (forward-line -1)))
 
 (defun emr-looking-at-string? ()
   "Return non-nil if point is inside a string."
@@ -60,12 +70,32 @@
 
 (defun emr-looking-at-comment? ()
   "Non-nil if point is on a comment."
-  (equal (face-at-point) 'font-lock-comment-face))
+  (-contains? '(font-lock-comment-face font-lock-comment-delimiter-face)
+              (face-at-point)))
 
 (defun emr-blank? (str)
   "Non-nil if STR is null, empty or whitespace-only."
-  (or (s-blank? str)
-      (s-matches? (rx bol (* space) eol) str)))
+  (s-blank? (s-trim str)))
+
+(defun emr-insert-above-defun (str)
+  "Insert and indent STR above the current top level form.
+Return the position of the end of STR."
+  (save-excursion
+    (let ((mark-ring nil))
+      ;; Move to position above top-level form.
+      (beginning-of-line)
+      (emr-move-above-defun)
+      (open-line 2)
+      ;; Perform insertion.
+      (insert str)
+      ;; Ensure there is leading blank line.
+      (save-excursion
+        (emr-move-above-defun)
+        (unless (save-excursion
+                  (forward-line -1)
+                  (emr-blank? (thing-at-point 'line)))
+          (open-line 1)))
+      (point))))
 
 ;;; ----------------------------------------------------------------------------
 ;;; Reporting

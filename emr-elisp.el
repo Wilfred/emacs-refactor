@@ -164,21 +164,10 @@
     (emr:reindent-defun)
     (buffer-string)))
 
-(defun emr:insert-above (form-str)
+(defun emr-el:insert-above-defun (form-str)
   "Insert and indent FORM-STR above the current top level form.
 Return the position of the end of FORM-STR."
-  (save-excursion
-    (let ((mark-ring nil))
-      ;; Move to position above top-level form.
-      (beginning-of-line)
-      (beginning-of-defun)
-      (newline)
-      (forward-line -1)
-      (back-to-indentation)
-      ;; Perform insertion.
-      (insert (emr:reindent-string form-str))
-      (prog1 (point)
-        (newline-and-indent)))))
+  (emr-insert-above-defun (emr:reindent-string form-str)))
 
 (defun emr:symbol-file-name (fn)
   "Find the name of the file that declares function FN."
@@ -547,7 +536,7 @@ ARGLIST is its argument list."
       (->> `(,defun-form ,name ,arglist :emr:newline ,@body)
         (emr:print)
         (emr:format-defun)
-        (emr:insert-above)))))
+        (emr-el:insert-above-defun)))))
 
 ;;;###autoload
 (defun emr-extract-variable (name)
@@ -559,7 +548,7 @@ The variable will be called NAME."
     ;; Insert usage.
     (insert (s-trim name))
     ;; Insert definition.
-    (emr:insert-above
+    (emr-el:insert-above-defun
      (emr:print
       (list 'defvar (intern name) sexp)))))
 
@@ -573,7 +562,7 @@ The variable will be called NAME."
     ;; Insert usage
     (insert (s-trim name))
     ;; Insert definition.
-    (emr:insert-above
+    (emr-el:insert-above-defun
      (emr:print
       (list 'defconst (intern name) sexp)))))
 
@@ -600,7 +589,7 @@ See `autoload' for details."
           (if (emr:goto-first-match "^(autoload ")
               (progn (forward-line 1) (end-of-line) (newline)
                      (insert (emr:print form)))
-            (emr:insert-above
+            (emr-el:insert-above-defun
              (emr:print form))))))))
 
 ;;;###autoload
@@ -654,7 +643,7 @@ The function will be called NAME and have the given ARGLIST."
         (setq pos (->> `(,defun-form ,name ,arglist :emr:newline)
                     (emr:print)
                     (emr:format-defun)
-                    (emr:insert-above)))))
+                    (emr-el:insert-above-defun)))))
 
     ;; Move to end of inserted form.
     (goto-char pos)

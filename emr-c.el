@@ -36,9 +36,7 @@
   "Insert STR above the current defun."
   (declare (indent 1))
   (save-excursion
-    (beginning-of-defun)
-    (while (emr-looking-at-comment?)
-      (forward-line -1))
+    (emr-move-above-defun)
     (open-line 2)
     (emr-reporting-buffer-changes desc
       (insert str)
@@ -129,8 +127,37 @@
          (emr-c:add-return-statement (car kill-ring)))))
     (setq kill-ring (cdr kill-ring))))
 
+(defun emr-c:expr-start ()
+  (or (save-excursion
+        (search-backward "=" (line-beginning-position) t))
+      (line-beginning-position)))
+
+(defun emr-c:expr-end ()
+  (or (save-excursion
+        (search-forward ";" (line-end-position) t))
+      (line-end-position)))
+
+;;;###autoload
+(defun emr-c-extract-function-from-expression ()
+  "Extract a function from right side of the assignment at point.
+If there is no assignment, extract the whole line."
+  (interactive)
+  (let ((beg (emr-c:expr-start))
+        (end (emr-c:expr-end)))
+    (save-excursion
+      (push-mark (emr-c:expr-end) t)
+      (push-mark (emr-c:expr-start) t)
+      (activate-mark)
+      (call-interactively 'emr-c-extract-function))))
+
 (emr-declare-action emr-c-extract-function c-mode "function"
+  :description "region"
   :predicate (region-active-p))
+
+(emr-declare-action emr-c-extract-function-from-expression
+    c-mode "function"
+  :description "expression"
+  :predicate (not (region-active-p)))
 
 (provide 'emr-c)
 
