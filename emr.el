@@ -170,7 +170,8 @@ The index is the car and the line is the cdr."
 
 * FUNCTION is the refactoring command to perform.
 
-* MODE is the major mode in which this
+* MODE is the major mode in which this command will be
+  available. Includes derived modes.
 
 * TITLE is the name of the command that will be displayed in the popup menu.
 
@@ -197,7 +198,7 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
 
 ;;;###autoload
 (defun emr-show-refactor-menu ()
-  "Show the extraction menu at point."
+  "Show the refactor menu at point."
   (interactive)
   (-if-let (actions (->> emr:refactor-commands
                       (emr:hash-values)
