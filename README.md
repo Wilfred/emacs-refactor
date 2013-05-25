@@ -22,8 +22,6 @@ Tested on Emacs 24.3.
 
 # Installation
 
-## Package
-
 `emr` is available on [MELPA](http://melpa.milkbox.net/). This is the easiest
 way to install.
 
@@ -49,7 +47,7 @@ Once MELPA is configured:
  (eval-after-load "emr" '(emr-initialize))
    ```
 
-## Manual
+# Development
 
 You will need *carton*, *make* and *git* to build the project.
 
@@ -77,6 +75,8 @@ You will need *carton*, *make* and *git* to build the project.
    ```
 
 ## Dependencies
+
+These will be installed automatically by Carton.
 
 * [s](https://github.com/magnars/s.el)
 * [dash](https://github.com/magnars/dash.el)
@@ -117,7 +117,7 @@ Pull requests are welcome. If appropriate, please add unit tests. See the tests 
 
 ## TODO
 
-* C: More useful refactorings, eg, inline function, extract variable
+* C: More useful refactorings, eg, inline function/variable
 * Elisp: Inline function
 * Elisp: Use Redshank where appropriate
 * Support for other languages (esp. Clojure, Python, Ruby)
