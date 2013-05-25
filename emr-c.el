@@ -108,26 +108,34 @@ replaced by the return."
                 (s-join ", "))))
     (format "%s(%s)" name args)))
 
+(defun emr-c:type-of-literal (literal)
+  "Try to infer the type of the given LITERAL"
+  (let ((literal (->> literal (s-trim) (s-chop-suffix ";"))))
+    (cond ((s-matches? (rx bol (? "-") (+ digit) eol) literal)
+           "int")
+          ((s-matches? (rx bol (? "-") (+ digit) "." (+ digit) eol) literal)
+           "double")
+          ((s-matches? (rx bol "\"" (* nonl) "\"" eol) literal)
+           "char*")
+          ((s-matches? (rx bol "L\"" (* nonl) "\"" eol) literal)
+           "wchar_t*")
+          ((s-matches? (rx bol "'" (? "\\") nonl "'" eol) literal)
+           "char"))))
+
+(defun emr-c:typename-at-line-start (line)
+  "Return the first word in LINE if it looks like a type name."
+  (let ((tokens (s-split (rx space) line t)))
+    ;; TODO: take-while short, long, etc.
+    (-when-let (token (car tokens))
+      (and (s-matches? (rx bol (+ alnum) eol) token)
+           token))))
+
 (defun emr-c:infer-type (str)
   "Try to infer the resulting type of a series of C statements."
-  (let* ((last-line (->> (s-lines str) (last) (car)
-                         (s-trim) (s-chop-suffix ";")))
-         (token (->> last-line (s-split (rx space)) (car))))
-    (cond
-     ;; Try to infer literals...
-     ((s-matches? (rx bol (? "-") (+ digit) eol) last-line)
-      "int")
-     ((s-matches? (rx bol (? "-") (+ digit) "." (+ digit) eol) last-line)
-      "double")
-     ((s-matches? (rx bol "\"" (* nonl) "\"" eol) last-line)
-      "char**")
-     ((s-matches? (rx bol "L\"" (* nonl) "\"" eol) last-line)
-      "wchar_t**")
-     ((s-matches? (rx bol "'" (? "\\") nonl "'" eol) last-line)
-      "char")
-     ;; ...otherwise assume the first token of the last line is a type name.
-     ((s-matches? (rx bol (+ alnum) eol) token)
-      token))))
+  (let ((last-line (->> (s-lines str) (last) (car)
+                        (s-trim) (s-chop-suffix ";"))))
+    (or (emr-c:type-of-literal last-line)
+        (emr-c:typename-at-line-start last-line))))
 
 (defun* emr-c:inside-fncall-or-flow-header? ()
   "Non-nil if point is inside a function call or flow control header.
@@ -146,6 +154,105 @@ whole line."
     (or (emr-c:infer-type (buffer-substring (region-beginning) (region-end)))
         (emr-c:infer-type (buffer-substring beg end))
         "void")))
+
+(defun emr-c:expr-start ()
+  "Return either the start of the right side of an assignment, or
+the start of the current statement."
+  (interactive)
+  (cl-flet ((max-safe (&rest xs) (apply 'max (--map (or it 0) xs))))
+    (max-safe
+     ;; Expr after `=` sign.
+     (save-excursion
+       (when (search-backward "=" (line-beginning-position) t)
+         (forward-char)
+         (search-forward-regexp (rx (not space)) nil t)
+         (forward-char -1)
+         (point)))
+     ;; Expr after `;`. Ignores `;` at eol.
+     (save-excursion
+       (when (search-backward-regexp (rx ";" (* space) (+ nonl))
+                                     nil t)
+         (forward-char)
+         (search-forward-regexp (rx (not space)) nil t)
+         (forward-char -1)
+         (point)))
+     ;; Expr from start of line.
+     (save-excursion
+       (back-to-indentation)
+       (point))
+
+     (c-beginning-of-statement 1))))
+
+(defun emr-c:inside-curlies? ()
+  "Non-nil if point is inside a pair of curly braces."
+  (save-excursion
+    ;; First move back. This ensures that thing-at-point will not return
+    ;; true if we start just BEFORE a curly.
+    (forward-char -1)
+    (while (ignore-errors (paredit-backward-up) t))
+    (thing-at-point-looking-at (rx "{"))))
+
+(defun emr-c:beginning-of-string ()
+  "Return the beginning position of the string at point, including a prefix."
+  (save-excursion
+    (while (ignore-errors (paredit-backward-up)
+                          (not (thing-at-point-looking-at "\""))))
+    ;; Account for string literals with a prefix.
+    (when (s-matches? (rx alpha)
+                      (buffer-substring (1- (point)) (point)))
+      (forward-char -1))
+    (point)))
+
+(defun emr-c:end-of-string ()
+  "Return the end position of the string at point."
+  (save-excursion
+    (while (ignore-errors
+             (paredit-forward-up)
+             (not (s-matches? "\"" (buffer-substring (1- (point)) (point))))))
+    (point)))
+
+(defconst emr-c:word-regexp (rx (any alnum "-" "_" "+" ".")))
+
+(defun emr-c:word-start ()
+  (save-excursion
+    (while (s-matches? emr-c:word-regexp
+                       (buffer-substring (1- (point)) (point)))
+      (forward-char -1))
+    (point)))
+
+(defun emr-c:word-end ()
+  (save-excursion
+    (while (s-matches? emr-c:word-regexp
+                       (buffer-substring (point) (1+ (point))))
+      (forward-char 1))
+    (point)))
+
+(defun emr-c:word-at-point ()
+  "Return the C literal or identifier at point."
+  (ignore-errors
+    (buffer-substring (emr-c:word-start) (emr-c:word-end))))
+
+(defun emr-c:literal-at-point ()
+  "Return the C literal at point."
+  (if (emr-looking-at-string?)
+      (buffer-substring (emr-c:beginning-of-string) (emr-c:end-of-string))
+    (-when-let (literal (emr-c:word-at-point))
+      ;; It's a valid literal if we can infer the type.
+      (and (emr-c:type-of-literal literal) literal))))
+
+(defun emr-c:literal-start ()
+  (when (emr-c:literal-at-point)
+    (if (emr-looking-at-string?)
+        (emr-c:beginning-of-string)
+      (emr-c:word-start))))
+
+(defun emr-c:literal-end ()
+  (when (emr-c:literal-at-point)
+    (if (emr-looking-at-string?)
+        (emr-c:end-of-string)
+      (emr-c:word-end))))
+
+;;; ----------------------------------------------------------------------------
 
 ;;;###autoload
 (defun emr-c-extract-function (name return arglist)
@@ -213,34 +320,6 @@ whole line."
          (emr-c:add-return-statement (car kill-ring)))))
     (setq kill-ring (cdr kill-ring))))
 
-(defun emr-c:expr-start ()
-  "Return either the start of the right side of an assignment, or
-the start of the current statement."
-  (interactive)
-  (cl-flet ((max-safe (&rest xs) (apply 'max (--map (or it 0) xs))))
-    (max-safe
-     ;; Expr after `=` sign.
-     (save-excursion
-       (when (search-backward "=" (line-beginning-position) t)
-         (forward-char)
-         (search-forward-regexp (rx (not space)) nil t)
-         (forward-char -1)
-         (point)))
-     ;; Expr after `;`. Ignores `;` at eol.
-     (save-excursion
-       (when (search-backward-regexp (rx ";" (* space) (+ nonl))
-                                     nil t)
-         (forward-char)
-         (search-forward-regexp (rx (not space)) nil t)
-         (forward-char -1)
-         (point)))
-     ;; Expr from start of line.
-     (save-excursion
-       (back-to-indentation)
-       (point))
-
-     (c-beginning-of-statement 1))))
-
 ;;;###autoload
 (defun emr-c-extract-function-from-expression ()
   "Extract a function from right side of the assignment at point.
@@ -257,14 +336,56 @@ If there is no assignment, extract the whole line."
       (setq pos (point)))
     (goto-char pos)))
 
-(defun emr-c:inside-curlies? ()
-  "Non-nil if point is inside a pair of curly braces."
-  (save-excursion
-    ;; First move back. This ensures that thing-at-point will not return
-    ;; true if we start just BEFORE a curly.
-    (forward-char -1)
-    (while (ignore-errors (paredit-backward-up) t))
-    (thing-at-point-looking-at (rx "{"))))
+;;;###autoload
+(defun emr-c-introduce-variable-from-literal ()
+  "Introduce a new variable from the literal at point."
+  (interactive)
+  (cl-assert (emr-c:literal-at-point))
+  (let (pos)
+    (save-excursion
+      ;; Mark literal.
+      (let ((beg (emr-c:literal-start))
+            (end (emr-c:literal-end)))
+        (goto-char beg)
+        (set-mark-command nil)
+        (goto-char end))
+
+      (call-interactively 'emr-c-introduce-variable)
+      (setq pos (point)))
+    (goto-char pos)))
+
+;;;###autoload
+(defun emr-c-introduce-variable (name type)
+  "Create a variable with NAME and replace the region with a reference to it.
+Prompt for a TYPE if it cannot be inferred."
+  (interactive
+   (list (read-string "Name: " nil t)
+         ;; Prompt for a type if it cannot be inferred.
+         (let ((type (emr-c:type-of-literal
+                      (buffer-substring (region-beginning) (region-end)))))
+           (or type (read-string "Type: " nil t)))))
+
+  (cl-assert (region-active-p))
+  (emr-reporting-buffer-changes "Extracted variable"
+    (atomic-change-group
+      (kill-region (region-beginning) (region-end))
+
+      ;; Insert usage.
+      (save-excursion
+        (insert name))
+
+      ;; Insert declaration.
+      (save-excursion
+        (back-to-indentation)
+        (open-line 1)
+        (->> (format "%s %s = %s" type name (car kill-ring))
+          (emr-c:maybe-append-semicolon)
+          (insert))
+        (c-indent-defun))
+
+      (point))))
+
+;;; ----------------------------------------------------------------------------
 
 (emr-declare-action emr-c-extract-function
   :title "function"
@@ -278,6 +399,20 @@ If there is no assignment, extract the whole line."
   :description "expression"
   :modes c-mode
   :predicate (and (not (region-active-p))
+                  (emr-c:inside-curlies?)))
+
+(emr-declare-action emr-c-introduce-variable
+  :title "variable"
+  :description "region"
+  :modes c-mode
+  :predicate (and (region-active-p)
+                  (emr-c:inside-curlies?)))
+
+(emr-declare-action emr-c-introduce-variable-from-literal
+  :title "variable"
+  :description "literal"
+  :modes c-mode
+  :predicate (and (emr-c:literal-at-point)
                   (emr-c:inside-curlies?)))
 
 (provide 'emr-c)
