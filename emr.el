@@ -155,8 +155,8 @@ The index is the car and the line is the cdr."
 ;;; Items to be displayed in the refactoring popup menu are added using the
 ;;; `emr-declare-action' macro.
 
-(defvar emr:refactor-commands '()
-  "A list of refactoring commands used to build menu items.")
+(defvar emr:refactor-commands (make-hash-table :test 'equal)
+  "A hashtable of refactoring commands used to build menu items.")
 
 ;;;###autoload
 (defun emr-initialize ()
@@ -167,34 +167,40 @@ The index is the car and the line is the cdr."
 ;;;###autoload
 (defmacro* emr-declare-action (function &key modes title (predicate t) description)
   "Define a refactoring command.
-FUNCTION is the refactoring command to perform.
-MODE is the major mode in which this
-TITLE is the name of the command that will be displayed in the popup menu.
-PREDICATE is a condition that must be satisfied to display this item.
+
+* FUNCTION is the refactoring command to perform.
+
+* MODE is the major mode in which this
+
+* TITLE is the name of the command that will be displayed in the popup menu.
+
+* PREDICATE is a condition that must be satisfied to display this item.
 If PREDICATE is not supplied, the item will always be visible for this mode.
-DESCRIPTION is shown to the left of the titile in the popup menu."
+
+* DESCRIPTION is shown to the left of the title in the popup menu."
   (declare (indent 1))
   (cl-assert modes)
   (cl-assert title)
-  (let ((fname (intern (format "emr:gen--%s--%s" function title)))
-        (modes (if (symbolp modes) (list modes) modes)))
-    `(progn
-       ;; Define a function to encapsulate the predicate. Also ensures each
-       ;; refactoring command is only added once.
-       (defun ,fname nil
-         (when (and (apply 'derived-mode-p ',modes)
-                    (ignore-errors
-                      (eval ,predicate)))
-           (popup-make-item ,title :value ',function :summary ,description)))
-       ;; Make this refactoring available in the popup menu.
-       (add-to-list 'emr:refactor-commands ',fname t)
+  (let ((modes (if (symbolp modes) (list modes) modes)))
+    `(let ((fname ',(intern (format "%s--%s" function title)))
+           (fn (lambda ()
+                 (when (and (apply 'derived-mode-p ',modes)
+                            (ignore-errors
+                              (eval ,predicate)))
+                   (popup-make-item ,title :value ',function :summary ,description)))))
+       ;; Create a function and insert it into the commands table.
+       (puthash fname fn emr:refactor-commands)
        ',function)))
+
+(defun emr:hash-values (ht)
+  (cl-loop for v being the hash-values in ht collect v))
 
 ;;;###autoload
 (defun emr-show-refactor-menu ()
   "Show the extraction menu at point."
   (interactive)
   (-if-let (actions (->> emr:refactor-commands
+                      (emr:hash-values)
                       (-map 'funcall)
                       (-remove 'null)))
     (atomic-change-group
