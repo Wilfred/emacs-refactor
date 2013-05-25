@@ -287,6 +287,6 @@ If there is no assignment, extract the whole line."
 
 ;; Local Variables:
 ;; lexical-binding: t
-; End:
+;; End:
 
 ;;; emr-c.el ends here
