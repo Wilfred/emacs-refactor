@@ -168,22 +168,39 @@ the start of the current statement."
   "Extract a function from right side of the assignment at point.
 If there is no assignment, extract the whole line."
   (interactive)
-  (goto-char (emr-c:expr-start))
-  (set-mark-command nil)
-  (c-end-of-statement)
-  (call-interactively 'emr-c-extract-function))
+  ;; Select the current C expression, then delegate to the proper
+  ;; extraction function.
+  (let (pos)
+    (save-excursion
+      (goto-char (emr-c:expr-start))
+      (set-mark-command nil)
+      (c-end-of-statement)
+      (call-interactively 'emr-c-extract-function)
+      (setq pos (point)))
+    (goto-char pos)))
+
+(defun emr-c:inside-curlies? ()
+  "Non-nil if point is inside a pair of curly braces."
+  (save-excursion
+    ;; First move back. This ensures that thing-at-point will not return
+    ;; true if we start just BEFORE a curly.
+    (forward-char -1)
+    (while (ignore-errors (paredit-backward-up) t))
+    (thing-at-point-looking-at (rx "{"))))
 
 (emr-declare-action emr-c-extract-function
   :title "function"
   :description "region"
   :modes c-mode
-  :predicate (region-active-p))
+  :predicate (and (region-active-p)
+                  (emr-c:inside-curlies?)))
 
 (emr-declare-action emr-c-extract-function-from-expression
   :title "function"
   :description "expression"
   :modes c-mode
-  :predicate (not (region-active-p)))
+  :predicate (and (not (region-active-p))
+                  (emr-c:inside-curlies?)))
 
 (provide 'emr-c)
 
