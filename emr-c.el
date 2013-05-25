@@ -139,12 +139,29 @@
   "Return either the start of the right side of an assignment, or
 the start of the current statement."
   (interactive)
-  (max (or (save-excursion
-             (when (search-backward "=" (line-beginning-position) t)
-               (forward-char)
-               (point))) 0)
-       (or (c-beginning-of-statement 1) 0)
-       (line-beginning-position)))
+  (cl-flet ((max-safe (&rest xs) (apply 'max (--map (or it 0) xs))))
+    (max-safe
+     ;; Expr after `=` sign.
+     (save-excursion
+       (when (search-backward "=" (line-beginning-position) t)
+         (forward-char)
+         (search-forward-regexp (rx (not space)) nil t)
+         (forward-char -1)
+         (point)))
+     ;; Expr after `;`. Ignores `;` at eol.
+     (save-excursion
+       (when (search-backward-regexp (rx ";" (* space) (+ nonl))
+                                     nil t)
+         (forward-char)
+         (search-forward-regexp (rx (not space)) nil t)
+         (forward-char -1)
+         (point)))
+     ;; Expr from start of line.
+     (save-excursion
+       (back-to-indentation)
+       (point))
+
+     (c-beginning-of-statement 1))))
 
 ;;;###autoload
 (defun emr-c-extract-function-from-expression ()
