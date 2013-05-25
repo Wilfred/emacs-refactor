@@ -113,13 +113,24 @@ replaced by the return."
 
 (defun emr-c:infer-type (str)
   "Try to infer the resulting type of a series of C statements."
-  (let ((fst (->> (s-lines str) (last) (car)
-                  (s-trim)
-                  (s-split (rx space))
-                  (car))))
-    (if (s-matches? (rx bol (+ alnum) eol) fst)
-        fst
-      "void")))
+  (let* ((last-line (->> (s-lines str) (last) (car)
+                         (s-trim) (s-chop-suffix ";")))
+         (token (->> last-line (s-split (rx space)) (car))))
+    (cond
+     ;; Try to infer literals...
+     ((s-matches? (rx bol (? "-") (+ digit) eol) last-line)
+      "int")
+     ((s-matches? (rx bol (? "-") (+ digit) "." (+ digit) eol) last-line)
+      "double")
+     ((s-matches? (rx bol "\"" (* nonl) "\"" eol) last-line)
+      "char**")
+     ((s-matches? (rx bol "L\"" (* nonl) "\"" eol) last-line)
+      "wchar_t**")
+     ((s-matches? (rx bol "'" (? "\\") nonl "'" eol) last-line)
+      "char")
+     ;; ...otherwise assume the first token of the last line is a type name.
+     ((s-matches? (rx bol (+ alnum) eol) token)
+      token))))
 
 (defun* emr-c:inside-fncall-or-flow-header? ()
   "Non-nil if point is inside a function call or flow control header.
@@ -127,6 +138,17 @@ I.E., point is inside a pair of parentheses."
   (save-excursion
     (ignore-errors (paredit-backward-up))
     (thing-at-point-looking-at "(")))
+
+(defun emr-c:infer-region-type ()
+  "Try to infer the type from the region. If that fails, try the
+whole line."
+  (let ((beg (save-excursion (goto-char (region-beginning))
+                             (line-beginning-position)))
+        (end (save-excursion (goto-char (region-end))
+                             (line-end-position))))
+    (or (emr-c:infer-type (buffer-substring (region-beginning) (region-end)))
+        (emr-c:infer-type (buffer-substring beg end))
+        "void")))
 
 ;;;###autoload
 (defun emr-c-extract-function (name return arglist)
@@ -143,11 +165,7 @@ I.E., point is inside a pair of parentheses."
         input))
 
     ;; Try to infer the type from assignments in the region.
-    (let* ((beg (save-excursion (goto-char (region-beginning))
-                                (line-beginning-position)))
-           (end (save-excursion (goto-char (region-end))
-                                (line-end-position)))
-           (type (emr-c:infer-type (buffer-substring beg end))))
+    (let ((type (emr-c:infer-region-type)))
       (-> (format "Return type (default: %s): " type)
         (read-string nil t type)
         (s-trim)))
@@ -169,7 +187,7 @@ I.E., point is inside a pair of parentheses."
         (insert (format "%s = " left))))
 
     ;; Insert usage. Place point inside opening brace.
-    (unless (thing-at-point-looking-at (rx space))
+    (unless (thing-at-point-looking-at (rx (or "(" "[")))
       (just-one-space))
     (insert (emr-c:format-function-usage name arglist))
     (search-backward "(")
