@@ -61,12 +61,13 @@
         (-drop-while 'emr-blank?)
         (nreverse)
         (-drop-while 'emr-blank?))
-    ;; Add return statement.
-    (emr-c:maybe-prepend-return last)
-    (emr-c:maybe-append-semicolon str)
-    ;; Rejoin with left padding.
-    (->> (cl-list* last rest)
-      (nreverse)
+    ;; Reformat last line.
+    (->> (-> last
+           (emr-c:maybe-prepend-return)
+           (emr-c:maybe-append-semicolon)
+           (cl-list* rest)
+           (nreverse))
+      ;; Rejoin with left padding.
       (--map (concat (s-repeat tab-width " ") it))
       (s-join "\n"))))
 
@@ -89,6 +90,16 @@
                 (s-join ", "))))
     (format "%s(%s)" name args)))
 
+(defun emr-c:infer-type (str)
+  "Try to infer the resulting type of a series of C statements."
+  (let ((fst (->> (s-lines str) (last) (car)
+                  (s-trim)
+                  (s-split (rx space))
+                  (car))))
+    (if (s-matches? (rx bol (+ alnum) eol) fst)
+        fst
+      "void")))
+
 ;;;###autoload
 (defun emr-c-extract-function (name return arglist)
   "Extract the current region as a new function.
@@ -102,7 +113,17 @@
       (if (s-blank? input)
           (user-error "Must enter a function name")
         input))
-    (s-trim (read-string "Return type (default: void): " nil t "void"))
+
+    ;; Try to infer the type from assignments in the region.
+    (let* ((beg (save-excursion (goto-char (region-beginning))
+                                (line-beginning-position)))
+           (end (save-excursion (goto-char (region-end))
+                                (line-end-position)))
+           (type (emr-c:infer-type (buffer-substring beg end))))
+      (-> (format "Return type (default: %s): " type)
+        (read-string nil t type)
+        (s-trim)))
+
     (s-trim (read-string "Arglist: "))))
 
   (atomic-change-group
