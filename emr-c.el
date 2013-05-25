@@ -89,16 +89,13 @@ replaced by the return."
 
 (defun emr-c:spacing-before-function-curly ()
   "Use the current style to format the spacing between the arglist and body."
-  (let* ((vars (and (boundp 'c-indentation-style)
-                    (c-get-style-variables c-indentation-style nil)))
-         (spaces
-          (->> (assoc 'c-offsets-alist vars) (cdr)
-               (assoc 'defun-open) (cdr)))
-         (newlines
-          (->> (assoc 'c-hanging-braces-alist vars) (cdr)
-               (assoc 'defun-open) (cdr))))
-    (concat (s-repeat (or spaces 0) " ")
-            (s-repeat (or newlines 0) " "))))
+  (let ((spaces (cdr (assoc 'func-decl-cont c-offsets-alist))))
+    (concat
+     ;; Spaces
+     (cond ((equal spaces '+) " ")
+           ((numberp spaces) (s-repeat spaces " ")))
+     ;; Newlines
+     (when (assoc 'defun-open c-hanging-braces-alist) "\n"))))
 
 (defun emr-c:format-function-usage (name arglist)
   "Given a function NAME and its ARGLIST, format a corresponding usage."
