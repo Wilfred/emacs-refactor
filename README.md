@@ -10,6 +10,7 @@ To use EMR when editing, simply move point to an expression and invoke the refac
 ![Refactoring menu example](https://raw.github.com/chrisbarrett/emacs-refactor/master/assets/emr.png)
 
 EMR ships with useful refactorings for the following languages:
+
 * Elisp
 * C
 
@@ -69,9 +70,10 @@ You will need *carton*, *make* and *git* to build the project.
 
 3. Configure your init.el:
 
-   ```lisp
-   (add-hook 'prog-mode-hook
-      (lambda () (local-set-key (kbd "M-RET") 'emr-show-refactor-menu)))
+  ```lisp
+ (autoload 'emr-show-refactor-menu "emr"')
+ (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
+ (eval-after-load "emr" '(emr-initialize))
    ```
 
 ## Dependencies
@@ -86,19 +88,18 @@ Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
 # Extension
 
-Use the `emr-declare-action` macro to declare a refactoring action for a given
-mode. The action will automatically become available in the refactoring popup
-menu.
+Use the `emr-declare-action` macro to declare a refactoring action. The
+action will automatically become available in the refactoring popup menu.
 
 This macro supports predicate expressions, allowing the options displayed to be
 context-sensitive.
 
-As an example, here is the declaration for a refactoring that ships with EMR:
+As an example, here is the declaration for a refactoring command that ships with EMR:
 
 ```lisp
 ;;; Extract constant
 (emr-declare-action emr-extract-constant
-  :title"constant"
+  :title "constant"
   :description "defconst"
   :modes emacs-lisp-mode
   :predicate (not (emr--looking-at-definition?)))
@@ -116,6 +117,9 @@ Pull requests are welcome. If appropriate, please add unit tests. See the tests 
 
 ## TODO
 
+* C: More useful refactorings, eg, inline function, extract variable
+* Elisp: Inline function
+* Elisp: Use Redshank where appropriate
 * Support for other languages (esp. Clojure, Python, Ruby)
 
 ## Bug Reports
