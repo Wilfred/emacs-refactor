@@ -31,6 +31,7 @@
 (require 'thingatpt)
 (require 'cc-cmds)
 (autoload 'c-get-style-variables "cc-styles")
+(autoload 'paredit-forward-up "paredit")
 (autoload 'paredit-backward-up "paredit")
 
 (defun emr-c:extract-above (desc str)
