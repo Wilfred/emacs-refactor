@@ -31,6 +31,7 @@
 (require 'thingatpt)
 (require 'cc-cmds)
 (autoload 'c-get-style-variables "cc-styles")
+(autoload 'paredit-backward-up "paredit")
 
 (defun emr-c:extract-above (desc str)
   "Insert STR above the current defun."
@@ -52,8 +53,22 @@
       str
     (format "return %s" (s-trim str))))
 
+(defun emr-c:split-at-assignment (str)
+  "Return a cons where the car is the left side of the assignment
+and the cdr is the right. Nil if not an assignment."
+  (-when-let (idx (s-index-of "=" str))
+    (cons (s-trim (substring str 0 idx))
+          (s-trim (substring str (1+ idx))))))
+
+(defun emr-c:rvalue (expr)
+  "If EXPR is an assignment, return the right side. Otherwise return EXPR unchanged."
+  (or (cdr (emr-c:split-at-assignment expr))
+      expr))
+
 (defun emr-c:add-return-statement (str)
-  "Prepend a return statement to the last line of STR."
+  "Prepend a return statement to the last line of STR.
+If the last line of STR is an assignment, the assignment will be
+replaced by the return."
   (destructuring-bind (&optional last &rest rest)
       ;; Clean up lines and reverse for processing.
       (->> (s-split "\n" str)
@@ -63,6 +78,7 @@
         (-drop-while 'emr-blank?))
     ;; Reformat last line.
     (->> (-> last
+           (emr-c:rvalue)
            (emr-c:maybe-prepend-return)
            (emr-c:maybe-append-semicolon)
            (cl-list* rest)
@@ -85,8 +101,13 @@
             (s-repeat (or newlines 0) " "))))
 
 (defun emr-c:format-function-usage (name arglist)
+  "Given a function NAME and its ARGLIST, format a corresponding usage."
   (let ((args (->> (s-split "," arglist)
-                (--map (-> (s-trim it) (split-string (rx (any space "*")) t) (cadr)))
+                ;; For each parameter in ARGLIST, extract the parameter name.
+                (--map (-> (s-trim it)
+                         (split-string (rx (any space "*")) t)
+                         (nreverse)
+                         (car)))
                 (s-join ", "))))
     (format "%s(%s)" name args)))
 
@@ -99,6 +120,13 @@
     (if (s-matches? (rx bol (+ alnum) eol) fst)
         fst
       "void")))
+
+(defun* emr-c:inside-fncall-or-flow-header? ()
+  "Non-nil if point is inside a function call or flow control header.
+I.E., point is inside a pair of parentheses."
+  (save-excursion
+    (ignore-errors (paredit-backward-up))
+    (thing-at-point-looking-at "(")))
 
 ;;;###autoload
 (defun emr-c-extract-function (name return arglist)
@@ -129,13 +157,27 @@
   (atomic-change-group
     (kill-region (region-beginning) (region-end))
 
+    ;; Insert variable assignment for extracted function. Do not do this if
+    ;; * the function returns void
+    ;; * point is in a context where assignments are not allowed.
+    (when (and (not (equal "void" return))
+               (not (emr-c:inside-fncall-or-flow-header?)))
+
+      (-when-let (left (->> (car kill-ring) (s-lines) (last) (car)
+                            (emr-c:split-at-assignment)
+                            (car)))
+        (insert (format "%s = " left))))
+
     ;; Insert usage. Place point inside opening brace.
     (unless (thing-at-point-looking-at (rx space))
       (just-one-space))
     (insert (emr-c:format-function-usage name arglist))
     (search-backward "(")
     (forward-char)
-    ;; Tidy usage site.
+
+    ;; Tidy usage site by ensuring the statement ends with a
+    ;; semicolon. Also ensure that any curly braces that were moved up by
+    ;; the kill are moved back down.
     (save-excursion
       (search-forward ")")
       (when (s-ends-with? ";" (s-trim (car kill-ring)))
@@ -144,7 +186,7 @@
         (insert "\n"))
       (indent-for-tab-command))
 
-    ;; Insert function definition.
+    ;; Insert function definition above the current defun.
     (emr-c:extract-above "Extracted function"
       (format
        "%s %s(%s)%s{\n%s\n}"
