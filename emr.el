@@ -207,7 +207,7 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
     (atomic-change-group
       (-when-let (action (popup-menu* actions :isearch t))
         (call-interactively action)))
-    (error "No refactorings available")))
+    (message "No refactorings available")))
 
 (provide 'emr)
 

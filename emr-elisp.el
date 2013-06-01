@@ -441,8 +441,6 @@ Uses of the variable are replaced with the initvalue in the variable definition.
     (/= (line-number-at-pos (region-beginning))
         (line-number-at-pos (region-end)))))
 
-;;; TODO: insert above should skip comments.
-
 ;;;###autoload
 (defun emr-eval-and-replace ()
   "Replace the current region or the form at point with its value."
