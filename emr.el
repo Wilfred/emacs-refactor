@@ -38,6 +38,7 @@
 (require 's)
 (require 'cl-lib)
 (require 'popup)
+(autoload 'in-string-p "thingatpt")
 
 (defgroup emacs-refactor nil
   "Provides refactoring tools for Emacs."
@@ -137,7 +138,7 @@ The index is the car and the line is the cdr."
     (and (>= line min) (<= line max))))
 
 (defmacro emr-reporting-buffer-changes (description &rest body)
-  "Perform a refactoring action and notify the user of changes that were made.
+  "Perform a refactoring action and show a brief diff.
 * DESCRIPTION describes the overall action, and is shown to the user.
 * BODY forms perform the refactor action."
   (declare (indent 1))
