@@ -98,7 +98,7 @@ As an example, here is the declaration for a refactoring command that ships with
 
 ```lisp
 ;;; Extract constant
-(emr-declare-action emr-extract-constant
+(emr-declare-action emr-el-extract-constant
   :title "constant"
   :description "defconst"
   :modes emacs-lisp-mode
