@@ -673,16 +673,20 @@ wrap the form with a let statement at a sensible place."
 
 (defun emr-el:looking-at-let-binding-symbol? ()
   "Non-nil if point is on a binding symbol in a let-binding form."
-  (ignore-errors
-    (let ((maybe-binding-list
-           (save-excursion
-             (emr-el:goto-open-round)
-             (list-at-point))))
-      (save-excursion
-        ;; Select binding list for the let expression.
-        (emr-el:goto-start-of-let-binding)
-        (let ((bindings (emr-el:let-binding-list (list-at-point))))
-          (equal maybe-binding-list bindings))))))
+  (when (symbol-at-point)
+    (ignore-errors
+      (let ((maybe-binding-list
+             (save-excursion
+               (emr-el:goto-open-round)
+               (list-at-point))))
+        (save-excursion
+          ;; Select binding list for the let expression.
+          (emr-el:goto-start-of-let-binding)
+          (let ((bindings (progn
+                            ;; Move inside let form.
+                            (forward-char 1)
+                            (emr-el:let-binding-list (list-at-point)))))
+            (equal maybe-binding-list bindings)))))))
 
 (defun emr-el:let-bindings-recursively-depend? (elt bindings)
   "Non-nil if the given let bindings list has recursive dependency on ELT."
@@ -706,30 +710,39 @@ wrap the form with a let statement at a sensible place."
 bindings or body of the enclosing let expression."
   (and (emr-el:looking-at-let-binding-symbol?)
        (save-excursion
-         (let ((sym (symbol-at-point)))
+         (let ((sym (or (car (list-at-point))
+                        (symbol-at-point))))
            (emr-el:goto-start-of-let-binding)
            (forward-symbol 1)
            (emr-el:let-binding-is-used? sym (list-at-point))))))
 
+(defun emr-el:split-binding-string (binding-form)
+  (let ((str (->> binding-form (s-chop-prefix "(") (s-chop-suffix ")"))))
+    (list (substring str 0 (s-index-of " " str))
+          (s-trim (substring str (s-index-of " " str))))))
+
 ;;;###autoload
-(defun emr-el-inline-let-variable (symbol)
-  "Inline the let-bound variable named SYMBOL at point."
-  (interactive (list (symbol-at-point)))
+(defun emr-el-inline-let-variable ()
+  "Inline the let-bound variable at point."
+  (interactive)
   (cl-assert (emr-el:looking-at-let-binding-symbol?))
 
   (save-excursion
-    (emr-el:goto-start-of-let-binding)
     (emr-el:extraction-refactor (form) "Inlined let-bound symbol"
-      ;; Insert updated let-binding.
-      (->> (emr-el:inline-let-binding symbol form)
-        (emr-el:print)
-        (emr-el:format-defun)
-        (emr-el:reindent-string)
-        (insert)))
+      (destructuring-bind (sym value) (emr-el:split-binding-string form)
+        ;; Replace all occurences of SYM with VALUE in the scope of the
+        ;; current let form.
+        (emr-el:goto-start-of-let-binding)
+        (let ((end (save-excursion (forward-sexp)
+                                   (point))))
+          (save-restriction
+            (narrow-to-region (point) end)
+            (while (search-forward-regexp
+                    (eval `(rx symbol-start (group-n 1 ,sym) symbol-end))
+                    nil t)
+              (replace-match value 'case t nil 1))))
 
-    ;; Ensure whole form is correctly reindented.
-    (mark-defun)
-    (indent-region (region-beginning) (region-end)))
+        (emr-el:reindent-defun))))
 
   ;; Move back into bindings or body.
   (forward-symbol 2))
