@@ -647,12 +647,12 @@ wrap the form with a let statement at a sensible place."
 
 ;;;###autoload
 (defun emr-el-extract-to-let (symbol)
-  "A wrapper around `redshank-letify-form-up'.
+  "Extract the region or expression at point to a let-binding named SYMBOL.
 
 * extracts the list at or around point
 
 * if there is no enclosing let-form, inserts one at the top of
-  the current defun or lambda form."
+  the current context (e.g. the enclosing `defun' or `lambda' form)."
   (interactive "*SVariable name: ")
   (atomic-change-group
     (save-excursion
@@ -786,7 +786,9 @@ bindings or body of the enclosing let expression."
           (while (search-forward-regexp
                   (eval `(rx symbol-start (group-n 1 ,sym) symbol-end))
                   nil t)
-            (replace-match value 'fixcase t nil 1))))))
+            (unless (or (emr-looking-at-string?)
+                        (emr-looking-at-comment?))
+              (replace-match value 'fixcase t nil 1)))))))
   ;; Clean up.
   ;;
   ;; The binding has been deleted, leaving a blank line. Join with the
