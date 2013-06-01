@@ -654,6 +654,16 @@ wrap the form with a let statement at a sensible place."
 
 ; ------------------
 
+(defun emr-el:goto-start-of-let-binding ()
+  "Move to the opening paren of the let-expression at point.
+  Otherwise move to the previous one in the current top level form."
+  (cl-flet ((max-safe (&rest ns) (apply 'max (--map (or it 0) ns))))
+
+    (-when-let (pos (max-safe (emr-el:find-upwards 'let)
+                              (emr-el:find-upwards 'let*)))
+      (when (< 0 pos)
+        (goto-char pos)))))
+
 (defun emr-el:find-in-tree (elt tree)
   "Return non-nil if ELT is in TREE."
   (cond ((equal elt tree) elt)
@@ -662,32 +672,17 @@ wrap the form with a let statement at a sensible place."
                         nil tree))))
 
 (defun emr-el:looking-at-let-binding-symbol? ()
-  "Non-nil if point is on the binding symbol in a let-binding form."
+  "Non-nil if point is on a binding symbol in a let-binding form."
   (ignore-errors
-    (let* ((form (save-excursion (emr-el:goto-open-round) (list-at-point)))
-           (sym (car-safe form)))
+    (let ((maybe-binding-list
+           (save-excursion
+             (emr-el:goto-open-round)
+             (list-at-point))))
       (save-excursion
         ;; Select binding list for the let expression.
         (emr-el:goto-start-of-let-binding)
         (let ((bindings (emr-el:let-binding-list (list-at-point))))
-          (and
-           ;; List at point is part of the bindings list?
-           (emr-el:find-in-tree form bindings)
-           ;; Head of the list is a symbol in the binding list?
-           (-contains? (emr-el:let-binding-list-symbols bindings) sym)))))))
-
-(defun emr-el:goto-start-of-let-binding ()
-  "Move to the opening paren of the let-expression at point.
-Otherwise move to the previous one in the current top level form."
-  (save-match-data
-    ;; If we're on a let-form, move fowards so the subsequent regex motion works.
-    (when (or (equal (symbol-at-point) 'let)
-              (equal (symbol-at-point) 'let*))
-      (forward-whitespace 1))
-    ;; Find start of let-expression, bounded to the current top-level form.
-    (search-backward-regexp (rx "(" (or "let" "let*") (or "\n" " " "("))
-                            (save-excursion (beginning-of-defun) (point))
-                            t)))
+          (equal maybe-binding-list bindings))))))
 
 (defun emr-el:let-bindings-recursively-depend? (elt bindings)
   "Non-nil if the given let bindings list has recursive dependency on ELT."
@@ -715,6 +710,32 @@ bindings or body of the enclosing let expression."
            (emr-el:goto-start-of-let-binding)
            (forward-symbol 1)
            (emr-el:let-binding-is-used? sym (list-at-point))))))
+
+;;;###autoload
+(defun emr-el-inline-let-variable (symbol)
+  "Inline the let-bound variable named SYMBOL at point."
+  (interactive (list (symbol-at-point)))
+  (cl-assert (emr-el:looking-at-let-binding-symbol?))
+
+  (save-excursion
+    (emr-el:goto-start-of-let-binding)
+    (emr-el:extraction-refactor (form) "Inlined let-bound symbol"
+      ;; Insert updated let-binding.
+      (->> (emr-el:inline-let-binding symbol form)
+        (emr-el:print)
+        (emr-el:format-defun)
+        (emr-el:reindent-string)
+        (insert)))
+
+    ;; Ensure whole form is correctly reindented.
+    (mark-defun)
+    (indent-region (region-beginning) (region-end)))
+
+  ;; Move back into bindings or body.
+  (forward-symbol 2))
+
+; ------------------
+
 
 ;;;; EMR declarations
 
@@ -794,10 +815,10 @@ bindings or body of the enclosing let expression."
                   (not (emr-el:let-bound-var-at-point-has-usages?))))
 
 (emr-declare-action emr-el-inline-let-variable
-  :title "inline binding"
-  :modes emacs-lisp-mode
-  :predicate (and (emr-el:looking-at-let-binding-symbol?)
-                  (emr-el:let-bound-var-at-point-has-usages?)))
+    :title "inline binding"
+    :modes emacs-lisp-mode
+    :predicate (and (emr-el:looking-at-let-binding-symbol?)
+                    (emr-el:let-bound-var-at-point-has-usages?)))
 
 (provide 'emr-elisp2)
 
