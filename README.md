@@ -97,16 +97,17 @@ context-sensitive.
 As an example, here is the declaration for a refactoring command that ships with EMR:
 
 ```lisp
-;;; Extract constant
 (emr-declare-action emr-el-extract-constant
   :title "constant"
   :description "defconst"
   :modes emacs-lisp-mode
-  :predicate (not (emr--looking-at-definition?)))
+  :predicate (not (or (emr-el:looking-at-definition?)
+                      (emr-el:looking-at-let-binding-symbol?))))
 ```
 
-This wires the `emr-extract-constant` function to be displayed in
-`emacs-lisp-mode`, provided point is not looking at an Elisp definition form.
+This wires the `emr-el-extract-constant` function to be displayed in
+`emacs-lisp-mode`, provided point is not looking at an Elisp definition or
+let-binding form.
 
 If your favourite language mode already offers refactoring commands, it is
 simple to wire them up with EMR using this interface.
