@@ -549,6 +549,37 @@ See `autoload' for details."
   "Return the bindings list in the given let form."
   bindings)
 
+(defun* emr-el:let-body ((_let &optional _bindings &rest body))
+  "Return the body forms in the given let form."
+  body)
+
+(defun emr-el:clean-let-form-at-point ()
+  (save-excursion
+   (emr-el:goto-start-of-let-binding)
+   ;; Move into list.
+   (forward-char 1)
+   (let ((bindings (emr-el:let-binding-list (list-at-point)))
+         (body     (emr-el:let-body (list-at-point))))
+     ;; Move to after bindings list.
+     (forward-list 1)
+     (cond
+      ;; Splice contents in directly if the let body has only a single form.
+      ((and (null bindings) (>= 1 (length body)))
+       (paredit-splice-sexp-killing-backward))
+
+      ;; Splice contents into surrounding form in if it has an &body
+      ;; parameter.
+      ((and (null bindings)
+            (-contains? `(progn let let* save-excursion ,@emr-el:definition-forms)
+                        (emr-el:peek-back-upwards)))
+       (backward-kill-sexp 2))
+
+      ;; Otherwise replace `let' with `progn'.
+      ((null bindings)
+       (backward-kill-sexp 2)
+       (insert "progn"))))
+   (emr-el:reindent-defun)))
+
 ;;;###autoload
 (defun emr-el-delete-let-binding-form ()
   "Delete the let binding around point."
@@ -566,7 +597,8 @@ See `autoload' for details."
           (indent-region (region-beginning) (region-end)))
 
       ;; Restore kill-ring.
-      (setq kill-ring kr))))
+      (setq kill-ring kr)
+      (emr-el:clean-let-form-at-point))))
 
 ; ------------------
 
@@ -758,6 +790,7 @@ bindings or body of the enclosing let expression."
   (save-excursion
     (forward-char 1)
     (join-line)
+    (emr-el:clean-let-form-at-point)
     (emr-el:reindent-defun)))
 
 ; ------------------
@@ -819,12 +852,6 @@ bindings or body of the enclosing let expression."
                       (emr-el:macro-boundp (symbol-at-point)))
                   (not (emr-el:variable-definition? (list-at-point)))))
 
-(emr-declare-action emr-el-comment-form
-  :title "comment"
-  :modes emacs-lisp-mode
-  :predicate (and (thing-at-point 'defun)
-                  (not (emr-looking-at-comment?))))
-
 (emr-declare-action emr-el-extract-to-let
   :title "let-bind"
   :description "let"
@@ -845,6 +872,12 @@ bindings or body of the enclosing let expression."
     :modes emacs-lisp-mode
     :predicate (and (emr-el:looking-at-let-binding-symbol?)
                     (emr-el:let-bound-var-at-point-has-usages?)))
+
+(emr-declare-action emr-el-comment-form
+  :title "comment"
+  :modes emacs-lisp-mode
+  :predicate (and (thing-at-point 'defun)
+                  (not (emr-looking-at-comment?))))
 
 (provide 'emr-elisp2)
 
