@@ -662,7 +662,8 @@ wrap the form with a let statement at a sensible place."
     (-when-let (pos (max-safe (emr-el:find-upwards 'let)
                               (emr-el:find-upwards 'let*)))
       (when (< 0 pos)
-        (goto-char pos)))))
+        (goto-char pos)
+        (point)))))
 
 (defun emr-el:find-in-tree (elt tree)
   "Return non-nil if ELT is in TREE."
@@ -717,35 +718,47 @@ bindings or body of the enclosing let expression."
            (emr-el:let-binding-is-used? sym (list-at-point))))))
 
 (defun emr-el:split-binding-string (binding-form)
-  (let ((str (->> binding-form (s-chop-prefix "(") (s-chop-suffix ")"))))
-    (list (substring str 0 (s-index-of " " str))
-          (s-trim (substring str (s-index-of " " str))))))
+  (let* ((binding-form (s-trim binding-form))
+         (str (->> binding-form (s-chop-prefix "(") (s-chop-suffix ")")))
+         (idx (string-match (rx (+ (or space "\n"))) binding-form)))
+    (list (s-trim (substring str 0 idx))
+          (s-trim (substring str idx)))))
 
 ;;;###autoload
 (defun emr-el-inline-let-variable ()
   "Inline the let-bound variable at point."
   (interactive)
   (cl-assert (emr-el:looking-at-let-binding-symbol?))
-
   (save-excursion
+    ;; Extract binding list.
+    ;;
+    ;; This will remove it from the let bindings list. We then replace all
+    ;; occurences of SYM with VALUE in the scope of the current let form.
     (emr-el:extraction-refactor (form) "Inlined let-bound symbol"
       (destructuring-bind (sym value) (emr-el:split-binding-string form)
-        ;; Replace all occurences of SYM with VALUE in the scope of the
-        ;; current let form.
-        (emr-el:goto-start-of-let-binding)
-        (let ((end (save-excursion (forward-sexp)
-                                   (point))))
-          (save-restriction
-            (narrow-to-region (point) end)
-            (while (search-forward-regexp
-                    (eval `(rx symbol-start (group-n 1 ,sym) symbol-end))
-                    nil t)
-              (replace-match value 'case t nil 1))))
-
-        (emr-el:reindent-defun))))
-
-  ;; Move back into bindings or body.
-  (forward-symbol 2))
+        (save-restriction
+          ;; Narrow region to the scope of the current let form.
+          ;; The start is the position of the extracted binding list. This
+          ;; prevents preceding bindings from being altered.
+          (narrow-to-region (point)
+                            (save-excursion
+                              (emr-el:goto-start-of-let-binding)
+                              (forward-sexp)
+                              (point)))
+          (goto-char (point-min))
+          ;; Replace occurence os SYM with VALUE.
+          (while (search-forward-regexp
+                  (eval `(rx symbol-start (group-n 1 ,sym) symbol-end))
+                  nil t)
+            (replace-match value 'fixcase t nil 1))))))
+  ;; Clean up.
+  ;;
+  ;; The binding has been deleted, leaving a blank line. Join with the
+  ;; previous line to clean up.
+  (save-excursion
+    (forward-char 1)
+    (join-line)
+    (emr-el:reindent-defun)))
 
 ; ------------------
 
