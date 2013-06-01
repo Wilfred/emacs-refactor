@@ -553,14 +553,12 @@ See `autoload' for details."
   "Return the body forms in the given let form."
   body)
 
-(defconst emr-el:definition-forms
-  '(lambda defun cl-defun defun* defmacro cl-defmacro defmacro*))
-
-(defconst emr-el:varargs-forms
-  `(let let* save-excursion unwind-protect progn
-    flet cl-flet cl-flet*
-    cl-labels labels
-    ,@emr-el:definition-forms))
+(defconst emr-el:scope-boundary-forms
+  '(lambda defun cl-defun defun* defmacro cl-defmacro defmacro*
+    let let* save-excursion unwind-protect
+    flet cl-flet cl-flet* cl-labels labels)
+  "A list of forms that define some kind of scope or context.
+They will bound upward searches when looking for places to insert let forms.")
 
 (defun emr-el:clean-let-form-at-point ()
   (save-excursion
@@ -579,7 +577,7 @@ See `autoload' for details."
        ;; Splice contents into surrounding form in if it has an &body
        ;; parameter.
        ((and (null bindings)
-             (-contains? emr-el:varargs-forms
+             (-contains? (cons 'progn emr-el:scope-boundary-forms)
                          (emr-el:peek-back-upwards)))
         (backward-kill-sexp 2))
 
@@ -632,7 +630,7 @@ See `autoload' for details."
 Move to that body form that encloses point."
   (cl-loop
    while (ignore-errors (backward-up-list) t)
-   do (when (-contains? emr-el:definition-forms (emr-el:peek-back-upwards))
+   do (when (-contains? emr-el:scope-boundary-forms (emr-el:peek-back-upwards))
         (return (point)))))
 
 (defun emr-el:wrap-body-form-at-point-with-let ()
