@@ -801,20 +801,24 @@ bindings or body of the enclosing let expression."
 
 ; ------------------
 
-
 ;;;; EMR declarations
+
+(emr-declare-action emr-el-implement-function
+  :title "implement function"
+  :modes emacs-lisp-mode
+  :predicate (and (symbol-at-point)
+                  (not (emr-looking-at-string?))
+                  (not (emr-looking-at-comment?))
+                  (not (thing-at-point 'number))
+                  (not (emr-el:looking-at-definition?))
+                  (not (emr-el:looking-at-let-binding-symbol?))
+                  (not (boundp (symbol-at-point)))
+                  (not (fboundp (symbol-at-point)))))
 
 (emr-declare-action emr-el-inline-variable
   :title "inline"
   :modes emacs-lisp-mode
   :predicate (emr-el:variable-definition? (list-at-point)))
-
-(emr-declare-action emr-el-eval-and-replace
-  :title "eval"
-  :description "value"
-  :modes emacs-lisp-mode
-  :predicate (not (or (emr-el:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
 
 (emr-declare-action emr-el-extract-function
   :title "function"
@@ -822,18 +826,6 @@ bindings or body of the enclosing let expression."
   :modes emacs-lisp-mode
   :predicate (not (or (emr-el:looking-at-definition?)
                       (emr-el:looking-at-let-binding-symbol?))))
-
-(emr-declare-action emr-el-implement-function
-  :title "implement function"
-  :modes emacs-lisp-mode
-  :predicate (and (symbol-at-point)
-                  (not (emr-looking-at-string?))
-                  (not (thing-at-point 'comment))
-                  (not (thing-at-point 'number))
-                  (not (emr-el:looking-at-definition?))
-                  (not (emr-el:looking-at-let-binding-symbol?))
-                  (not (boundp (symbol-at-point)))
-                  (not (fboundp (symbol-at-point)))))
 
 (emr-declare-action emr-el-extract-variable
   :title "variable"
@@ -849,14 +841,6 @@ bindings or body of the enclosing let expression."
   :modes emacs-lisp-mode
   :predicate (not (or (emr-el:looking-at-definition?)
                       (emr-el:looking-at-let-binding-symbol?))))
-
-(emr-declare-action emr-el-extract-autoload
-  :title "autoload"
-  :description "autoload"
-  :modes emacs-lisp-mode
-  :predicate (and (or (functionp (symbol-at-point))
-                      (emr-el:macro-boundp (symbol-at-point)))
-                  (not (emr-el:variable-definition? (list-at-point)))))
 
 (emr-declare-action emr-el-extract-to-let
   :title "let-bind"
@@ -878,6 +862,21 @@ bindings or body of the enclosing let expression."
     :modes emacs-lisp-mode
     :predicate (and (emr-el:looking-at-let-binding-symbol?)
                     (emr-el:let-bound-var-at-point-has-usages?)))
+
+(emr-declare-action emr-el-extract-autoload
+  :title "autoload"
+  :description "autoload"
+  :modes emacs-lisp-mode
+  :predicate (and (or (functionp (symbol-at-point))
+                      (emr-el:macro-boundp (symbol-at-point)))
+                  (not (emr-el:variable-definition? (list-at-point)))))
+
+(emr-declare-action emr-el-eval-and-replace
+  :title "eval"
+  :description "value"
+  :modes emacs-lisp-mode
+  :predicate (not (or (emr-el:looking-at-definition?)
+                      (emr-el:looking-at-let-binding-symbol?))))
 
 (emr-declare-action emr-el-comment-form
   :title "comment"
