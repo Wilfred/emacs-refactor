@@ -620,20 +620,31 @@ wrap the form with a let statement at a sensible place."
   (interactive)
   (atomic-change-group
     (let (did-wrap-form?)
-      ;; Redshank provides its own wrapping logic, but it's not very good.
+
+      ;; Wrap with a let-form if one does not exist.
+      ;;
+      ;; Redshank provides its own wrapping logic, but it wraps only the
+      ;; sexp it's extracting. Instead, we want the let form to be as close to the
+      ;; containing defun as possible.
       (save-excursion
         (unless (or (emr-el:find-upwards 'let)
                     (emr-el:find-upwards 'let*))
           (emr-el:wrap-body-form-at-point-with-let)
           (setq did-wrap-form? t)))
+
+      ;; Extract the form.
+      ;;
       ;; Redshank extracts by killing forward, so start from the beginning of
       ;; the list or region.
       (if (region-active-p)
           (goto-char (region-beginning))
         (emr-el:goto-open-round))
       (call-interactively 'redshank-letify-form-up)
+
+      ;; Tidy let binding after insertion.
+      ;;
       ;; Redshank leaves an extra newline when inserting into an empty
-      ;; let-form. Find the let-form and join these lines.
+      ;; let-form. Find that let-form and remove the extra newline.
       (when did-wrap-form?
         (save-excursion
           (goto-char (emr-el:find-upwards 'let))
@@ -782,11 +793,11 @@ bindings or body of the enclosing let expression."
   :predicate (and (emr-el:looking-at-let-binding-symbol?)
                   (not (emr-el:let-bound-var-at-point-has-usages?))))
 
-;; (emr-declare-action emr-el-inline-let-variable
-;;   :title "inline binding"
-;;   :modes emacs-lisp-mode
-;;   :predicate (and (emr-el:looking-at-let-binding-symbol?)
-;;                   (emr-el:let-bound-var-at-point-has-usages?)))
+(emr-declare-action emr-el-inline-let-variable
+  :title "inline binding"
+  :modes emacs-lisp-mode
+  :predicate (and (emr-el:looking-at-let-binding-symbol?)
+                  (emr-el:let-bound-var-at-point-has-usages?)))
 
 (provide 'emr-elisp2)
 
