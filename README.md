@@ -12,7 +12,7 @@ To use EMR when editing, simply move point to an expression and invoke the refac
 EMR ships with useful refactorings for the following languages:
 
 * Elisp
-* C
+* C (in progress)
 
 More languages are forthcoming. See
 [Extension](https://github.com/chrisbarrett/emacs-refactor#extension) for
@@ -119,7 +119,6 @@ Pull requests are welcome. If appropriate, please add unit tests. See the tests 
 
 * C: More useful refactorings, eg, inline function/variable
 * Elisp: Inline function
-* Elisp: Use Redshank where appropriate
 * Support for other languages (esp. Clojure, Python, Ruby)
 
 ## Bug Reports
