@@ -287,7 +287,7 @@ Returns a list of lines where changes were made."
 (defun emr-el-inline-variable ()
   "Inline the variable defined at point.
 Uses of the variable are replaced with the initvalue in the variable definition."
-  (interactive)
+  (interactive "*")
   (save-excursion
     (emr-el:goto-open-round)
     (-if-let (def (emr-el:extract-var-values (list-at-point)))
@@ -322,7 +322,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
 ;;;###autoload
 (defun emr-el-eval-and-replace ()
   "Replace the current region or the form at point with its value."
-  (interactive)
+  (interactive "*")
   (emr-el:extraction-refactor (sexp) "Replacement at"
     (insert (->> (read sexp)
               (emr-el:eval-and-print-progn)
@@ -470,7 +470,7 @@ The function will be called NAME and have the given ARGLIST."
 (defun emr-el-extract-variable (name)
   "Extract the current region or form at point to a special variable.
 The variable will be called NAME."
-  (interactive "sName: ")
+  (interactive "*sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr-el:extraction-refactor (sexp) "Extracted to"
     ;; Insert usage.
@@ -482,7 +482,7 @@ The variable will be called NAME."
 (defun emr-el-extract-constant (name)
   "Extract the current region or form at point to a constant special variable.
 The variable will be called NAME."
-  (interactive "sName: ")
+  (interactive "*sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr-el:extraction-refactor (sexp) "Extracted to"
     ;; Insert usage
@@ -519,7 +519,7 @@ See `autoload' for details."
 ;;;###autoload
 (defun emr-el-comment-form ()
   "Comment out the current region or from at point."
-  (interactive)
+  (interactive "*")
   (if (region-active-p)
       (comment-region (region-beginning)
                       (region-end))
@@ -592,7 +592,7 @@ See `autoload' for details."
 ;;;###autoload
 (defun emr-el-delete-let-binding-form ()
   "Delete the let binding around point."
-  (interactive)
+  (interactive "*")
   (cl-assert (emr-el:looking-at-let-binding-symbol?))
   (let ((kr kill-ring))
     (unwind-protect
@@ -648,43 +648,43 @@ wrap the form with a let statement at a sensible place."
   (emr-el:reindent-defun))
 
 ;;;###autoload
-(defun emr-el-extract-to-let ()
+(defun emr-el-extract-to-let (symbol)
   "A wrapper around `redshank-letify-form-up'.
 
 * extracts the list at or around point
 
 * if there is no enclosing let-form, inserts one at the top of
   the current defun or lambda form."
-  (interactive)
+  (interactive "*SVariable name: ")
   (atomic-change-group
-    (let (did-wrap-form?)
+    (save-excursion
+      (let (did-wrap-form?)
 
-      ;; Wrap with a let-form if one does not exist.
-      ;;
-      ;; Redshank provides its own wrapping logic, but it wraps only the
-      ;; sexp it's extracting. Instead, we want the let form to be as close to the
-      ;; containing defun as possible.
-      (save-excursion
-        (unless (or (emr-el:find-upwards 'let)
-                    (emr-el:find-upwards 'let*))
-          (emr-el:wrap-body-form-at-point-with-let)
-          (setq did-wrap-form? t)))
-
-      ;; Extract the form.
-      ;;
-      ;; Redshank extracts by killing forward, so start from the beginning of
-      ;; the list or region.
-      (if (region-active-p)
-          (goto-char (region-beginning))
-        (emr-el:goto-open-round))
-      (call-interactively 'redshank-letify-form-up)
-
-      ;; Tidy let binding after insertion.
-      ;;
-      ;; Redshank leaves an extra newline when inserting into an empty
-      ;; let-form. Find that let-form and remove the extra newline.
-      (when did-wrap-form?
+        ;; Wrap with a let-form if one does not exist.
+        ;;
+        ;; Redshank provides its own wrapping logic, but it wraps only the
+        ;; sexp it's extracting. Instead, we want the let form to be as close to the
+        ;; containing defun as possible.
         (save-excursion
+          (unless (or (emr-el:find-upwards 'let)
+                      (emr-el:find-upwards 'let*))
+            (emr-el:wrap-body-form-at-point-with-let)
+            (setq did-wrap-form? t)))
+
+        ;; Extract the form.
+        ;;
+        ;; Redshank extracts by killing forward, so start from the beginning of
+        ;; the list or region.
+        (if (region-active-p)
+            (goto-char (region-beginning))
+          (emr-el:goto-open-round))
+        (redshank-letify-form-up (symbol-name symbol))
+
+        ;; Tidy let binding after insertion.
+        ;;
+        ;; Redshank leaves an extra newline when inserting into an empty
+        ;; let-form. Find that let-form and remove the extra newline.
+        (when did-wrap-form?
           (goto-char (emr-el:find-upwards 'let))
           (end-of-line)
           (forward-char)
@@ -765,7 +765,7 @@ bindings or body of the enclosing let expression."
 ;;;###autoload
 (defun emr-el-inline-let-variable ()
   "Inline the let-bound variable at point."
-  (interactive)
+  (interactive "*")
   (cl-assert (emr-el:looking-at-let-binding-symbol?))
   (save-excursion
     ;; Extract binding list.
