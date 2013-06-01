@@ -553,32 +553,41 @@ See `autoload' for details."
   "Return the body forms in the given let form."
   body)
 
+(defconst emr-el:definition-forms
+  '(lambda defun cl-defun defun* defmacro cl-defmacro defmacro*))
+
+(defconst emr-el:varargs-forms
+  `(let let* save-excursion unwind-protect progn
+    flet cl-flet cl-flet*
+    cl-labels labels
+    ,@emr-el:definition-forms))
+
 (defun emr-el:clean-let-form-at-point ()
   (save-excursion
-   (emr-el:goto-start-of-let-binding)
-   ;; Move into list.
-   (forward-char 1)
-   (let ((bindings (emr-el:let-binding-list (list-at-point)))
-         (body     (emr-el:let-body (list-at-point))))
-     ;; Move to after bindings list.
-     (forward-list 1)
-     (cond
-      ;; Splice contents in directly if the let body has only a single form.
-      ((and (null bindings) (>= 1 (length body)))
-       (paredit-splice-sexp-killing-backward))
+    (emr-el:goto-start-of-let-binding)
+    ;; Move into list.
+    (forward-char 1)
+    (let ((bindings (emr-el:let-binding-list (list-at-point)))
+          (body     (emr-el:let-body (list-at-point))))
+      ;; Move to after bindings list.
+      (forward-list 1)
+      (cond
+       ;; Splice contents in directly if the let body has only a single form.
+       ((and (null bindings) (>= 1 (length body)))
+        (paredit-splice-sexp-killing-backward))
 
-      ;; Splice contents into surrounding form in if it has an &body
-      ;; parameter.
-      ((and (null bindings)
-            (-contains? `(progn let let* save-excursion ,@emr-el:definition-forms)
-                        (emr-el:peek-back-upwards)))
-       (backward-kill-sexp 2))
+       ;; Splice contents into surrounding form in if it has an &body
+       ;; parameter.
+       ((and (null bindings)
+             (-contains? emr-el:varargs-forms
+                         (emr-el:peek-back-upwards)))
+        (backward-kill-sexp 2))
 
-      ;; Otherwise replace `let' with `progn'.
-      ((null bindings)
-       (backward-kill-sexp 2)
-       (insert "progn"))))
-   (emr-el:reindent-defun)))
+       ;; Otherwise replace `let' with `progn'.
+       ((null bindings)
+        (backward-kill-sexp 2)
+        (insert "progn"))))
+    (emr-el:reindent-defun)))
 
 ;;;###autoload
 (defun emr-el-delete-let-binding-form ()
@@ -617,9 +626,6 @@ See `autoload' for details."
     (when (ignore-errors (backward-up-list) t)
       (forward-char 1)
       (sexp-at-point))))
-
-(defconst emr-el:definition-forms
-  '(lambda defun cl-defun defun* defmacro cl-defmacro defmacro*))
 
 (defun emr-el:goto-containing-body-form ()
   "Search upwards for the first function or macro declaration enclosing point.
