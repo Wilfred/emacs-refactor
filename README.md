@@ -83,6 +83,7 @@ These will be installed automatically by Carton.
 * [popup](https://github.com/auto-complete/popup-el)
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
 * [list-utils](https://github.com/rolandwalker/list-utils)
+* [redshank](https://github.com/emacsmirror/redshank)
 
 Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
