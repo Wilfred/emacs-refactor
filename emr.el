@@ -3,7 +3,7 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.3.1
+;; Version: 0.3.2
 ;; Keywords: tools convenience refactoring
 ;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (redshank "1.0.0"))
 ;; This file is not part of GNU Emacs.
@@ -55,11 +55,25 @@
 ;;;
 ;;; Functions that could be useful to extensions.
 
+(defun emr-at-defun-start? ()
+  "Non-nil if point is at the start of a defun."
+  (/= (save-excursion
+        (beginning-of-defun)
+        (point))
+      (save-excursion
+        (forward-char 1)
+        (beginning-of-defun)
+        (point))))
+
 (defun emr-move-above-defun ()
   "Move to the start of the current defun.
 If the defun is preceded by comments, move above them."
   (interactive)
-  (beginning-of-defun)
+  ;; If we're at a defun already, prevent `beginning-of-defun' from moving
+  ;; back to the preceding defun.
+  (unless (emr-at-defun-start?)
+    (beginning-of-defun))
+  ;; If there is a comment attached to this defun, skip over it.
   (while (save-excursion
            (forward-line -1)
            (and (emr-looking-at-comment?)
