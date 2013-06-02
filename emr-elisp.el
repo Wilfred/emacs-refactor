@@ -899,12 +899,18 @@ Replaces all usages in the current buffer."
   (interactive "*")
   (atomic-change-group
     (save-excursion
-      ;; Extract definition.
+
+      ;; Extract the whole defun at point.
       (beginning-of-defun)
       (emr-el:extraction-refactor (def) "Inlined function"
 
+        ;; There will now be a blank line where the defun used to be. Join
+        ;; lines to fix this.
+        (emr-el:collapse-vertical-whitespace)
+
         (let ((fname (nth 1 (s-split (rx space) def)))
-              (did-perform-insertions?))
+              ;; Tracks the line numbers where inlinings are performed.
+              (modified-lines))
 
           (goto-char (point-min))
 
@@ -920,17 +926,25 @@ Replaces all usages in the current buffer."
                   nil t)
             ;; Move to start of the usage form.
             (search-backward "(")
+
+            ;; Inline the function at and update the `modified-lines' list.
             (emr-el:extraction-refactor (usage) "Replace usage"
-              (insert (emr-el:transform-function-usage def usage)))
-            (setq did-perform-insertions? t))
+              (push (line-number-at-pos) modified-lines)
+              (insert (emr-el:transform-function-usage def usage))
+              (emr-el:reindent-defun)))
 
-          ;; Bail if no changes were made to the buffer.
-          (unless did-perform-insertions?
-            (error "No usages found")))))
-
-    ;; There will now be a blank line where the defun used to be. Join
-    ;; lines to fix this.
-    (emr-el:collapse-vertical-whitespace)))
+          ;; Report inlining count to the user.
+          (if modified-lines
+              (let* ((n (length modified-lines))
+                     (s (if (equal 1 n) "" "s")))
+                (message "%s replacement%s performed at line%s: %s" n s s
+                         (->> modified-lines
+                           (reverse)
+                           (-map 'number-to-string)
+                           (s-join ", "))))
+            ;; Abort if no changes were made to the buffer. This will revert
+            ;; the buffer text to its state before the extraction.
+            (error "No usages found")))))))
 
 ; ------------------
 
