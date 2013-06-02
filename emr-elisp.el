@@ -870,9 +870,15 @@ bindings or body of the enclosing let expression."
       (forward-sexp))
 
     ;; Return body.
-    (->> (buffer-substring (point) (point-max))
-      (s-trim)
-      (s-chop-suffix ")"))))
+    (let ((bod (->> (buffer-substring (point) (point-max))
+                 (s-trim)
+                 ;; Trim close-brace matching the top-level form.
+                 (s-chop-suffix ")"))))
+      bod
+      ;; Wrap body in a progn if there's more than one form.
+      (if (< 1 (->> (format "(%s)" bod) (read) (length)))
+          (format "(progn\n  %s)" bod)
+        bod))))
 
 (defun emr-el:transform-function-usage (def usage)
   "Replace the usage of a function with the body from its definition.
@@ -892,59 +898,66 @@ Its variables will be let-bound."
       (emr-el:clean-let-form-at-point)
       (buffer-string))))
 
+(defun emr-el:defun-at-point-has-body ()
+  (not (emr-blank? (emr-el:defun-body-str (thing-at-point 'defun)))))
+
 ;;;###autoload
 (defun emr-el-inline-function ()
   "Replace usages of a function with its body forms.
 Replaces all usages in the current buffer."
   (interactive "*")
-  (atomic-change-group
-    (save-excursion
+  ;; Warn the user if the defun at point has an empty body. Prompt before
+  ;; continuing.
+  (when (or (emr-el:defun-at-point-has-body)
+            (y-or-n-p "Warning: This function has no body.  Continue? "))
+    (atomic-change-group
+      (save-excursion
 
-      ;; Extract the whole defun at point.
-      (beginning-of-defun)
-      (emr-el:extraction-refactor (def) "Inlined function"
+        ;; Extract the whole defun at point.
+        (beginning-of-defun)
+        (emr-el:extraction-refactor (def) "Inlined function"
 
-        ;; There will now be a blank line where the defun used to be. Join
-        ;; lines to fix this.
-        (emr-el:collapse-vertical-whitespace)
+          ;; There will now be a blank line where the defun used to be. Join
+          ;; lines to fix this.
+          (emr-el:collapse-vertical-whitespace)
 
-        (let ((fname (nth 1 (s-split (rx space) def)))
-              ;; Tracks the line numbers where inlinings are performed.
-              (modified-lines))
+          (let ((fname (nth 1 (s-split (rx space) def)))
+                ;; Tracks the line numbers where inlinings are performed.
+                (modified-lines))
 
-          (goto-char (point-min))
+            (goto-char (point-min))
 
-          ;; Search the buffer for function usages.
-          (while (search-forward-regexp
-                  (eval `(rx "("
-                             ;; Optional use of apply/funcall.
-                             (? (or "apply" "funcall")
-                                (+ (any space "\n" "\t"))
-                                "'")
-                             ;; Usage of name.
-                             ,fname symbol-end))
-                  nil t)
-            ;; Move to start of the usage form.
-            (search-backward "(")
+            ;; Search the buffer for function usages.
+            (while (search-forward-regexp
+                    (eval `(rx "("
+                               ;; Optional use of apply/funcall.
+                               (? (or "apply" "funcall")
+                                  (+ (any space "\n" "\t"))
+                                  "'")
+                               ;; Usage of name.
+                               ,fname symbol-end))
+                    nil t)
+              ;; Move to start of the usage form.
+              (search-backward "(")
 
-            ;; Inline the function at and update the `modified-lines' list.
-            (emr-el:extraction-refactor (usage) "Replace usage"
-              (push (line-number-at-pos) modified-lines)
-              (insert (emr-el:transform-function-usage def usage))
-              (emr-el:reindent-defun)))
+              ;; Inline the function at and update the `modified-lines' list.
+              (emr-el:extraction-refactor (usage) "Replace usage"
+                (push (line-number-at-pos) modified-lines)
+                (insert (emr-el:transform-function-usage def usage))
+                (emr-el:reindent-defun)))
 
-          ;; Report inlining count to the user.
-          (if modified-lines
-              (let* ((n (length modified-lines))
-                     (s (if (equal 1 n) "" "s")))
-                (message "%s replacement%s performed at line%s: %s" n s s
-                         (->> modified-lines
-                           (reverse)
-                           (-map 'number-to-string)
-                           (s-join ", "))))
-            ;; Abort if no changes were made to the buffer. This will revert
-            ;; the buffer text to its state before the extraction.
-            (error "No usages found")))))))
+            ;; Report inlining count to the user.
+            (if modified-lines
+                (let* ((n (length modified-lines))
+                       (s (if (equal 1 n) "" "s")))
+                  (message "%s replacement%s performed at line%s: %s" n s s
+                           (->> modified-lines
+                             (reverse)
+                             (-map 'number-to-string)
+                             (s-join ", "))))
+              ;; Abort if no changes were made to the buffer. This will revert
+              ;; the buffer text to its state before the extraction.
+              (error "No usages found"))))))))
 
 ; ------------------
 
