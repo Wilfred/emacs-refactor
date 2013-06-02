@@ -67,7 +67,8 @@ If the defun is preceded by comments, move above them."
 
 (defun emr-looking-at-string? ()
   "Return non-nil if point is inside a string."
-  (and (in-string-p) t))
+  (or (ignore-errors (and (in-string-p) t))
+      (equal 'font-lock-string-face (face-at-point))))
 
 (defun emr-looking-at-comment? ()
   "Non-nil if point is on a comment."
