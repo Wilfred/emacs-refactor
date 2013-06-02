@@ -34,6 +34,25 @@
 (autoload 'paredit-splice-sexp-killing-backward "paredit")
 (autoload 'redshank-letify-form-up "redshank")
 
+(defcustom emr-el-lines-between-toplevel-forms 1
+  "The number of lines to try to preserve between functions and vars when refactoring Elisp."
+  :group 'emr)
+
+(defun emr-el:collapse-vertical-whitespace ()
+  "Collapse blank lines around point.
+Ensure there are at most `emr-el-lines-between-toplevel-forms' blanks."
+  (cl-flet ((this-line () (buffer-substring (line-beginning-position) (line-end-position))))
+    (when (emr-blank? (this-line))
+      (save-excursion
+        ;; Delete blank lines.
+        (search-backward-regexp (rx (not (any space "\n"))) nil t)
+        (forward-line 1)
+        (while (emr-blank? (this-line))
+          (forward-line)
+          (join-line))
+        ;; Open a user-specified number of blanks.
+        (open-line emr-el-lines-between-toplevel-forms)))))
+
 (defun emr-el:print (form)
   "Print FORM as a Lisp expression."
   (let (
@@ -246,7 +265,7 @@ BODY is a list of forms to execute after extracting the sexp near point."
       (emr-el:function-definition? form)))
 
 (defun emr-el:looking-at-definition? ()
-  "return non-nil if point is at a definition form."
+  "Non-nil if point is at a definition form."
   (or (emr-el:definition? (list-at-point))
       (-when-let (def (read (thing-at-point 'defun)))
         (emr-el:find-in-tree (list-at-point) (cl-third def)))))
@@ -801,6 +820,55 @@ bindings or body of the enclosing let expression."
 
 ; ------------------
 
+(defun emr-el:transform-function-usage (def usage)
+  "Replace the usage of a function with the body from its definition.
+If variables are used more than once, they are inserted into a let-binding."
+  )
+
+;;;###autoload
+(defun emr-el-inline-function ()
+  "Replace usages of a function with its body forms.
+Replaces all usages in the current buffer."
+  (interactive "*")
+  (atomic-change-group
+    (save-excursion
+      (beginning-of-defun)
+
+      ;; Extract definition.
+      (emr-el:extraction-refactor (def) "Inlined function"
+        (let ((fname (nth 1 (s-split (rx space) def))))
+          (goto-char (point-min))
+
+          ;; Search the buffer for direct function calls.
+          (while (search-forward-regexp
+                  (eval `(rx "(" ,fname symbol-end))
+                  nil t)
+            ;; Move to start of the usage form.
+            (search-backward "(")
+            (emr-el:extraction-refactor (usage) "Replace usage"
+              (insert (emr-el:transform-function-usage def usage)))))))
+    ;; There will now be a blank line where the defun used to be. Join
+    ;; lines to fix this.
+    (emr-el:collapse-vertical-whitespace)))
+
+; ------------------
+
+
+
+
+
+(defun x () (message "yo"))
+
+
+
+
+
+(x)
+
+(x)
+
+
+
 ;;;; EMR declarations
 
 (emr-declare-action emr-el-implement-function
@@ -819,6 +887,11 @@ bindings or body of the enclosing let expression."
   :title "inline"
   :modes emacs-lisp-mode
   :predicate (emr-el:variable-definition? (list-at-point)))
+
+(emr-declare-action emr-el-inline-function
+  :title "inline"
+  :modes emacs-lisp-mode
+  :predicate (emr-el:looking-at-definition?))
 
 (emr-declare-action emr-el-extract-function
   :title "function"
