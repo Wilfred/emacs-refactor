@@ -62,7 +62,8 @@ If the defun is preceded by comments, move above them."
   (beginning-of-defun)
   (while (save-excursion
            (forward-line -1)
-           (emr-looking-at-comment?))
+           (and (emr-looking-at-comment?)
+                (not (bobp))))
     (forward-line -1)))
 
 (defun emr-looking-at-string? ()
