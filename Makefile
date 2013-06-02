@@ -17,7 +17,7 @@ TEST_RUNNER = $(abspath $(TEST_D)/test-runner.el)
 # ============================================================================
 
 .PHONY: default
-default : uninstall deps install clean-package
+default : uninstall elpa install clean-package
 
 # Installs the package to .emacs.d/elpa
 .PHONY : install
@@ -31,9 +31,11 @@ uninstall :
 	rm -rf $(EMACS_D)elpa/emr-*
 
 # Install package dependencies.
-.PHONY : deps
-deps :
+elpa :
 	$(CARTON) install
+
+.PHONY : deps
+deps : elpa
 	$(CARTON) update
 
 # ----------------------------------------------------------------------------
@@ -82,5 +84,5 @@ $(MANIFEST) :
 # Tests
 
 .PHONY: test
-test :
+test : elpa
 	$(CARTON) exec $(EMACS) -Q --no-site-lisp --script $(TEST_RUNNER)
