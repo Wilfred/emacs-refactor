@@ -580,6 +580,9 @@ See `autoload' for details."
 They will bound upward searches when looking for places to insert let forms.")
 
 (defun emr-el:clean-let-form-at-point ()
+  "Tidy the let form at point.
+If it has no bindings, splice its contents into the surrounding
+form or replace with `progn'."
   (save-excursion
     (emr-el:goto-start-of-let-binding)
     ;; Move into list.
@@ -820,10 +823,56 @@ bindings or body of the enclosing let expression."
 
 ; ------------------
 
+(defun emr-el:extract-arguments-in-usage-form (usage)
+  "Given a function usage form, extract the arguments applied to the function."
+  (with-temp-buffer
+    (save-excursion (insert usage))
+    ;; Move to funcall parameters.
+    (forward-char)
+    (if (thing-at-point-looking-at (rx (or "funcall" "apply") symbol-end))
+        (forward-symbol 2)
+      (forward-symbol 1))
+    ;; Collect all arguments in usage.
+    (let ((acc)
+          (kr kill-ring))
+      (unwind-protect
+          (while (ignore-errors (kill-sexp) t)
+            (push (s-trim (car kill-ring)) acc))
+        ;; Restore kill-ring to previous state.
+        (setq kill-ring kr))
+      (nreverse acc))))
+
+(defun* emr-el:defun-arglist-symbols ((_def _sym arglist &rest body))
+  arglist)
+
+(defun emr-el:defun-body-str (defun-str)
+  "Extract the body forms from DEFUN-STR."
+  (with-temp-buffer
+    (save-excursion (insert defun-str))
+    ;; Move past arglist.
+    (forward-char)
+    (forward-sexp 3)
+    (->> (buffer-substring (point) (point-max))
+      (s-trim)
+      (s-chop-suffix ")"))))
+
 (defun emr-el:transform-function-usage (def usage)
   "Replace the usage of a function with the body from its definition.
-If variables are used more than once, they are inserted into a let-binding."
-  )
+Its variables will be let-bound."
+  (let* ((params (->> (read def)
+                   (emr-el:defun-arglist-symbols)
+                   (--remove (-contains? emr-el:special-symbols it))))
+         (args (emr-el:extract-arguments-in-usage-form usage))
+         ;; Join the function arglist and funcall arguments to create a
+         ;; let-bindings list.
+         (bindings (or (->> (-zip params args) (-map 'list-utils-make-proper))
+                       "()"))
+         (body (emr-el:defun-body-str def)))
+    (with-temp-buffer
+      (save-excursion
+        (insert (format "(let %s\n %s)" bindings body)))
+      (emr-el:clean-let-form-at-point)
+      (buffer-string))))
 
 ;;;###autoload
 (defun emr-el-inline-function ()
@@ -832,42 +881,40 @@ Replaces all usages in the current buffer."
   (interactive "*")
   (atomic-change-group
     (save-excursion
-      (beginning-of-defun)
-
       ;; Extract definition.
+      (beginning-of-defun)
       (emr-el:extraction-refactor (def) "Inlined function"
-        (let ((fname (nth 1 (s-split (rx space) def))))
+
+        (let ((fname (nth 1 (s-split (rx space) def)))
+              (did-perform-insertions?))
+
           (goto-char (point-min))
 
-          ;; Search the buffer for direct function calls.
+          ;; Search the buffer for function usages.
           (while (search-forward-regexp
-                  (eval `(rx "(" ,fname symbol-end))
+                  (eval `(rx "("
+                             ;; Optional use of apply/funcall.
+                             (? (or "apply" "funcall")
+                                (+ (any space "\n" "\t"))
+                                "'")
+                             ;; Usage of name.
+                             ,fname symbol-end))
                   nil t)
             ;; Move to start of the usage form.
             (search-backward "(")
             (emr-el:extraction-refactor (usage) "Replace usage"
-              (insert (emr-el:transform-function-usage def usage)))))))
+              (insert (emr-el:transform-function-usage def usage)))
+            (setq did-perform-insertions? t))
+
+          ;; Bail if no changes were made to the buffer.
+          (unless did-perform-insertions?
+            (error "No usages found")))))
+
     ;; There will now be a blank line where the defun used to be. Join
     ;; lines to fix this.
     (emr-el:collapse-vertical-whitespace)))
 
 ; ------------------
-
-
-
-
-
-(defun x () (message "yo"))
-
-
-
-
-
-(x)
-
-(x)
-
-
 
 ;;;; EMR declarations
 
