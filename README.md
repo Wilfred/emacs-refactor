@@ -84,6 +84,7 @@ These will be installed automatically by Carton.
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
 * [list-utils](https://github.com/rolandwalker/list-utils)
 * [redshank](https://github.com/emacsmirror/redshank)
+* [paredit](https://github.com/emacsmirror/paredit/blob/master/paredit.el)
 
 Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
