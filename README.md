@@ -119,7 +119,6 @@ Pull requests are welcome. If appropriate, please add unit tests. See the tests 
 ## TODO
 
 * C: More useful refactorings, eg, inline function/variable
-* Elisp: Inline function
 * Support for other languages (esp. Clojure, Python, Ruby)
 
 ## Bug Reports
