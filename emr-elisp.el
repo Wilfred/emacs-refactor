@@ -845,6 +845,13 @@ bindings or body of the enclosing let expression."
 (defun* emr-el:defun-arglist-symbols ((_def _sym arglist &rest body))
   arglist)
 
+(defun* emr-el:peek-forward-sexp (&optional (n 1))
+  "Return the sexp N positions forward of point."
+  (ignore-errors
+    (let ((start (save-excursion (forward-sexp (1- n)) (point)))
+          (end   (save-excursion (forward-sexp n) (point))))
+      (read (buffer-substring start end)))))
+
 (defun emr-el:defun-body-str (defun-str)
   "Extract the body forms from DEFUN-STR."
   (with-temp-buffer
@@ -852,6 +859,17 @@ bindings or body of the enclosing let expression."
     ;; Move past arglist.
     (forward-char)
     (forward-sexp 3)
+
+    ;; Move past docstring.
+    (when (and (stringp (emr-el:peek-forward-sexp))
+               (emr-el:peek-forward-sexp 2))
+      (forward-sexp))
+
+    ;; Move past `declare' and `interactive' forms.
+    (while (-contains? '(declare interactive) (car-safe (emr-el:peek-forward-sexp)))
+      (forward-sexp))
+
+    ;; Return body.
     (->> (buffer-substring (point) (point-max))
       (s-trim)
       (s-chop-suffix ")"))))
