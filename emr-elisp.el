@@ -1056,7 +1056,7 @@ Replaces all usages in the current buffer."
 (emr-declare-action emr-el-inline-function
   :title "inline"
   :modes emacs-lisp-mode
-  :predicate (emr-el:looking-at-definition?))
+  :predicate (emr-el:function-definition? (list-at-point)))
 
 (emr-declare-action emr-el-extract-function
   :title "function"
