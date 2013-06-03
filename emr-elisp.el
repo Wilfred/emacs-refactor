@@ -271,10 +271,6 @@ BODY is a list of forms to execute after extracting the sexp near point."
       (-when-let (def (read (thing-at-point 'defun)))
         (emr-el:find-in-tree (list-at-point) (cl-third def)))))
 
-(defun emr-el:autoload-exists? (function str)
-  "Returns true if an autoload for FUNCTION exists in string STR."
-  (s-contains? (format "(autoload '%s " function) str))
-
 ;;;; Refactoring commands
 
 (defun emr-el:extract-var-values (sexp)
@@ -523,6 +519,10 @@ The variable will be called NAME."
     (comment-region (region-beginning) (region-end))))
 
 ; ------------------
+
+(defun emr-el:autoload-exists? (function str)
+  "Returns true if an autoload for FUNCTION exists in string STR."
+  (s-contains? (format "(autoload '%s " function) str))
 
 (defun emr-el:autoload-directive-exsts-above-defun? ()
   "Non-nil if the current defun is preceeded by an autoload directive."
