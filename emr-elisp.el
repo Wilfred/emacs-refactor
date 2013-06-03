@@ -512,6 +512,40 @@ The variable will be called NAME."
     (emr-el:insert-above-defun (format "(defconst %s %s)" name sexp))))
 
 ;;;###autoload
+(defun emr-el-comment-form ()
+  "Comment out the current region or from at point."
+  (interactive "*")
+  (if (region-active-p)
+      (comment-region (region-beginning)
+                      (region-end))
+    (emr-el:goto-open-round-or-quote)
+    (mark-sexp)
+    (comment-region (region-beginning) (region-end))))
+
+
+; ------------------
+
+(defun emr-el:autoload-directive-exsts-above-defun? ()
+  "Non-nil if the current defun is preceeded by an autoload directive."
+  (save-excursion
+    (beginning-of-thing 'defun)
+    (forward-line -1)
+    (s-matches? (rx bol (* space) ";;;###autoload" (* space) eol)
+                (buffer-substring (line-beginning-position)
+                                  (line-end-position)))))
+
+;;;###autoload
+(defun emr-el-insert-autoload-directive ()
+  "Insert an autoload directive above the current defun, macro or keymap."
+  (interactive "*")
+  (unless (emr-el:autoload-directive-exsts-above-defun?)
+    (emr-reporting-buffer-changes "Inserted autoload"
+      (save-excursion
+        (beginning-of-thing 'defun)
+        (open-line 1)
+        (insert ";;;###autoload")))))
+
+;;;###autoload
 (defun emr-el-extract-autoload (function file)
   "Create an autoload for FUNCTION.
 FILE is the file that declares FUNCTION.
@@ -536,17 +570,6 @@ See `autoload' for details."
                      (insert (emr-el:print form)))
             (emr-el:insert-above-defun
              (emr-el:print form))))))))
-
-;;;###autoload
-(defun emr-el-comment-form ()
-  "Comment out the current region or from at point."
-  (interactive "*")
-  (if (region-active-p)
-      (comment-region (region-beginning)
-                      (region-end))
-    (emr-el:goto-open-round-or-quote)
-    (mark-sexp)
-    (comment-region (region-beginning) (region-end))))
 
 ; ------------------
 
@@ -1036,7 +1059,15 @@ Replaces all usages in the current buffer."
   :modes emacs-lisp-mode
   :predicate (and (or (functionp (symbol-at-point))
                       (emr-el:macro-boundp (symbol-at-point)))
+                  (not (emr-el:looking-at-definition?))
                   (not (emr-el:variable-definition? (list-at-point)))))
+
+(emr-declare-action emr-el-insert-autoload-directive
+  :title "autoload"
+  :description "directive"
+  :modes emacs-lisp-mode
+  :predicate (and (emr-el:looking-at-definition?)
+                  (not (emr-el:autoload-directive-exsts-above-defun?))))
 
 (emr-declare-action emr-el-eval-and-replace
   :title "eval"
