@@ -32,6 +32,7 @@
 (require 'thingatpt)
 (require 'emr)
 (autoload 'paredit-splice-sexp-killing-backward "paredit")
+(autoload 'ido-yes-or-no-p "ido-yes-or-no")
 (autoload 'redshank-letify-form-up "redshank")
 
 (defcustom emr-el-lines-between-toplevel-forms 1
@@ -855,6 +856,7 @@ bindings or body of the enclosing let expression."
 (defun emr-el:defun-body-str (defun-str)
   "Extract the body forms from DEFUN-STR."
   (with-temp-buffer
+    (lisp-mode)
     (save-excursion (insert defun-str))
     ;; Move past arglist.
     (forward-char)
@@ -869,16 +871,9 @@ bindings or body of the enclosing let expression."
     (while (-contains? '(declare interactive) (car-safe (emr-el:peek-forward-sexp)))
       (forward-sexp))
 
-    ;; Return body.
-    (let ((bod (->> (buffer-substring (point) (point-max))
-                 (s-trim)
-                 ;; Trim close-brace matching the top-level form.
-                 (s-chop-suffix ")"))))
-      bod
-      ;; Wrap body in a progn if there's more than one form.
-      (if (< 1 (->> (format "(%s)" bod) (read) (length)))
-          (format "(progn\n  %s)" bod)
-        bod))))
+    ;; Everything from here is the body. Delete everything prior to this point.
+    (paredit-splice-sexp-killing-backward)
+    (buffer-string)))
 
 (defun emr-el:transform-function-usage (def usage)
   "Replace the usage of a function with the body from its definition.
@@ -893,9 +888,11 @@ Its variables will be let-bound."
                        "()"))
          (body (emr-el:defun-body-str def)))
     (with-temp-buffer
+      (lisp-mode)
       (save-excursion
         (insert (format "(let %s\n %s)" bindings body)))
       (emr-el:clean-let-form-at-point)
+      (emr-el:reindent-defun)
       (buffer-string))))
 
 (defun emr-el:defun-at-point-has-body ()
@@ -909,7 +906,7 @@ Replaces all usages in the current buffer."
   ;; Warn the user if the defun at point has an empty body. Prompt before
   ;; continuing.
   (when (or (emr-el:defun-at-point-has-body)
-            (y-or-n-p "Warning: This function has no body.  Continue? "))
+            (ido-yes-or-no-p "Warning: This function has no body.  Continue? "))
     (atomic-change-group
       (save-excursion
 
