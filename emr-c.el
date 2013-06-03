@@ -78,7 +78,7 @@
 ;;;###autoload
 (defun emr-c-tidy-includes ()
   "Separate includes depending on whether they're library or project headers."
-  (interactive)
+  (interactive "*")
   (let (includes)
     (save-excursion
       (emr-c:goto-includes-or-buf-start)
