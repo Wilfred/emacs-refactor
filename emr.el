@@ -3,7 +3,7 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.3.2
+;; Version: 0.3.3
 ;; Keywords: tools convenience refactoring
 ;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (redshank "1.0.0") (paredit "24.0.0"))
 ;; This file is not part of GNU Emacs.
@@ -50,9 +50,10 @@
   :type 'checkbox
   :group 'emacs-refactor)
 
-;;; ----------------------------------------------------------------------------
-;;; Utility functions
-;;;
+; ------------------
+
+;;;; Utility functions
+
 ;;; Functions that could be useful to extensions.
 
 (defun emr-at-defun-start? ()
@@ -114,9 +115,10 @@ Return the position of the end of STR."
           (open-line 1)))
       (point))))
 
-;;; ----------------------------------------------------------------------------
-;;; Reporting
-;;;
+; ------------------
+
+;;;; Reporting
+
 ;;; These commands may be used to describe the changes made to buffers. See
 ;;; example in emr-elisp.
 
@@ -167,8 +169,10 @@ The index is the car and the line is the cdr."
          (unless (emr:line-visible? line)
            (emr:report-action ,description line text))))))
 
-;;; ----------------------------------------------------------------------------
-;;; Popup menu
+; ------------------
+
+;;;; Popup menu
+
 ;;; Items to be displayed in the refactoring popup menu are added using the
 ;;; `emr-declare-action' macro.
 
@@ -179,7 +183,7 @@ The index is the car and the line is the cdr."
 (defun emr-initialize ()
   "Activate language support for EMR."
   (eval-after-load "lisp-mode" '(require 'emr-elisp))
-  (eval-after-load "cc-mode" '(require 'emr-c)))
+  (eval-after-load "cc-mode"   '(progn (require 'emr-c) (emr-c-initialize))))
 
 ;;;###autoload
 (defmacro* emr-declare-action (function &key modes title (predicate t) description)

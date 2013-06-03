@@ -29,392 +29,149 @@
 (require 's)
 (require 'dash)
 (require 'thingatpt)
-(require 'cc-cmds)
-(autoload 'c-get-style-variables "cc-styles")
-(autoload 'paredit-forward-up "paredit")
-(autoload 'paredit-backward-up "paredit")
+(autoload 'projectile-project-files "projectile")
+(autoload 'projectile-project-p "projectile")
+(autoload 'ido-completing-read "ido")
 
-(defun emr-c:extract-above (desc str)
-  "Insert STR above the current defun."
-  (declare (indent 1))
-  (save-excursion
-    (emr-move-above-defun)
-    (open-line 2)
-    (emr-reporting-buffer-changes desc
-      (insert str)
-      (c-indent-defun))))
+(defvar emr-c:standard-headers
+  '("aio.h" "arpa/inet.h" "assert.h" "complex.h" "cpio.h" "ctype.h"
+    "curses.h" "dirent.h" "dlfcn.h" "errno.h" "fcntl.h" "fenv.h" "float.h"
+    "fmtmsg.h" "fnmatch.h" "ftw.h" "glob.h" "grp.h" "iconv.h" "inttypes.h"
+    "iso646.h" "langinfo.h" "libgen.h" "limits.h" "locale.h" "math.h"
+    "monetary.h" "mqueue.h" "ndbm.h" "net/if.h" "netdb.h" "netinet/in.h"
+    "netinet/tcp.h" "nl_types.h" "poll.h" "pthread.h" "pwd.h" "regex.h"
+    "sched.h" "search.h" "semaphore.h" "setjmp.h" "signal.h" "spawn.h"
+    "stdalign.h" "stdarg.h" "stdatomic.h" "stdbool.h" "stddef.h" "stdint.h"
+    "stdio.h" "stdlib.h" "stdnoreturn.h" "string.h" "strings.h" "stropts.h"
+    "sys/ipc.h" "sys/mman.h" "sys/msg.h" "sys/resource.h" "sys/select.h"
+    "sys/sem.h" "sys/shm.h" "sys/socket.h" "sys/stat.h" "sys/statvfs.h"
+    "sys/time.h" "sys/times.h" "sys/types.h" "sys/uio.h" "sys/un.h"
+    "sys/utsname.h" "sys/wait.h" "syslog.h" "tar.h" "term.h" "termios.h"
+    "tgmath.h" "threads.h" "time.h" "trace.h" "uchar.h" "ulimit.h"
+    "uncntrl.h" "unistd.h" "utime.h" "utmpx.h" "wchar.h" "wctype.h"
+    "wordexp.h"))
 
-(defun emr-c:maybe-append-semicolon (str)
-  (if (s-ends-with? ";" str)
-      str
-    (s-append ";" str)))
+; ------------------
 
-(defun emr-c:maybe-prepend-return (str)
-  (if (s-matches? (rx bol (* space) "return") str)
-      str
-    (format "return %s" (s-trim str))))
+(defconst emr-c:rx-include
+  (rx "#include" (+ space)
+      (group-n 1
+               (or "\"" "<") (* (not space)) (or "\"" ">"))))
 
-(defun emr-c:split-at-assignment (str)
-  "Return a cons where the car is the left side of the assignment
-and the cdr is the right. Nil if not an assignment."
-  (-when-let (idx (s-index-of "=" str))
-    (cons (s-trim (substring str 0 idx))
-          (s-trim (substring str (1+ idx))))))
+(defun emr-c:looking-at-include? ()
+  (thing-at-point-looking-at emr-c:rx-include))
 
-(defun emr-c:rvalue (expr)
-  "If EXPR is an assignment, return the right side. Otherwise return EXPR unchanged."
-  (or (cdr (emr-c:split-at-assignment expr))
-      expr))
+(defun emr-c:bob-after-comments ()
+  "Move to the first non-comment character in the buffer."
+  (goto-char (point-min))
+  (while (emr-looking-at-comment?)
+    (forward-line 1))
+  (point))
 
-(defun emr-c:add-return-statement (str)
-  "Prepend a return statement to the last line of STR.
-If the last line of STR is an assignment, the assignment will be
-replaced by the return."
-  (destructuring-bind (&optional last &rest rest)
-      ;; Clean up lines and reverse for processing.
-      (->> (s-split "\n" str)
-        (-map 's-trim)
-        (-drop-while 'emr-blank?)
-        (nreverse)
-        (-drop-while 'emr-blank?))
-    ;; Reformat last line.
-    (->> (-> last
-           (emr-c:rvalue)
-           (emr-c:maybe-prepend-return)
-           (emr-c:maybe-append-semicolon)
-           (cl-list* rest)
-           (nreverse))
-      ;; Rejoin with left padding.
-      (--map (concat (s-repeat tab-width " ") it))
-      (s-join "\n"))))
-
-(defun emr-c:spacing-before-function-curly ()
-  "Use the current style to format the spacing between the arglist and body."
-  (let ((spaces (cdr (assoc 'func-decl-cont c-offsets-alist))))
-    (concat
-     ;; Spaces
-     (cond ((equal spaces '+) " ")
-           ((numberp spaces) (s-repeat spaces " ")))
-     ;; Newlines
-     (when (assoc 'defun-open c-hanging-braces-alist) "\n"))))
-
-(defun emr-c:format-function-usage (name arglist)
-  "Given a function NAME and its ARGLIST, format a corresponding usage."
-  (let ((args (->> (s-split "," arglist)
-                ;; For each parameter in ARGLIST, extract the parameter name.
-                (--map (-> (s-trim it)
-                         (split-string (rx (any space "*")) t)
-                         (nreverse)
-                         (car)))
-                (s-join ", "))))
-    (format "%s(%s)" name args)))
-
-(defun emr-c:type-of-literal (literal)
-  "Try to infer the type of the given LITERAL"
-  (let ((literal (->> literal (s-trim) (s-chop-suffix ";"))))
-    (cond ((s-matches? (rx bol (? "-") (+ digit) eol) literal)
-           "int")
-          ((s-matches? (rx bol (? "-") (+ digit) "." (+ digit) eol) literal)
-           "double")
-          ((s-matches? (rx bol "\"" (* nonl) "\"" eol) literal)
-           "char*")
-          ((s-matches? (rx bol "L\"" (* nonl) "\"" eol) literal)
-           "wchar_t*")
-          ((s-matches? (rx bol "'" (? "\\") nonl "'" eol) literal)
-           "char"))))
-
-(defun emr-c:typename-at-line-start (line)
-  "Return the first word in LINE if it looks like a type name."
-  (let ((tokens (s-split (rx space) line t)))
-    ;; TODO: take-while short, long, etc.
-    (-when-let (token (car tokens))
-      (and (s-matches? (rx bol (+ alnum) eol) token)
-           token))))
-
-(defun emr-c:infer-type (str)
-  "Try to infer the resulting type of a series of C statements."
-  (let ((last-line (->> (s-lines str) (last) (car)
-                        (s-trim) (s-chop-suffix ";"))))
-    (or (emr-c:type-of-literal last-line)
-        (emr-c:typename-at-line-start last-line))))
-
-(defun* emr-c:inside-fncall-or-flow-header? ()
-  "Non-nil if point is inside a function call or flow control header.
-I.E., point is inside a pair of parentheses."
-  (save-excursion
-    (ignore-errors (paredit-backward-up))
-    (thing-at-point-looking-at "(")))
-
-(defun emr-c:infer-region-type ()
-  "Try to infer the type from the region. If that fails, try the
-whole line."
-  (let ((beg (save-excursion (goto-char (region-beginning))
-                             (line-beginning-position)))
-        (end (save-excursion (goto-char (region-end))
-                             (line-end-position))))
-    (or (emr-c:infer-type (buffer-substring (region-beginning) (region-end)))
-        (emr-c:infer-type (buffer-substring beg end))
-        "void")))
-
-(defun emr-c:expr-start ()
-  "Return either the start of the right side of an assignment, or
-the start of the current statement."
-  (interactive)
-  (cl-flet ((max-safe (&rest xs) (apply 'max (--map (or it 0) xs))))
-    (max-safe
-     ;; Expr after `=` sign.
-     (save-excursion
-       (when (search-backward "=" (line-beginning-position) t)
-         (forward-char)
-         (search-forward-regexp (rx (not space)) nil t)
-         (forward-char -1)
-         (point)))
-     ;; Expr after `;`. Ignores `;` at eol.
-     (save-excursion
-       (when (search-backward-regexp (rx ";" (* space) (+ nonl))
-                                     nil t)
-         (forward-char)
-         (search-forward-regexp (rx (not space)) nil t)
-         (forward-char -1)
-         (point)))
-     ;; Expr from start of line.
-     (save-excursion
-       (back-to-indentation)
-       (point))
-
-     (c-beginning-of-statement 1))))
-
-(defun emr-c:inside-curlies? ()
-  "Non-nil if point is inside a pair of curly braces."
-  (save-excursion
-    ;; First move back. This ensures that thing-at-point will not return
-    ;; true if we start just BEFORE a curly.
-    (forward-char -1)
-    (while (ignore-errors (paredit-backward-up) t))
-    (thing-at-point-looking-at (rx "{"))))
-
-(defun emr-c:beginning-of-string ()
-  "Return the beginning position of the string at point, including a prefix."
-  (save-excursion
-    (while (ignore-errors (paredit-backward-up)
-                          (not (thing-at-point-looking-at "\""))))
-    ;; Account for string literals with a prefix.
-    (when (s-matches? (rx alpha)
-                      (buffer-substring (1- (point)) (point)))
-      (forward-char -1))
-    (point)))
-
-(defun emr-c:end-of-string ()
-  "Return the end position of the string at point."
-  (save-excursion
-    (while (ignore-errors
-             (paredit-forward-up)
-             (not (s-matches? "\"" (buffer-substring (1- (point)) (point))))))
-    (point)))
-
-(defconst emr-c:word-regexp (rx (any alnum "-" "_" "+" ".")))
-
-(defun emr-c:word-start ()
-  (save-excursion
-    (while (s-matches? emr-c:word-regexp
-                       (buffer-substring (1- (point)) (point)))
-      (forward-char -1))
-    (point)))
-
-(defun emr-c:word-end ()
-  (save-excursion
-    (while (s-matches? emr-c:word-regexp
-                       (buffer-substring (point) (1+ (point))))
-      (forward-char 1))
-    (point)))
-
-(defun emr-c:word-at-point ()
-  "Return the C literal or identifier at point."
-  (ignore-errors
-    (buffer-substring (emr-c:word-start) (emr-c:word-end))))
-
-(defun emr-c:literal-at-point ()
-  "Return the C literal at point."
-  (if (emr-looking-at-string?)
-      (buffer-substring (emr-c:beginning-of-string) (emr-c:end-of-string))
-    (-when-let (literal (emr-c:word-at-point))
-      ;; It's a valid literal if we can infer the type.
-      (and (emr-c:type-of-literal literal) literal))))
-
-(defun emr-c:literal-start ()
-  (when (emr-c:literal-at-point)
-    (if (emr-looking-at-string?)
-        (emr-c:beginning-of-string)
-      (emr-c:word-start))))
-
-(defun emr-c:literal-end ()
-  (when (emr-c:literal-at-point)
-    (if (emr-looking-at-string?)
-        (emr-c:end-of-string)
-      (emr-c:word-end))))
-
-;;; ----------------------------------------------------------------------------
+(defun emr-c:goto-includes-or-buf-start ()
+  (goto-char (point-min))
+  (or (search-forward-regexp emr-c:rx-include nil t)
+      (emr-c:bob-after-comments))
+  (beginning-of-line)
+  (point))
 
 ;;;###autoload
-(defun emr-c-extract-function (name return arglist)
-  "Extract the current region as a new function.
-* NAME is the name of the function to create.
-* RETURN is the return type.
-* ARGLIST is the argument list."
+(defun emr-c-tidy-includes ()
+  "Separate includes depending on whether they're library or project headers."
+  (interactive)
+  (let (includes)
+    (save-excursion
+      (emr-c:goto-includes-or-buf-start)
+
+      ;; Collect include statements in buffer.
+      (save-excursion
+        (goto-char (point-min))
+        (while (search-forward-regexp emr-c:rx-include nil t)
+          (push (match-string 1) includes)
+          (replace-match "")
+          (when (emr-blank? (buffer-substring (line-beginning-position)
+                                              (line-end-position)))
+            (ignore-errors
+              (kill-line)))))
+      ;; Partition includes by type, subsort alphabetically and insert into
+      ;; buffer.
+      (->> includes
+        (--separate (s-starts-with? "<" it))
+        (--map (sort it 'string<))
+        (-flatten)
+        (--map (concat "#include " it))
+        (s-join "\n")
+        (s-append "\n")
+        (insert)))))
+
+; ------------------
+
+(defun emr-c:headers-in-project ()
+  "Return a list of available C header files.
+
+If Projectile is available, use it to find header files in the
+project.
+
+If Projectile is not installed, or if this is not a
+valid project, return all header files in the current directory."
+  (->> (-if-let (proj (and (featurep 'projectile) (projectile-project-p)))
+         (--map (concat proj it) (projectile-project-files proj))
+         (-> (buffer-file-name) (file-name-directory) (directory-files t)))
+    (--filter (-contains? '("h" "hpp") (file-name-extension it)))
+    (-map 'file-relative-name)))
+
+;;;###autoload
+(defun emr-c-insert-include (header)
+  "Insert an include for HEADER and tidy the includes in the buffer."
   (interactive
    (list
-    ;; Read name, ensuring it is not blank.
-    (let ((input (s-trim (read-string "Name: " nil t))))
-      (if (s-blank? input)
-          (user-error "Must enter a function name")
-        input))
+    (if (yes-or-no-p "System header?")
+        (format "<%s>" (ido-completing-read "Header: " emr-c:standard-headers))
+      (format "\"%s\"" (ido-completing-read "Header: " (emr-c:headers-in-project))))))
 
-    ;; Try to infer the type from assignments in the region.
-    (let ((type (emr-c:infer-region-type)))
-      (-> (format "Return type (default: %s): " type)
-        (read-string nil t type)
-        (s-trim)))
-
-    (s-trim (read-string "Arglist: "))))
-
-  (atomic-change-group
-    (kill-region (region-beginning) (region-end))
-
-    ;; Insert variable assignment for extracted function. Do not do this if
-    ;; * the function returns void
-    ;; * point is in a context where assignments are not allowed.
-    (when (and (not (equal "void" return))
-               (not (emr-c:inside-fncall-or-flow-header?)))
-
-      (-when-let (left (->> (car kill-ring) (s-lines) (last) (car)
-                            (emr-c:split-at-assignment)
-                            (car)))
-        (insert (format "%s = " left))))
-
-    ;; Insert usage. Place point inside opening brace.
-    (unless (thing-at-point-looking-at (rx (or "(" "[")))
-      (just-one-space))
-    (insert (emr-c:format-function-usage name arglist))
-    (search-backward "(")
-    (forward-char)
-
-    ;; Tidy usage site by ensuring the statement ends with a
-    ;; semicolon. Also ensure that any curly braces that were moved up by
-    ;; the kill are moved back down.
+  (let ((str (concat "#include " header)))
+    (when (s-contains? str (buffer-string))
+      (error "%s is already included" header))
     (save-excursion
-      (search-forward ")")
-      (when (s-ends-with? ";" (s-trim (car kill-ring)))
-        (insert ";"))
-      (when (s-ends-with? "}" (s-trim (thing-at-point 'line)))
-        (insert "\n"))
-      (indent-for-tab-command))
+      (atomic-change-group
+        (emr-reporting-buffer-changes "Inserted header"
+          ;; Insert header.
+          (emr-c:goto-includes-or-buf-start)
+          (insert str)
+          (newline)
+          (emr-c-tidy-includes))))))
 
-    ;; Insert function definition above the current defun.
-    (emr-c:extract-above "Extracted function"
-      (format
-       "%s %s(%s)%s{\n%s\n}"
-       return name arglist
-       (emr-c:spacing-before-function-curly)
-       ;; Add a return statement if not a void function.
-       (if (equal "void" return)
-           (s-trim (car kill-ring))
-         (emr-c:add-return-statement (car kill-ring)))))
-    (setq kill-ring (cdr kill-ring))))
+; ------------------
 
-;;;###autoload
-(defun emr-c-extract-function-from-expression ()
-  "Extract a function from right side of the assignment at point.
-If there is no assignment, extract the whole line."
-  (interactive)
-  ;; Select the current C expression, then delegate to the proper
-  ;; extraction function.
-  (let (pos)
-    (save-excursion
-      (goto-char (emr-c:expr-start))
-      (set-mark-command nil)
-      (c-end-of-statement)
-      (call-interactively 'emr-c-extract-function)
-      (setq pos (point)))
-    (goto-char pos)))
+;;; EMR Declarations
 
-;;;###autoload
-(defun emr-c-introduce-variable-from-literal ()
-  "Introduce a new variable from the literal at point."
-  (interactive)
-  (cl-assert (emr-c:literal-at-point))
-  (let (pos)
-    (save-excursion
-      ;; Mark literal.
-      (let ((beg (emr-c:literal-start))
-            (end (emr-c:literal-end)))
-        (goto-char beg)
-        (set-mark-command nil)
-        (goto-char end))
-
-      (call-interactively 'emr-c-introduce-variable)
-      (setq pos (point)))
-    (goto-char pos)))
-
-;;;###autoload
-(defun emr-c-introduce-variable (name type)
-  "Create a variable with NAME and replace the region with a reference to it.
-Prompt for a TYPE if it cannot be inferred."
-  (interactive
-   (list (read-string "Name: " nil t)
-         ;; Prompt for a type if it cannot be inferred.
-         (let ((type (emr-c:type-of-literal
-                      (buffer-substring (region-beginning) (region-end)))))
-           (or type (read-string "Type: " nil t)))))
-
-  (cl-assert (region-active-p))
-  (emr-reporting-buffer-changes "Extracted variable"
-    (atomic-change-group
-      (kill-region (region-beginning) (region-end))
-
-      ;; Insert usage.
-      (save-excursion
-        (insert name))
-
-      ;; Insert declaration.
-      (save-excursion
-        (back-to-indentation)
-        (open-line 1)
-        (->> (format "%s %s = %s" type name (car kill-ring))
-          (emr-c:maybe-append-semicolon)
-          (insert))
-        (c-indent-defun))
-
-      (point))))
-
-;;; ----------------------------------------------------------------------------
-
-(emr-declare-action emr-c-extract-function
-  :title "function"
-  :description "region"
+(emr-declare-action emr-c-tidy-includes
+  :title "tidy"
+  :description "includes"
   :modes c-mode
-  :predicate (and (region-active-p)
-                  (emr-c:inside-curlies?)))
+  :predicate (emr-c:looking-at-include?))
 
-(emr-declare-action emr-c-extract-function-from-expression
-  :title "function"
-  :description "expression"
-  :modes c-mode
-  :predicate (and (not (region-active-p))
-                  (emr-c:inside-curlies?)))
+; ------------------
 
-(emr-declare-action emr-c-introduce-variable
-  :title "variable"
-  :description "region"
-  :modes c-mode
-  :predicate (and (region-active-p)
-                  (emr-c:inside-curlies?)))
+;;;; Minor Mode
 
-(emr-declare-action emr-c-introduce-variable-from-literal
-  :title "variable"
-  :description "literal"
-  :modes c-mode
-  :predicate (and (emr-c:literal-at-point)
-                  (emr-c:inside-curlies?)))
+(defvar emr-c-mode-map
+  (let ((km (make-sparse-keymap)))
+    (define-key km (kbd "C-c i") 'emr-c-insert-include)
+    km)
+  "Key map for `emr-c-mode'.")
+
+(define-minor-mode emr-c-mode
+  "A minor-mode for C that makes extra key bidings available."
+  nil " emr" emr-c-mode-map)
+
+(defun emr-c-initialize ()
+  "Activate emr-c-mode for all C buffers."
+  (add-hook 'c-mode-hook 'emr-c-mode)
+  (--each (buffer-list)
+    (with-current-buffer it
+      (when (derived-mode-p 'c-mode)
+        (emr-c-mode +1)))))
 
 (provide 'emr-c)
 
