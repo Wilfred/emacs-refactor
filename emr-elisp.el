@@ -420,6 +420,7 @@ ARGLIST is its argument list."
 
   (emr-el:extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name))
+          ;; Extract to a `defun*' if given a Common Lisp-style arglist.
           (defun-form (if (-any? 'listp arglist) 'defun* 'defun))
           (body (emr-el:unprogn sexp)))
       ;; Insert usage at point.
@@ -925,6 +926,10 @@ Replaces all usages in the current buffer."
             (goto-char (point-min))
 
             ;; Search the buffer for function usages.
+            ;;
+            ;; Functions can be called directly with the function name in
+            ;; the car of a list, or indirectly using funcall/apply. Handle
+            ;; all these cases.
             (while (search-forward-regexp
                     (eval `(rx "("
                                ;; Optional use of apply/funcall.
