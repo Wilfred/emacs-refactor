@@ -36,7 +36,7 @@
 (autoload 'redshank-letify-form-up "redshank")
 
 (defcustom emr-el-lines-between-toplevel-forms 1
-  "The number of lines to try to preserve between functions and vars when refactoring Elisp."
+  "The number of lines to try to preserve between toplevel forms when refactoring Elisp."
   :group 'emr)
 
 (defun emr-el:collapse-vertical-whitespace ()
@@ -1034,6 +1034,40 @@ Replaces all usages in the current buffer."
 
 ; ------------------
 
+(defun emr-el:def-find-usages (definition-form)
+  "Find the usages for a given symbol.
+
+Returns a list of conses, where the car is the line number and
+the cdr is the usage form."
+  (-when-let (sym (ignore-errors
+                    (nth 1 definition-form)))
+    ;; Search the buffer for usages of `sym'. Remove the definition form
+    ;; from the results.
+    (let (acc)
+      (save-excursion
+        (goto-char (point-min))
+        (while (search-forward-regexp
+                (eval `(rx symbol-start ,(format "%s" sym) symbol-end))
+                nil t)
+          (-when-let (form (list-at-point))
+            (unless (equal definition-form form)
+              ;; Add this usage to `acc', unless it is the original definition.
+              (push (cons (line-number-at-pos) form) acc)))))
+      (nreverse acc))))
+
+;;;###autoload
+(defun emr-el-delete-unused-definition ()
+  "Delete the definition form at point if it does not have usages."
+  (interactive "*")
+  (unless (emr-el:def-find-usages (list-at-point))
+    (save-excursion
+      (beginning-of-thing 'defun)
+      (kill-sexp)
+
+      (emr-el:collapse-vertical-whitespace))))
+
+; ------------------
+
 ;;;; EMR declarations
 
 (emr-declare-action emr-el-implement-function
@@ -1051,12 +1085,14 @@ Replaces all usages in the current buffer."
 (emr-declare-action emr-el-inline-variable
   :title "inline"
   :modes emacs-lisp-mode
-  :predicate (emr-el:variable-definition? (list-at-point)))
+  :predicate (and (emr-el:variable-definition? (list-at-point))
+                  (emr-el:def-find-usages (list-at-point))))
 
 (emr-declare-action emr-el-inline-function
   :title "inline"
   :modes emacs-lisp-mode
-  :predicate (emr-el:function-definition? (list-at-point)))
+  :predicate (and (emr-el:function-definition? (list-at-point))
+                  (emr-el:def-find-usages (list-at-point))))
 
 (emr-declare-action emr-el-extract-function
   :title "function"
@@ -1131,6 +1167,14 @@ Replaces all usages in the current buffer."
   :modes emacs-lisp-mode
   :predicate (thing-at-point-looking-at
               (rx bol (* space) "(autoload " (* nonl))))
+
+(emr-declare-action emr-el-delete-unused-definition
+  :title "delete"
+  :description "unused"
+  :modes emacs-lisp-mode
+  :predicate (and (emr-el:looking-at-definition?)
+                  (not (emr-el:autoload-directive-exsts-above-defun?))
+                  (not (emr-el:def-find-usages (list-at-point)))))
 
 (emr-declare-action emr-el-comment-form
   :title "comment"
