@@ -522,7 +522,6 @@ The variable will be called NAME."
     (mark-sexp)
     (comment-region (region-beginning) (region-end))))
 
-
 ; ------------------
 
 (defun emr-el:autoload-directive-exsts-above-defun? ()
@@ -545,6 +544,57 @@ The variable will be called NAME."
         (open-line 1)
         (insert ";;;###autoload")))))
 
+(defun emr-el:sort-autoloads (autoloads)
+  (let ((file-grouping (->> autoloads (--group-by (nth 1 it)))))
+    ;; Order by file name...
+    (->> (sort file-grouping (lambda (L R) (string< (car L) (car R))))
+      ;; ...then by function name.
+      (-mapcat (lambda (assoc)
+                 (sort (cdr assoc) (lambda (L R) (string< (car L) (car R))))))
+      ;; Trim all components.
+      (-map (lambda (xs) (--map (s-trim it) xs)))
+      ;; ;; Recombine and insert into buffer.
+      (--map (destructuring-bind (fname file &optional rest) it
+               (if (not (s-blank? rest))
+                   (format "(autoload %s %s %s)" fname file rest)
+                 (format "(autoload %s %s)" fname file)))))))
+
+;;;###autoload
+(defun emr-el-tidy-autoloads ()
+  "Consolidate and reorder autoloads in the current buffer.
+Order autoloads alphabetically by their file, then by their function name."
+  (interactive "*")
+  (let (autoloads
+        (rx-autoload (rx bol (* space) "(autoload" (+ space)
+                         (group-n 1 (+ (not space)))
+                         (+ space)
+                         (group-n 2 (+ (not space)))
+                         (* space)
+                         (group-n 3 (*? nonl))
+                         ")")))
+    (save-excursion
+      (when (emr-el:goto-first-match rx-autoload)
+        (beginning-of-line)
+        (forward-line)
+
+        ;; Collect autoloads in buffer.
+        (save-excursion
+          (goto-char (point-min))
+          (while (search-forward-regexp rx-autoload nil t)
+            (push (list (match-string 1) (match-string 2) (match-string 3))
+                  autoloads)
+            (replace-match "")
+            (when (emr-blank? (buffer-substring (line-beginning-position)
+                                                (line-end-position)))
+              (ignore-errors
+                (kill-line)))))
+
+        (->> (emr-el:sort-autoloads autoloads)
+          (-distinct)
+          (s-join "\n")
+          (s-append "\n")
+          (insert))))))
+
 ;;;###autoload
 (defun emr-el-extract-autoload (function file)
   "Create an autoload for FUNCTION.
@@ -556,20 +606,18 @@ See `autoload' for details."
                     (read-string "File: "))))
      (list sym file)))
 
-  ;; Bail if there is already an autoload for that symbol.
-  (if (emr-el:autoload-exists? (symbol-at-point) (buffer-string))
-      (error "Autoload already exists")
+  (let ((form `(autoload ',function ,file)))
+    (save-excursion
+      (emr-reporting-buffer-changes "Extracted to"
+        ;; Put the extraction next to existing autoloads if any, otherwise
+        ;; insert above top-level form.
+        (if (emr-el:goto-first-match "^(autoload ")
+            (progn (forward-line 1) (end-of-line) (newline)
+                   (insert (emr-el:print form)))
+          (emr-el:insert-above-defun
+           (emr-el:print form)))))
 
-    (let ((form `(autoload ',function ,file)))
-      (save-excursion
-        (emr-reporting-buffer-changes "Extracted to"
-          ;; Put the extraction next to existing autoloads if any, otherwise
-          ;; insert above top-level form.
-          (if (emr-el:goto-first-match "^(autoload ")
-              (progn (forward-line 1) (end-of-line) (newline)
-                     (insert (emr-el:print form)))
-            (emr-el:insert-above-defun
-             (emr-el:print form))))))))
+    (emr-el-tidy-autoloads)))
 
 ; ------------------
 
@@ -1057,10 +1105,11 @@ Replaces all usages in the current buffer."
   :title "autoload"
   :description "autoload"
   :modes emacs-lisp-mode
-  :predicate (and (or (functionp (symbol-at-point))
-                      (emr-el:macro-boundp (symbol-at-point)))
+  :predicate (and (not (emr-el:autoload-exists? (symbol-at-point) (buffer-string)))
                   (not (emr-el:looking-at-definition?))
-                  (not (emr-el:variable-definition? (list-at-point)))))
+                  (not (emr-el:variable-definition? (list-at-point)))
+                  (or (functionp (symbol-at-point))
+                      (emr-el:macro-boundp (symbol-at-point)))))
 
 (emr-declare-action emr-el-insert-autoload-directive
   :title "autoload"
@@ -1076,11 +1125,19 @@ Replaces all usages in the current buffer."
   :predicate (not (or (emr-el:looking-at-definition?)
                       (emr-el:looking-at-let-binding-symbol?))))
 
+(emr-declare-action emr-el-tidy-autoloads
+  :title "tidy"
+  :description "autoloads"
+  :modes emacs-lisp-mode
+  :predicate (thing-at-point-looking-at
+              (rx bol (* space) "(autoload " (* nonl))))
+
 (emr-declare-action emr-el-comment-form
   :title "comment"
   :modes emacs-lisp-mode
   :predicate (and (thing-at-point 'defun)
                   (not (emr-looking-at-comment?))))
+
 
 (provide 'emr-elisp)
 

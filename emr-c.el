@@ -29,9 +29,9 @@
 (require 's)
 (require 'dash)
 (require 'thingatpt)
+(autoload 'ido-completing-read "ido")
 (autoload 'projectile-project-files "projectile")
 (autoload 'projectile-project-p "projectile")
-(autoload 'ido-completing-read "ido")
 
 (defvar emr-c:standard-headers
   '("aio.h" "arpa/inet.h" "assert.h" "complex.h" "cpio.h" "ctype.h"
