@@ -55,6 +55,10 @@
   "The number of lines to try to preserve between toplevel forms when refactoring Lisps."
   :group 'emr)
 
+(defcustom emr-popup-help-delay 1
+  "The time to wait before showing documentation in the refactor menu."
+  :group 'emr)
+
 ; ------------------
 
 ;;;; Utility functions
@@ -211,6 +215,18 @@ The index is the car and the line is the cdr."
   (eval-after-load "lisp-mode" '(require 'emr-elisp))
   (eval-after-load "cc-mode"   '(progn (require 'emr-c) (emr-c-initialize))))
 
+(defun emr:documentation (sym)
+  "Get the docstring for SYM. Does not display the arglist for functions."
+  (ignore-errors
+    (->> (documentation sym)
+      (s-lines)
+      ;; Remove the function arglist.
+      (nreverse)
+      (--drop-while (s-matches? (rx bol (* space) "(") it))
+      (nreverse)
+      (s-join "\n")
+      (s-trim))))
+
 ;;;###autoload
 (defmacro* emr-declare-action (function &key modes title (predicate t) description)
   "Define a refactoring command.
@@ -235,7 +251,10 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
                  (when (and (apply 'derived-mode-p ',modes)
                             (ignore-errors
                               (eval ,predicate)))
-                   (popup-make-item ,title :value ',function :summary ,description)))))
+                   (popup-make-item ,title
+                                    :value ',function
+                                    :summary ,description
+                                    :document (emr:documentation ',function))))))
        ;; Create a function and insert it into the commands table.
        (puthash fname fn emr:refactor-commands)
        ',function)))
@@ -252,7 +271,10 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
                       (-map 'funcall)
                       (-remove 'null)))
     (atomic-change-group
-      (-when-let (action (popup-menu* actions :isearch t))
+      (-when-let (action (popup-menu*
+                          actions
+                          :isearch t
+                          :help-delay emr-popup-help-delay))
         (call-interactively action)))
     (message "No refactorings available")))
 
