@@ -242,10 +242,20 @@ BODY is a list of forms to execute after extracting the sexp near point."
 (defun emr-el:macro-definition? (form)
   "Return t if FORM expands to a macro definition."
   (ignore-errors
-    (let ((exp (macroexpand-all form)))
-      ;; yo dawg I herd you like cars
-      (and (equal 'defalias (car exp))
-           (equal 'macro (cadar (cdaddr exp)))))))
+    (let* ((exp (macroexpand-all form))
+           ;; Skip surrounding `prog1'. This will exist if the macro has
+           ;; `declare' specs.
+           (exp (if (equal 'prog1 (car exp))
+                    (cadr exp)
+                  exp)))
+      ;; A macro expands to a defalias.
+      (destructuring-bind (&optional def _sym binding &rest rest) exp
+        ;; The binding is a call to `cons'. The first arg is the quoted
+        ;; symbol `macro'.
+        (destructuring-bind (&optional _cons mac &rest lambda) binding
+          (and (equal 'defalias def)
+               ;; NB quoted symbol 'macro must be quoted twice for comparison.
+               (equal ''macro mac)))))))
 
 (defun emr-el:function-definition? (form)
   "Return t if FORM expands to a function definition."
@@ -632,10 +642,6 @@ See `autoload' for details."
   (->> binding-forms
     (--map (or (car-safe it) it))
     (-remove 'null)))
-
-(defun emr-el:let-binding-list-values (binding-forms)
-  "Return the values in the given let BINDING-FORMS."
-  (-map 'cdr-safe binding-forms))
 
 (defun* emr-el:let-binding-list ((_let &optional bindings &rest body))
   "Return the bindings list in the given let form."
@@ -1120,44 +1126,50 @@ The result is a list of `emr-el-ref'."
   "Search the buffer for functions and variabes that have no usages.
 Definitions with export directives are ignored."
   (interactive)
-  (-if-let (defs (emr-el:find-unused-defs))
-    (let ((buf (get-buffer-create "*Unused Definitions*"))
-          (cur (buffer-file-name)))
+
+  (let ((buf (get-buffer-create "*Unused Definitions*")))
+    ;; Find unused refs. If there are none, delete any windows showing `buf'.
+    (-if-let (defs (emr-el:find-unused-defs))
 
       ;; Show results window.
       ;;
       ;; The results buffer uses a custom compilation mode so the user can
       ;; navigate to unused declarations.
       (with-help-window buf
-        (with-current-buffer buf
-          (atomic-change-group
-            (emr-buffer-report-mode)
-            ;; Clear buffer.
-            (read-only-mode -1)
-            (delete-region (point-min) (point-max))
-            (insert (format "Unused definitions in %s:\n\n" cur))
-            ;; Insert usages.
-            (->> defs
-              (--map (format
-                      "%s:%s:%s:%s: %s"
-                      (file-name-nondirectory (emr-el-ref-file it))
-                      (emr-el-ref-line it)
-                      (emr-el-ref-col  it)
-                      (emr-el-ref-type it)
-                      (symbol-name (emr-el-ref-identifier it))))
-              (s-join "\n\n")
-              (insert))
+        (let ((header (format "Unused definitions in %s:\n\n" (buffer-file-name))))
+          (with-current-buffer buf
+            (atomic-change-group
+              (emr-buffer-report-mode)
+              ;; Prepare buffer.
+              (read-only-mode -1)
+              (delete-region (point-min) (point-max))
+              (insert header)
+              ;; Insert usages.
+              (->> defs
+                (--map (format
+                        "%s:%s:%s:%s: %s"
+                        (file-name-nondirectory (emr-el-ref-file it))
+                        (emr-el-ref-line it)
+                        (emr-el-ref-col  it)
+                        (emr-el-ref-type it)
+                        (symbol-name (emr-el-ref-identifier it))))
+                (s-join "\n\n")
+                (insert))
 
-            ;; Insert summary.
-            (newline 2)
-            (insert (format "Finished. %s item%s found."
-                            (length defs)
-                            (if (equal 1 (length defs)) "" "s")))
+              ;; Insert summary.
+              (newline 2)
+              (insert (format
+                       "Finished. %s item%s found."
+                       (length defs)
+                       (if (equal 1 (length defs)) "" "s")))
+              (read-only-mode +1)))))
 
-            ;; Set to read-only.
-            (read-only-mode +1)))))
-
-    (message "No unused definitions found")))
+      ;; No results to show. Clean results window.
+      (progn
+        (message "No unused definitions found")
+        (-when-let (win (get-window-with-predicate (lambda (w) (equal buf (window-buffer w)))))
+          (delete-window win)
+          (kill-buffer buf))))))
 
 ; ------------------
 
