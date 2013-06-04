@@ -53,13 +53,13 @@ You will need *carton*, *make* and *git* to build the project.
 
 1. Install [Carton](https://github.com/rejeep/carton):
 
-   ```
+   ```shell
    curl -fsSkL https://raw.github.com/rejeep/carton/master/go | sh
    ```
 
 2. Clone and install with `make`:
 
-   ```
+   ```shell
    cd
    git clone git@github.com:chrisbarrett/emacs-refactor.git
    cd emacs-refactor
