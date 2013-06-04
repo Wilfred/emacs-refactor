@@ -1129,7 +1129,7 @@ popup window."
                         (emr-el-ref-line it)
                         (emr-el-ref-col  it)
                         (emr-el-ref-type it)
-                        (symbol-name (emr-el-ref-identifier it))))
+                        (format "%s" (emr-el-ref-identifier it))))
                 (s-join "\n\n")
                 (insert))
 
