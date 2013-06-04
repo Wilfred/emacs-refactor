@@ -276,7 +276,9 @@ Returns a list of lines where changes were made."
 ;;;###autoload
 (defun emr-el-inline-variable ()
   "Inline the variable defined at point.
-Uses of the variable are replaced with the initvalue in the variable definition."
+
+Uses of the variable in the current buffer are replaced with the
+initvalue in the variable definition."
   (interactive "*")
   (save-excursion
     (emr-lisp:back-to-open-round)
@@ -377,7 +379,7 @@ CONTEXT is the top level form that encloses FORM."
 
 ;;;###autoload
 (defun emr-el-extract-function (name arglist)
-  "Extract a function, using the current region or form point as the body.
+  "Extract a function, using the current region or form at point as the body.
 NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
@@ -558,9 +560,15 @@ Order autoloads alphabetically by their file, then by their function name."
 
 ;;;###autoload
 (defun emr-el-extract-autoload (function file)
-  "Create an autoload for FUNCTION.
-FILE is the file that declares FUNCTION.
-See `autoload' for details."
+  "Create an autoload for FUNCTION and insert it into the buffer.
+FILE is the file that declares FUNCTION.  See `autoload' for
+details.
+
+* If there are no autoloads in the buffer, the new autoload will
+  be inserted above the current toplevel form.
+
+* If other autoloads exist in the buffer, the new autoload will
+  be inserted near them."
   (interactive
    (let* ((sym  (intern (or (thing-at-point 'symbol) (read-string "Function: "))))
           (file (or (emr-el:symbol-file-name sym)
@@ -1074,8 +1082,10 @@ The result is a list of `emr-el-ref'."
 
 ;;;###autoload
 (defun emr-el-find-unused-definitions ()
-  "Search the buffer for functions and variabes that have no usages.
-Definitions with export directives are ignored."
+  "Search the buffer for functions and variables that have no usages.
+Definitions with export directives are ignored.  If any unused
+definitions are found, they will be collated and displayed in a
+popup window."
   (interactive)
 
   (let ((buf (get-buffer-create "*Unused Definitions*")))

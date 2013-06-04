@@ -50,7 +50,7 @@
 
 ;;;###autoload
 (defun emr-lisp-comment-form ()
-  "Comment out the current region or from at point."
+  "Comment out the current region or form at point."
   (interactive "*")
   (save-excursion
     (emr-lisp:back-to-open-round-or-quote)
