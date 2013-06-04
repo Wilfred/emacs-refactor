@@ -172,7 +172,7 @@ Return the position of the end of FORM-STR."
   "Try to find the symbols in FORM that do not have variable bindings.
 CONTEXT is the top level form that encloses FORM."
 
-  ;; Marco-expand FORM and find the list of bound symbols. Diff this with the
+  ;; Macro-expand FORM and find the list of bound symbols. Diff this with the
   ;; other symbols in FORM. Figure out which ones are not functions, keywords,
   ;; special vars, etc. This should give a pretty good idea of which symbols are
   ;; 'free'.
@@ -1065,6 +1065,96 @@ the cdr is the usage form."
       (kill-sexp)
 
       (emr-el:collapse-vertical-whitespace))))
+
+(defcustom emr-el-definition-macro-names
+  '(defun defun* cl-defun defmacro defmacro* cl-defmacro defcustom defvar defvar-local defconst)
+  "Lists the function, macro and variable definition forms in Elisp.
+Used when searching for usages across the whole buffer."
+  :group 'emr)
+
+(defstruct emr-el-usage file line col identifier type form)
+
+(defun emr-el:find-unused-defs ()
+  "Return a list of all unused definitions in the buffer.
+The result is a list of `emr-el-usage'."
+  (save-excursion
+    (let (acc)
+      (goto-char (point-min))
+
+      ;; Find definitions in this buffer.
+      ;;
+      ;; This will search the buffer for known defun forms. As a special
+      ;; cases, forms with a preceding autoload directive are ignored.
+      (while (search-forward-regexp
+              (eval `(rx "(" (or ,@(-map 'symbol-name emr-el-definition-macro-names))
+                         symbol-end))
+              nil t)
+        (unless (emr-el:autoload-directive-exsts-above-defun?)
+         ;; Collect definitions that do not have usages.
+         (-when-let* ((form (list-at-point))
+                      (col  (save-excursion
+                              (beginning-of-thing 'defun)
+                              (current-column))))
+           (unless (emr-el:def-find-usages form)
+             (push
+              (make-emr-el-usage :file (buffer-file-name)
+                                 :line (line-number-at-pos)
+                                 :col  col
+                                 :type (car form)
+                                 :identifier (nth 1 form)
+                                 :form form)
+              acc)))))
+      (nreverse acc))))
+
+(define-compilation-mode emr-buffer-report-mode "EMR Report"
+  "EMR buffer report compilation mode."
+  (set (make-local-variable 'truncate-lines) t)
+  (set (make-local-variable 'compilation-disable-input) t)
+  (set (make-local-variable 'compilation-error-face) compilation-info-face))
+
+;;;###autoload
+(defun emr-el-find-unused-definitions ()
+  "Search the buffer for functions and variabes that have no usages.
+Definitions with export directives are ignored."
+  (interactive)
+  (-if-let (defs (emr-el:find-unused-defs))
+    (let ((buf (get-buffer-create "*Unused Definitions*"))
+          (cur (buffer-file-name)))
+
+      ;; Show results window.
+      ;;
+      ;; The results buffer uses a custom compilation mode so the user can
+      ;; navigate to unused declarations.
+      (with-help-window buf
+        (with-current-buffer buf
+          (atomic-change-group
+            (emr-buffer-report-mode)
+            ;; Clear buffer.
+            (read-only-mode -1)
+            (delete-region (point-min) (point-max))
+            (insert (format "Unused definitions in %s:\n\n" cur))
+            ;; Insert usages.
+            (->> defs
+              (--map (format
+                      "%s:%s:%s:%s: %s"
+                      (file-name-nondirectory (emr-el-usage-file it))
+                      (emr-el-usage-line it)
+                      (emr-el-usage-col  it)
+                      (emr-el-usage-type it)
+                      (symbol-name (emr-el-usage-identifier it))))
+              (s-join "\n\n")
+              (insert))
+
+            ;; Insert summary.
+            (newline 2)
+            (insert (format "Finished. %s item%s found."
+                            (length defs)
+                            (if (equal 1 (length defs)) "" "s")))
+
+            ;; Set to read-only.
+            (read-only-mode +1)))))
+
+    (message "No unused definitions found")))
 
 ; ------------------
 
