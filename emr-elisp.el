@@ -67,23 +67,6 @@ stdin. Bad."
 
 ;;;; Formatting commands
 
-(defun emr-el:reindent-defun ()
-  "Reindent the current top level form."
-  (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
-
-(defun emr-el:reindent-string (form-str)
-  "Reformat FORM-STR, assuming it is a Lisp fragment."
-  (with-temp-buffer
-    (lisp-mode-variables)
-    (insert form-str)
-    (emr-el:reindent-defun)
-    (buffer-string)))
-
-(defun emr-el:insert-above-defun (form-str)
-  "Insert and indent FORM-STR above the current top level form.
-Return the position of the end of FORM-STR."
-  (emr-insert-above-defun (emr-el:reindent-string form-str)))
-
 (defun emr-el:symbol-file-name (fn)
   "Find the name of the file that declares function FN."
   (-when-let (file (find-lisp-object-file-name fn (symbol-function fn)))
@@ -174,35 +157,6 @@ CONTEXT is the top level form that encloses FORM."
                        (special-variable-p it)
                        (symbol-function it))))))))
 
-;;;; Refactoring Macros
-
-(defmacro* emr-el:extraction-refactor ((&optional binding) description &rest body)
-  "Kill the sexp near point then execute forms.
-BINDING is the name to bind to the extracted form.
-DESCRIPTION is used to report the result of the refactoring.
-BODY is a list of forms to execute after extracting the sexp near point."
-  (declare (indent 2))
-  `(atomic-change-group
-     (save-excursion
-
-       ;; Either extract the active region or the sexp near point.
-       (if (region-active-p)
-           (kill-region (region-beginning) (region-end))
-         (emr-lisp:back-to-open-round-or-quote)
-         (kill-sexp))
-
-       (emr-el:reindent-defun)
-
-       (let
-           ;; Define BINDING if supplied.
-           ,(when binding `((,binding (s-trim (car kill-ring)))))
-
-         ;; Revert kill-ring pointer.
-         (setq kill-ring (cdr kill-ring))
-         (save-excursion
-           (emr-reporting-buffer-changes ,description
-             ,@body))))))
-
 ;;;; Definition site tests
 
 (defun emr-el:macro-boundp (symbol)
@@ -279,7 +233,7 @@ Returns a list of lines where changes were made."
           (setq lines (cons (line-number-at-pos) lines))
           ;; Perform replacement.
           (replace-match (emr-el:print value) t nil nil 1)
-          (emr-el:reindent-defun))
+          (emr-lisp-reindent-defun))
         (nreverse lines)))))
 
 ;;;###autoload
@@ -290,10 +244,10 @@ Uses of the variable in the current buffer are replaced with the
 initvalue in the variable definition."
   (interactive "*")
   (save-excursion
-    (emr-lisp:back-to-open-round)
+    (emr-lisp-back-to-open-round)
     (-if-let (def (emr-el:extract-var-values (list-at-point)))
       (if (or (consp def) (> (length def) 1))
-          (emr-el:extraction-refactor () "Inlining applied at"
+          (emr-lisp-extraction-refactor () "Inlining applied at"
 
             ;; Clean up line spacing.
             (while (emr-blank-line?)
@@ -301,7 +255,7 @@ initvalue in the variable definition."
 
             ;; Perform inlining.
             ;;
-            ;; emr-el:extraction-refactor will report the first insertion. If
+            ;; emr-lisp-extraction-refactor will report the first insertion. If
             ;; there are none or more than one insertion, override this report.
             (-if-let (lines (-map 'int-to-string (emr-el:replace-usages def)))
               (when (> (length lines) 1)
@@ -324,13 +278,13 @@ initvalue in the variable definition."
 (defun emr-el-eval-and-replace ()
   "Replace the current region or the form at point with its value."
   (interactive "*")
-  (emr-el:extraction-refactor (sexp) "Replacement at"
+  (emr-lisp-extraction-refactor (sexp) "Replacement at"
 
     (-if-let (form (emr-el:safe-read sexp))
       (progn
         (insert (->> form (emr-el:eval-and-print-progn) (s-join "\n")))
         (indent-for-tab-command)
-        (emr-el:reindent-defun))
+        (emr-lisp-reindent-defun))
       (user-error "Unable to read the given form"))))
 
 ; ------------------
@@ -406,7 +360,7 @@ ARGLIST is its argument list."
 
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
 
-  (emr-el:extraction-refactor (sexp) "Extracted to"
+  (emr-lisp-extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name))
           ;; Extract to a `defun*' if given a Common Lisp-style arglist.
           (defun-form (if (-any? 'listp arglist) 'defun* 'defun))
@@ -416,7 +370,7 @@ ARGLIST is its argument list."
       ;; Insert defun.
       (->> (format "(%s %s %s\n  %s)" defun-form name arglist body)
         (emr-el:format-defun)
-        (emr-el:insert-above-defun)))))
+        (emr-lisp-insert-above-defun)))))
 
 ; ------------------
 
@@ -454,7 +408,7 @@ The function will be called NAME and have the given ARGLIST."
       (beginning-of-thing 'sexp)
       (mark-sexp)
 
-      (emr-el:extraction-refactor ()  "Defined function"
+      (emr-lisp-extraction-refactor ()  "Defined function"
 
         ;; Insert reference. Quote the symbol if it's not in the funcall
         ;; position.
@@ -465,7 +419,7 @@ The function will be called NAME and have the given ARGLIST."
         ;; Insert definition.
         (setq pos (->> (format "(%s %s %s\n  )" defun-form name arglist)
                     (emr-el:format-defun)
-                    (emr-el:insert-above-defun)))))
+                    (emr-lisp-insert-above-defun)))))
 
     ;; Move to end of inserted form.
     (goto-char pos)
@@ -482,11 +436,11 @@ The function will be called NAME and have the given ARGLIST."
 The variable will be called NAME."
   (interactive "*sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
-  (emr-el:extraction-refactor (sexp) "Extracted to"
+  (emr-lisp-extraction-refactor (sexp) "Extracted to"
     ;; Insert usage.
     (insert (s-trim name))
     ;; Insert definition.
-    (emr-el:insert-above-defun (format "(defvar %s %s)" name sexp))))
+    (emr-lisp-insert-above-defun (format "(defvar %s %s)" name sexp))))
 
 ;;;###autoload
 (defun emr-el-extract-constant (name)
@@ -494,11 +448,11 @@ The variable will be called NAME."
 The variable will be called NAME."
   (interactive "*sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
-  (emr-el:extraction-refactor (sexp) "Extracted to"
+  (emr-lisp-extraction-refactor (sexp) "Extracted to"
     ;; Insert usage
     (insert (s-trim name))
     ;; Insert definition.
-    (emr-el:insert-above-defun (format "(defconst %s %s)" name sexp))))
+    (emr-lisp-insert-above-defun (format "(defconst %s %s)" name sexp))))
 
 ; ------------------
 
@@ -599,7 +553,7 @@ details.
         (if (emr-el:goto-first-match "^(autoload ")
             (progn (forward-line 1) (end-of-line) (newline)
                    (insert (emr-el:print form)))
-          (emr-el:insert-above-defun
+          (emr-lisp-insert-above-defun
            (emr-el:print form)))))
 
     (emr-el-tidy-autoloads)))
@@ -661,7 +615,7 @@ form or replace with `progn'."
        ((null bindings)
         (backward-kill-sexp 2)
         (insert "progn"))))
-    (emr-el:reindent-defun)))
+    (emr-lisp-reindent-defun)))
 
 ;;;###autoload
 (defun emr-el-delete-let-binding-form ()
@@ -672,7 +626,7 @@ form or replace with `progn'."
     (unwind-protect
         (save-excursion
           ;; Delete binding.
-          (emr-lisp:back-to-open-round)
+          (emr-lisp-back-to-open-round)
           (kill-sexp)
 
           ;; Ensure whole form is correctly reindented.
@@ -719,7 +673,7 @@ wrap the form with a let statement at a sensible place."
     (forward-sexp)
     (insert ")"))
   (insert "let ()\n  ")
-  (emr-el:reindent-defun))
+  (emr-lisp-reindent-defun))
 
 ;;;###autoload
 (defun emr-el-extract-to-let (symbol)
@@ -751,7 +705,7 @@ wrap the form with a let statement at a sensible place."
         ;; the list or region.
         (if (region-active-p)
             (goto-char (region-beginning))
-          (emr-lisp:back-to-open-round))
+          (emr-lisp-back-to-open-round))
         (redshank-letify-form-up (symbol-name symbol))
 
         ;; Tidy let binding after insertion.
@@ -790,7 +744,7 @@ wrap the form with a let statement at a sensible place."
     (ignore-errors
       (let ((maybe-binding-list
              (save-excursion
-               (emr-lisp:back-to-open-round)
+               (emr-lisp-back-to-open-round)
                (list-at-point))))
         (save-excursion
           ;; Select binding list for the let expression.
@@ -846,7 +800,7 @@ bindings or body of the enclosing let expression."
     ;;
     ;; This will remove it from the let bindings list. We then replace all
     ;; occurences of SYM with VALUE in the scope of the current let form.
-    (emr-el:extraction-refactor (form) "Inlined let-bound symbol"
+    (emr-lisp-extraction-refactor (form) "Inlined let-bound symbol"
       (destructuring-bind (sym value) (emr-el:split-binding-string form)
         (save-restriction
           ;; Narrow region to the scope of the current let form.
@@ -873,7 +827,7 @@ bindings or body of the enclosing let expression."
     (forward-char 1)
     (join-line)
     (emr-el:clean-let-form-at-point)
-    (emr-el:reindent-defun)))
+    (emr-lisp-reindent-defun)))
 
 ; ------------------
 
@@ -945,7 +899,7 @@ Its variables will be let-bound."
       (save-excursion
         (insert (format "(let %s\n %s)" bindings body)))
       (emr-el:clean-let-form-at-point)
-      (emr-el:reindent-defun)
+      (emr-lisp-reindent-defun)
       (buffer-string))))
 
 (defun emr-el:defun-at-point-has-body ()
@@ -965,7 +919,7 @@ Replaces all usages in the current buffer."
 
         ;; Extract the whole defun at point.
         (beginning-of-defun)
-        (emr-el:extraction-refactor (def) "Inlined function"
+        (emr-lisp-extraction-refactor (def) "Inlined function"
 
           ;; There will now be a blank line where the defun used to be. Join
           ;; lines to fix this.
@@ -995,10 +949,10 @@ Replaces all usages in the current buffer."
               (search-backward "(")
 
               ;; Inline the function at and update the `modified-lines' list.
-              (emr-el:extraction-refactor (usage) "Replace usage"
+              (emr-lisp-extraction-refactor (usage) "Replace usage"
                 (push (line-number-at-pos) modified-lines)
                 (insert (emr-el:transform-function-usage def usage))
-                (emr-el:reindent-defun)))
+                (emr-lisp-reindent-defun)))
 
             ;; Report inlining count to the user.
             (if modified-lines

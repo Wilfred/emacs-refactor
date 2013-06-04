@@ -30,7 +30,7 @@
 (autoload 'thing-at-point-looking-at "thingatpt")
 (autoload 'beginning-of-sexp "thingatpt")
 
-(defun emr-lisp:back-to-open-round ()
+(defun emr-lisp-back-to-open-round ()
   "Move to the opening paren for the Lisp list at point."
   (interactive)
   (when (or (not (equal "(" (thing-at-point 'char)))
@@ -39,21 +39,67 @@
     (unless (equal "(" (thing-at-point 'char))
       (search-backward "("))))
 
-(defun emr-lisp:back-to-open-round-or-quote ()
+(defun emr-lisp-back-to-open-round-or-quote ()
   "Move to the opening paren or quote for the Lisp list at point."
   (interactive)
-  (emr-lisp:back-to-open-round)
+  (emr-lisp-back-to-open-round)
   (when (or (thing-at-point-looking-at "'")
             (thing-at-point-looking-at "`")
             (emr-looking-at-string?))
     (search-backward-regexp (rx (or "'" "`")))))
+
+(defun emr-lisp-reindent-defun ()
+  "Reindent the current top level form."
+  (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
+
+(defun emr-lisp-reindent-string (form-str)
+  "Reformat FORM-STR, assuming it is a Lisp fragment."
+  (with-temp-buffer
+    (lisp-mode-variables)
+    (insert form-str)
+    (emr-lisp-reindent-defun)
+    (buffer-string)))
+
+(defun emr-lisp-insert-above-defun (form-str)
+  "Insert and indent FORM-STR above the current top level form.
+Return the position of the end of FORM-STR."
+  (emr-insert-above-defun (emr-lisp-reindent-string form-str)))
+
+(defmacro* emr-lisp-extraction-refactor ((&optional binding) description &rest body)
+  "Kill the sexp near point then execute forms.
+BINDING is the name to bind to the extracted form.
+DESCRIPTION is used to report the result of the refactoring.
+BODY is a list of forms to execute after extracting the sexp near point."
+  (declare (indent 2))
+  `(atomic-change-group
+     (save-excursion
+
+       ;; Either extract the active region or the sexp near point.
+       (if (region-active-p)
+           (kill-region (region-beginning) (region-end))
+         (emr-lisp-back-to-open-round-or-quote)
+         (kill-sexp))
+
+       (emr-lisp-reindent-defun)
+
+       (let
+           ;; Define BINDING if supplied.
+           ,(when binding `((,binding (s-trim (car kill-ring)))))
+
+         ;; Revert kill-ring pointer.
+         (setq kill-ring (cdr kill-ring))
+         (save-excursion
+           (emr-reporting-buffer-changes ,description
+             ,@body))))))
+
+; ------------------
 
 ;;;###autoload
 (defun emr-lisp-comment-form ()
   "Comment out the Lisp form at point."
   (interactive "*")
   (save-excursion
-    (emr-lisp:back-to-open-round-or-quote)
+    (emr-lisp-back-to-open-round-or-quote)
     (mark-sexp)
     (comment-region (region-beginning) (region-end))))
 
