@@ -91,40 +91,45 @@ textual comments."
   ;; In the first pass, we find the absolute bounds of the commented
   ;; form. We then narrow the bounds by searching for the start and end
   ;; of a Lisp list.
-  (let* (
-         ;; 1. Find the absolute end of the commented region.
-         (end
-          (save-excursion
-            (emr-lisp:end-of-comment-block)
-            (line-end-position)))
+  (condition-case _
+      (let* (
+             ;; 1. Find the absolute end of the commented region.
+             (end
+              (save-excursion
+                (emr-lisp:end-of-comment-block)
+                (line-end-position)))
 
-         ;; 2. Find the absolute start of the commented region.
-         (beg
-          (save-excursion
-            (emr-lisp:start-of-comment-block)
+             ;; 2. Find the absolute start of the commented region.
+             (beg
+              (save-excursion
+                (emr-lisp:start-of-comment-block)
 
-            ;; 3. Restrict the starting position by finding the first open
-            ;; paren in the comment block.
-            (let ((list-start (eval `(rx (* space) ,comment-start (* space) "("))))
-              (unless (emr-line-matches? list-start)
-                (search-forward-regexp list-start end nil)))
-            (line-beginning-position)))
+                ;; 3. Restrict the starting position by finding the first open
+                ;; paren in the comment block.
+                (let ((list-start (eval `(rx (* space) ,comment-start (* space) "("))))
+                  (unless (emr-line-matches? list-start)
+                    (search-forward-regexp list-start end nil)))
+                (line-beginning-position)))
 
-         ;; 4. Restrict the ending position by finding the first closing
-         ;; paren in the comment block.
-         (end
-          (save-excursion
-            (goto-char end)
-            (end-of-line)
-            (let ((list-end (rx ")" (* space) eol)))
-              (unless (emr-line-matches? list-end)
-                (search-backward-regexp list-end beg nil)))
-            (line-end-position)))
-         )
-    ;; `beg' and `end' should now roughly correspond to the start and end
-    ;; of valid Lisp forms.
-    (save-excursion
-      (uncomment-region beg end))))
+             ;; 4. Restrict the ending position by finding the first closing
+             ;; paren in the comment block.
+             (end
+              (save-excursion
+                (goto-char end)
+                (end-of-line)
+                (let ((list-end (rx ")" (* space) eol)))
+                  (unless (emr-line-matches? list-end)
+                    (search-backward-regexp list-end beg nil)))
+                (line-end-position)))
+             )
+        ;; `beg' and `end' should now roughly correspond to the start and end
+        ;; of valid Lisp forms.
+        (save-excursion
+          (uncomment-region beg end)))
+
+    ;; If the regex searches bail, this is not a valid comment block.
+    (error
+     (user-error "Unable to find Lisp forms in comment block"))))
 
 ; ------------------
 
