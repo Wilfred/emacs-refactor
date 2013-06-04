@@ -78,13 +78,14 @@ You will need *carton*, *make* and *git* to build the project.
 
 These will be installed automatically by Carton.
 
-* [s](https://github.com/magnars/s.el)
-* [dash](https://github.com/magnars/dash.el)
-* [popup](https://github.com/auto-complete/popup-el)
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
+* [dash](https://github.com/magnars/dash.el)
 * [list-utils](https://github.com/rolandwalker/list-utils)
-* [redshank](https://github.com/emacsmirror/redshank)
 * [paredit](https://github.com/emacsmirror/paredit/blob/master/paredit.el)
+* [popup](https://github.com/auto-complete/popup-el)
+* [projectile](https://github.com/bbatsov/projectile)
+* [redshank](https://github.com/emacsmirror/redshank)
+* [s](https://github.com/magnars/s.el)
 
 Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
