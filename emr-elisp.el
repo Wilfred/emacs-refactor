@@ -125,7 +125,7 @@ Return the position of the end of FORM-STR."
       ((equal 'let hd)  (emr-el:bindings-in-let form))
       ((equal 'let* hd) (emr-el:bindings-in-let form))
       ((equal 'defalias hd) (emr-el:bindings-in-defalias form))
-      ;; FUNCTION is the quotation form for function objects.
+      ;; `function' is the quotation form for function objects.
       ;; Do not bail if the next item is not a lambda.
       ((equal 'function hd) (condition-case _err
                                 (-mapcat 'emr-el:bindings-in-lambda (cdr form))
@@ -300,6 +300,7 @@ initvalue in the variable definition."
               (kill-line))
 
             ;; Perform inlining.
+            ;;
             ;; emr-el:extraction-refactor will report the first insertion. If
             ;; there are none or more than one insertion, override this report.
             (-if-let (lines (-map 'int-to-string (emr-el:replace-usages def)))
@@ -376,7 +377,7 @@ CONTEXT is the top level form that encloses FORM."
 (defun emr-el:form-extent-for-extraction ()
   "Return either the current region or the list at point."
   (if (region-active-p)
-      (buffer-substring (region-beginning) (region-end))
+      (emr-line-str)
     (list-at-point)))
 
 (defun emr-el:unprogn (str)
@@ -510,9 +511,7 @@ The variable will be called NAME."
   (save-excursion
     (beginning-of-thing 'defun)
     (forward-line -1)
-    (s-matches? (rx bol (* space) ";;;###autoload" (* space) eol)
-                (buffer-substring (line-beginning-position)
-                                  (line-end-position)))))
+    (emr-line-matches? (rx bol (* space) ";;;###autoload" (* space) eol))))
 
 ;;;###autoload
 (defun emr-el-insert-autoload-directive ()
