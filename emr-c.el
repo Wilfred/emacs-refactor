@@ -89,8 +89,7 @@
         (while (search-forward-regexp emr-c:rx-include nil t)
           (push (match-string 1) includes)
           (replace-match "")
-          (when (emr-blank? (buffer-substring (line-beginning-position)
-                                              (line-end-position)))
+          (when (emr-blank-line?)
             (ignore-errors
               (kill-line)))))
       ;; Partition includes by type, subsort alphabetically and insert into

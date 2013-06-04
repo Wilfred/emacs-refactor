@@ -3,7 +3,7 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.3.3
+;; Version: 0.3.4
 ;; Keywords: tools convenience refactoring
 ;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (redshank "1.0.0") (paredit "24.0.0"))
 ;; This file is not part of GNU Emacs.
@@ -56,24 +56,14 @@
 
 ;;; Functions that could be useful to extensions.
 
-(defun emr-at-defun-start? ()
-  "Non-nil if point is at the start of a defun."
-  (/= (save-excursion
-        (beginning-of-defun)
-        (point))
-      (save-excursion
-        (forward-char 1)
-        (beginning-of-defun)
-        (point))))
-
+;;;###autoload
 (defun emr-move-above-defun ()
   "Move to the start of the current defun.
 If the defun is preceded by comments, move above them."
   (interactive)
   ;; If we're at a defun already, prevent `beginning-of-defun' from moving
   ;; back to the preceding defun.
-  (unless (emr-at-defun-start?)
-    (beginning-of-defun))
+  (beginning-of-thing 'defun)
   ;; If there is a comment attached to this defun, skip over it.
   (while (save-excursion
            (forward-line -1)
@@ -81,20 +71,32 @@ If the defun is preceded by comments, move above them."
                 (not (bobp))))
     (forward-line -1)))
 
+;;;###autoload
 (defun emr-looking-at-string? ()
   "Return non-nil if point is inside a string."
   (or (ignore-errors (and (in-string-p) t))
       (equal 'font-lock-string-face (face-at-point))))
 
+;;;###autoload
 (defun emr-looking-at-comment? ()
   "Non-nil if point is on a comment."
   (-contains? '(font-lock-comment-face font-lock-comment-delimiter-face)
               (face-at-point)))
 
+;;;###autoload
 (defun emr-blank? (str)
   "Non-nil if STR is null, empty or whitespace-only."
   (s-blank? (s-trim str)))
 
+;;;###autoload
+(defun* emr-blank-line? (&optional (point (point)))
+  "Non-nil if POINT is on a blank line."
+  (save-excursion
+    (goto-char point)
+    (emr-blank? (buffer-substring (line-beginning-position)
+                                  (line-end-position)))))
+
+;;;###autoload
 (defun emr-insert-above-defun (str)
   "Insert and indent STR above the current top level form.
 Return the position of the end of STR."
@@ -111,7 +113,7 @@ Return the position of the end of STR."
         (emr-move-above-defun)
         (unless (save-excursion
                   (forward-line -1)
-                  (emr-blank? (thing-at-point 'line)))
+                  (emr-blank-line?))
           (open-line 1)))
       (point))))
 
@@ -155,6 +157,7 @@ The index is the car and the line is the cdr."
          (max (line-number-at-pos (window-end))))
     (and (>= line min) (<= line max))))
 
+;;;###autoload
 (defmacro emr-reporting-buffer-changes (description &rest body)
   "Perform a refactoring action and show a brief diff.
 * DESCRIPTION describes the overall action, and is shown to the user.

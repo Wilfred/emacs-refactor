@@ -246,7 +246,7 @@ BODY is a list of forms to execute after extracting the sexp near point."
            ;; Skip surrounding `prog1'. This will exist if the macro has
            ;; `declare' specs.
            (exp (if (equal 'prog1 (car exp))
-                    (cadr exp)
+                    (cdr exp)
                   exp)))
       ;; A macro expands to a defalias.
       (destructuring-bind (&optional def _sym binding &rest rest) exp
@@ -321,8 +321,7 @@ Uses of the variable are replaced with the initvalue in the variable definition.
           (emr-el:extraction-refactor () "Inlining applied at"
 
             ;; Clean up line spacing.
-            (while (s-blank? (buffer-substring-no-properties (line-beginning-position)
-                                                             (line-end-position)))
+            (while (emr-blank-line?)
               (kill-line))
 
             ;; Perform inlining.
@@ -594,8 +593,7 @@ Order autoloads alphabetically by their file, then by their function name."
             (push (list (match-string 1) (match-string 2) (match-string 3))
                   autoloads)
             (replace-match "")
-            (when (emr-blank? (buffer-substring (line-beginning-position)
-                                                (line-end-position)))
+            (when (emr-blank-line?)
               (ignore-errors
                 (kill-line)))))
 
