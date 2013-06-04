@@ -26,6 +26,10 @@
 
 ;;; Code:
 
+(require 'emr)
+(autoload 'thing-at-point-looking-at "thingatpt")
+(autoload 'beginning-of-sexp "thingatpt")
+
 (defun emr-lisp:back-to-open-round ()
   "Move to the opening paren for the Lisp list at point."
   (interactive)
@@ -48,9 +52,7 @@
 (defun emr-lisp-comment-form ()
   "Comment out the current region or from at point."
   (interactive "*")
-  (if (region-active-p)
-      (comment-region (region-beginning)
-                      (region-end))
+  (save-excursion
     (emr-lisp:back-to-open-round-or-quote)
     (mark-sexp)
     (comment-region (region-beginning) (region-end))))
@@ -63,7 +65,8 @@
    lisp-mode
    emacs-lisp-mode
    scheme-mode)
-  :predicate (and (thing-at-point 'defun)
+  :predicate (and (not (region-active-p))
+                  (thing-at-point 'defun)
                   (not (emr-looking-at-comment?))))
 
 (provide 'emr-lisp)
