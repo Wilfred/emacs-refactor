@@ -128,7 +128,7 @@ project, return all header files in the current directory."
 
   (let ((str (concat "#include " header)))
     (when (s-contains? str (buffer-string))
-      (error "%s is already included" header))
+      (user-error "%s is already included" header))
     (save-excursion
       (atomic-change-group
         (emr-reporting-buffer-changes "Inserted header"

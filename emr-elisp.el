@@ -305,10 +305,10 @@ initvalue in the variable definition."
             (-if-let (lines (-map 'int-to-string (emr-el:replace-usages def)))
               (when (> (length lines) 1)
                 (message "Inlining applied at lines %s" (s-join ", " lines)))
-              (error "No usages found")))
+              (user-error "No usages found")))
 
-        (error "No value to inline for %s" (car def)))
-      (error "Not a variable definition"))))
+        (user-error "No value to inline for %s" (car def)))
+      (user-error "Not a variable definition"))))
 
 ; ------------------
 
@@ -330,7 +330,7 @@ initvalue in the variable definition."
         (insert (->> form (emr-el:eval-and-print-progn) (s-join "\n")))
         (indent-for-tab-command)
         (emr-el:reindent-defun))
-      (error "Unable to read the given form"))))
+      (user-error "Unable to read the given form"))))
 
 ; ------------------
 
@@ -350,7 +350,7 @@ initvalue in the variable definition."
         (emr-el:safe-read (format "(%s)" arglist))
       (error
        ;; Rethrow reader errors as something more informative.
-       (error "Malformed arglist")))))
+       (user-error "Malformed arglist")))))
 
 (defun emr-el:read-args (form context)
   "Read an arglist from the user, using FORM to generate a suggestion.
@@ -397,7 +397,7 @@ ARGLIST is its argument list."
    (list
     ;; Read a name for the function, ensuring it is not blank.
     (let ((x (read-string "Name: ")))
-      (if (s-blank? x) (error "Name must not be blank") x))
+      (if (s-blank? x) (user-error "Name must not be blank") x))
 
     ;; Prompt user with default arglist.
     (emr-el:read-args (emr-el:form-extent-for-extraction)
