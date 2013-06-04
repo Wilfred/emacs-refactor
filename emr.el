@@ -221,10 +221,18 @@ The index is the car and the line is the cdr."
 ;;;###autoload
 (defun emr-initialize ()
   "Activate language support for EMR."
-  (eval-after-load "simple"    '(require 'emr-prog))
-  (eval-after-load "lisp-mode" '(require 'emr-lisp))
-  (eval-after-load "lisp-mode" '(require 'emr-elisp))
-  (eval-after-load "cc-mode"   '(progn (require 'emr-c) (emr-c-initialize))))
+
+  (require 'emr-prog)
+
+  (eval-after-load "lisp-mode"
+    '(progn
+       (require 'emr-lisp)
+       (require 'emr-elisp)))
+
+  (eval-after-load "cc-mode"
+    '(progn
+       (require 'emr-c)
+       (emr-c-initialize))))
 
 (defun emr:documentation (sym)
   "Get the docstring for SYM. Does not display the arglist for functions."

@@ -242,8 +242,8 @@ BODY is a list of forms to execute after extracting the sexp near point."
 (defun emr-el:looking-at-definition? ()
   "Non-nil if point is at a definition form."
   (or (emr-el:definition? (list-at-point))
-      (-when-let (def (read (thing-at-point 'defun)))
-        (emr-el:find-in-tree (list-at-point) (cl-third def)))))
+      (-when-let (def (thing-at-point 'defun))
+        (emr-el:find-in-tree (list-at-point) (cl-third (read def))))))
 
 ;;;; Refactoring commands
 
