@@ -98,12 +98,24 @@ If the defun is preceded by comments, move above them."
   (s-blank? (s-trim str)))
 
 ;;;###autoload
+(defun emr-line-str ()
+  "Return the contents of the current line."
+  (buffer-substring (line-beginning-position)
+                    (line-end-position)))
+
+;;;###autoload
 (defun* emr-blank-line? (&optional (point (point)))
   "Non-nil if POINT is on a blank line."
   (save-excursion
     (goto-char point)
-    (emr-blank? (buffer-substring (line-beginning-position)
-                                  (line-end-position)))))
+    (emr-blank? (emr-line-str))))
+
+;;;###autoload
+(defun* emr-line-matches? (regex &optional (point (point)))
+  "Non-nil if POINT is on a line that matches REGEX."
+  (save-excursion
+    (goto-char point)
+    (s-matches? regex (emr-line-str))))
 
 ;;;###autoload
 (defun emr-insert-above-defun (str)
@@ -130,17 +142,16 @@ Return the position of the end of STR."
 (defun emr-collapse-vertical-whitespace ()
   "Collapse blank lines around point.
 Ensure there are at most `emr-lines-between-toplevel-forms' blanks."
-  (cl-flet ((this-line () (buffer-substring (line-beginning-position) (line-end-position))))
-    (when (emr-blank? (this-line))
-      (save-excursion
-        ;; Delete blank lines.
-        (search-backward-regexp (rx (not (any space "\n"))) nil t)
-        (forward-line 1)
-        (while (emr-blank? (this-line))
-          (forward-line)
-          (join-line))
-        ;; Open a user-specified number of blanks.
-        (open-line emr-lines-between-toplevel-forms)))))
+  (when (emr-blank-line?)
+    (save-excursion
+      ;; Delete blank lines.
+      (search-backward-regexp (rx (not (any space "\n"))) nil t)
+      (forward-line 1)
+      (while (emr-blank-line?)
+        (forward-line)
+        (join-line))
+      ;; Open a user-specified number of blanks.
+      (open-line emr-lines-between-toplevel-forms))))
 
 ; ------------------
 
