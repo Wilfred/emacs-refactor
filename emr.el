@@ -3,7 +3,7 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.3.5
+;; Version: 0.3.6
 ;; Keywords: tools convenience refactoring
 ;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (redshank "1.0.0") (paredit "24.0.0") (projectile "0.9.0"))
 ;; This file is not part of GNU Emacs.
@@ -161,6 +161,7 @@ Ensure there are at most `emr-lines-between-toplevel-forms' blanks."
 ;;; example in emr-elisp.
 
 (defun* emr:ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
+  "Chop STR and add ellipses if it exceeds MAXLEN in length."
   (if (> (length str) maxlen)
       (concat (substring-no-properties str 0 (1- maxlen)) "…")
     str))
@@ -176,7 +177,11 @@ The index is the car and the line is the cdr."
             (-zip (emr:indexed-lines str1) (emr:indexed-lines str2))))
 
 (defun* emr:report-action (description line text)
-  "Report the action that occured at the point of difference."
+  "Report the action that occured at the point of difference.
+
+Displays a short summary containing the line number, a
+description of the change, and a snippet of text from the
+buffer."
   (when emr-report-actions
 
     (->> (if (s-blank? text)
@@ -212,19 +217,20 @@ The index is the car and the line is the cdr."
 
 ;;;; Popup menu
 
-;;; Items to be displayed in the refactoring popup menu are added using the
-;;; `emr-declare-action' macro.
+;;; Items to be displayed in the refactoring popup menu are declared using
+;;; the `emr-declare-action' macro. This macro transforms a specification
+;;; into an executable function and adds it to the list of available
+;;; refactoring commands.
+;;;
+;;; The `emr:refactor-commands' table stores those functions. Each function
+;;; will dynamically create the popups to populate the menu.
+;;;
+;;; Whenever the user invokes the menu, we loop through the function in the
+;;; hash table. Each function checks the current mode and runs a predicate,
+;;; returning a popup item to display in the list if these tests succeed.
 
 (defvar emr:refactor-commands (make-hash-table :test 'equal)
   "A hashtable of refactoring commands used to build menu items.")
-
-;;;###autoload
-(defun emr-initialize ()
-  "Activate language support for EMR."
-  (eval-after-load "simple"    '(require 'emr-prog))
-  (eval-after-load "lisp-mode" '(require 'emr-lisp))
-  (eval-after-load "lisp-mode" '(require 'emr-elisp))
-  (eval-after-load "cc-mode"   '(progn (require 'emr-c) (emr-c-initialize))))
 
 (defun emr:documentation (sym)
   "Get the docstring for SYM. Does not display the arglist for functions."
@@ -256,38 +262,82 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
   (declare (indent 1))
   (cl-assert modes)
   (cl-assert title)
+  ;; Allow both lists and symbols for the MODES argument.
   (let ((modes (if (symbolp modes) (list modes) modes)))
     `(let ((fname ',(intern (format "%s--%s" function title)))
+
+           ;; Create factory function.
+           ;;
+           ;; This function will be run whenever the user invokes the popup
+           ;; menu. It checks whether the given refactoring is available,
+           ;; and returns either a new popup menu item or nil.
            (fn (lambda ()
-                 (when (and (apply 'derived-mode-p ',modes)
-                            (ignore-errors
-                              (eval ,predicate)))
+                 (when (and
+                        ;; 1. Test whether this command is available in the
+                        ;; current buffer's major mode.
+                        (apply 'derived-mode-p ',modes)
+                        ;; 2. Run the declared predicate to test whether
+                        ;; the refactoring command is available in the
+                        ;; current context.
+                        (ignore-errors
+                          (eval ,predicate)))
+                   ;; If the above tests succeed, create a popup for the
+                   ;; refactor menu.
                    (popup-make-item ,title
                                     :value ',function
                                     :summary ,description
                                     :document (emr:documentation ',function))))))
-       ;; Create a function and insert it into the commands table.
+
+       ;; Add the created function into the global table of refactoring
+       ;; commands.
        (puthash fname fn emr:refactor-commands)
        ',function)))
 
 (defun emr:hash-values (ht)
+  "Return the hash values in hash table HT."
   (cl-loop for v being the hash-values in ht collect v))
 
 ;;;###autoload
 (defun emr-show-refactor-menu ()
   "Show the refactor menu at point."
   (interactive)
+  ;; Run each factory function and collect the menu items representing
+  ;; available commands.
   (-if-let (actions (->> emr:refactor-commands
                       (emr:hash-values)
                       (-map 'funcall)
                       (-remove 'null)))
+    ;; Display the menu.
     (atomic-change-group
       (-when-let (action (popup-menu*
                           actions
                           :isearch t
                           :help-delay emr-popup-help-delay))
         (call-interactively action)))
+
+    ;; Having no items to show implies that no refactoring commands are
+    ;; available.
     (message "No refactorings available")))
+
+; ------------------
+
+;;;###autoload
+(defun emr-initialize ()
+  "Activate language support for EMR."
+
+  (require 'emr-prog)
+
+  ;; Lazily load support for individual languages.
+
+  (eval-after-load "lisp-mode"
+    '(progn
+       (require 'emr-lisp)
+       (require 'emr-elisp)))
+
+  (eval-after-load "cc-mode"
+    '(progn
+       (require 'emr-c)
+       (emr-c-initialize))))
 
 (provide 'emr)
 

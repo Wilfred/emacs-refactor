@@ -36,6 +36,13 @@
 (autoload 'ido-yes-or-no-p "ido-yes-or-no")
 (autoload 'redshank-letify-form-up "redshank")
 
+(defun emr-el:safe-read (sexp)
+  "A wrapper around `read' that returns nil immediately if SEXP is null.
+
+If sexp is nil, `read' would prompt the user for input from
+stdin. Bad."
+  (and sexp (read sexp)))
+
 (defun emr-el:print (form)
   "Print FORM as a Lisp expression."
   (let (
@@ -118,7 +125,7 @@ Return the position of the end of FORM-STR."
       ((equal 'let hd)  (emr-el:bindings-in-let form))
       ((equal 'let* hd) (emr-el:bindings-in-let form))
       ((equal 'defalias hd) (emr-el:bindings-in-defalias form))
-      ;; FUNCTION is the quotation form for function objects.
+      ;; `function' is the quotation form for function objects.
       ;; Do not bail if the next item is not a lambda.
       ((equal 'function hd) (condition-case _err
                                 (-mapcat 'emr-el:bindings-in-lambda (cdr form))
@@ -242,8 +249,10 @@ BODY is a list of forms to execute after extracting the sexp near point."
 (defun emr-el:looking-at-definition? ()
   "Non-nil if point is at a definition form."
   (or (emr-el:definition? (list-at-point))
-      (-when-let (def (read (thing-at-point 'defun)))
-        (emr-el:find-in-tree (list-at-point) (cl-third def)))))
+      (-when-let (def (thing-at-point 'defun))
+        (->> (emr-el:safe-read def)
+          (cl-third)
+          (emr-el:find-in-tree (list-at-point))))))
 
 ;;;; Refactoring commands
 
@@ -291,15 +300,16 @@ initvalue in the variable definition."
               (kill-line))
 
             ;; Perform inlining.
+            ;;
             ;; emr-el:extraction-refactor will report the first insertion. If
             ;; there are none or more than one insertion, override this report.
             (-if-let (lines (-map 'int-to-string (emr-el:replace-usages def)))
               (when (> (length lines) 1)
                 (message "Inlining applied at lines %s" (s-join ", " lines)))
-              (error "No usages found")))
+              (user-error "No usages found")))
 
-        (error "No value to inline for %s" (car def)))
-      (error "Not a variable definition"))))
+        (user-error "No value to inline for %s" (car def)))
+      (user-error "Not a variable definition"))))
 
 ; ------------------
 
@@ -315,11 +325,13 @@ initvalue in the variable definition."
   "Replace the current region or the form at point with its value."
   (interactive "*")
   (emr-el:extraction-refactor (sexp) "Replacement at"
-    (insert (->> (read sexp)
-              (emr-el:eval-and-print-progn)
-              (s-join "\n")))
-    (indent-for-tab-command)
-    (emr-el:reindent-defun)))
+
+    (-if-let (form (emr-el:safe-read sexp))
+      (progn
+        (insert (->> form (emr-el:eval-and-print-progn) (s-join "\n")))
+        (indent-for-tab-command)
+        (emr-el:reindent-defun))
+      (user-error "Unable to read the given form"))))
 
 ; ------------------
 
@@ -336,10 +348,10 @@ initvalue in the variable definition."
   (unless (or (s-blank? arglist)
               (s-matches? (rx (or "()" "nil")) arglist))
     (condition-case _err
-        (read (format "(%s)" arglist))
+        (emr-el:safe-read (format "(%s)" arglist))
       (error
        ;; Rethrow reader errors as something more informative.
-       (error "Malformed arglist")))))
+       (user-error "Malformed arglist")))))
 
 (defun emr-el:read-args (form context)
   "Read an arglist from the user, using FORM to generate a suggestion.
@@ -365,7 +377,7 @@ CONTEXT is the top level form that encloses FORM."
 (defun emr-el:form-extent-for-extraction ()
   "Return either the current region or the list at point."
   (if (region-active-p)
-      (buffer-substring (region-beginning) (region-end))
+      (emr-line-str)
     (list-at-point)))
 
 (defun emr-el:unprogn (str)
@@ -382,10 +394,15 @@ CONTEXT is the top level form that encloses FORM."
   "Extract a function, using the current region or form at point as the body.
 NAME is the name of the new function.
 ARGLIST is its argument list."
-  (interactive (list (read-string "Name: ")
-                     ;; Prompt user with default arglist.
-                     (emr-el:read-args (emr-el:form-extent-for-extraction)
-                                       (thing-at-point 'defun))))
+  (interactive
+   (list
+    ;; Read a name for the function, ensuring it is not blank.
+    (let ((x (read-string "Name: ")))
+      (if (s-blank? x) (user-error "Name must not be blank") x))
+
+    ;; Prompt user with default arglist.
+    (emr-el:read-args (emr-el:form-extent-for-extraction)
+                      (thing-at-point 'defun))))
 
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
 
@@ -416,7 +433,8 @@ ARGLIST is its argument list."
   "Create a function definition for the symbol at point.
 The function will be called NAME and have the given ARGLIST."
   (interactive (list
-                (read (emr-el:read-with-default "Name" (symbol-at-point)))
+                (emr-el:safe-read
+                 (emr-el:read-with-default "Name" (symbol-at-point)))
                 ;; Infer arglist from usage.
                 (->> (list-at-point)
                   (emr-el:infer-arglist-for-usage)
@@ -493,9 +511,7 @@ The variable will be called NAME."
   (save-excursion
     (beginning-of-thing 'defun)
     (forward-line -1)
-    (s-matches? (rx bol (* space) ";;;###autoload" (* space) eol)
-                (buffer-substring (line-beginning-position)
-                                  (line-end-position)))))
+    (emr-line-matches? (rx bol (* space) ";;;###autoload" (* space) eol))))
 
 ;;;###autoload
 (defun emr-el-insert-autoload-directive ()
@@ -888,7 +904,7 @@ bindings or body of the enclosing let expression."
   (ignore-errors
     (let ((start (save-excursion (forward-sexp (1- n)) (point)))
           (end   (save-excursion (forward-sexp n) (point))))
-      (read (buffer-substring start end)))))
+      (emr-el:safe-read (buffer-substring start end)))))
 
 (defun emr-el:defun-body-str (defun-str)
   "Extract the body forms from DEFUN-STR."
@@ -915,7 +931,7 @@ bindings or body of the enclosing let expression."
 (defun emr-el:transform-function-usage (def usage)
   "Replace the usage of a function with the body from its definition.
 Its variables will be let-bound."
-  (let* ((params (->> (read def)
+  (let* ((params (->> (emr-el:safe-read def)
                    (emr-el:defun-arglist-symbols)
                    (--remove (-contains? emr-el:special-symbols it))))
          (args (emr-el:extract-arguments-in-usage-form usage))
