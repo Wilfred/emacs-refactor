@@ -111,7 +111,7 @@ Library and project includes are kept separate."
 
 Find header files in the current project.  If this is not a valid
 project, return all header files in the current directory."
-  (->> (-if-let (proj (and (featurep 'projectile) (projectile-project-p)))
+  (->> (-if-let (proj (projectile-project-p))
          (--map (concat proj it) (projectile-project-files proj))
          (-> (buffer-file-name) (file-name-directory) (directory-files t)))
     (--filter (-contains? '("h" "hpp") (file-name-extension it)))

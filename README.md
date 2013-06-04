@@ -53,13 +53,13 @@ You will need *carton*, *make* and *git* to build the project.
 
 1. Install [Carton](https://github.com/rejeep/carton):
 
-   ```
+   ```shell
    curl -fsSkL https://raw.github.com/rejeep/carton/master/go | sh
    ```
 
 2. Clone and install with `make`:
 
-   ```
+   ```shell
    cd
    git clone git@github.com:chrisbarrett/emacs-refactor.git
    cd emacs-refactor
@@ -78,13 +78,14 @@ You will need *carton*, *make* and *git* to build the project.
 
 These will be installed automatically by Carton.
 
-* [s](https://github.com/magnars/s.el)
-* [dash](https://github.com/magnars/dash.el)
-* [popup](https://github.com/auto-complete/popup-el)
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
+* [dash](https://github.com/magnars/dash.el)
 * [list-utils](https://github.com/rolandwalker/list-utils)
-* [redshank](https://github.com/emacsmirror/redshank)
 * [paredit](https://github.com/emacsmirror/paredit/blob/master/paredit.el)
+* [popup](https://github.com/auto-complete/popup-el)
+* [projectile](https://github.com/bbatsov/projectile)
+* [redshank](https://github.com/emacsmirror/redshank)
+* [s](https://github.com/magnars/s.el)
 
 Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
@@ -120,6 +121,10 @@ Pull requests are welcome. If appropriate, please add unit tests. See the tests 
 
 ## TODO
 
+* Elisp:
+    * Simplify let statements when inlining functions
+    * Use destructuring-bind when inlining functions that use destructuring
+      in their arglists.
 * C: More useful refactorings, eg, inline function/variable
 * Support for other languages (esp. Clojure, Python, Ruby)
 
