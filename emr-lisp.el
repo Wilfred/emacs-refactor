@@ -57,6 +57,28 @@
     (mark-sexp)
     (comment-region (region-beginning) (region-end))))
 
+(defun emr-lisp:start-of-comment-block ()
+  "Move to the start of the current comment block, ignoring blank lines."
+  (while (save-excursion
+           (forward-line -1)
+           (unless (bobp)
+             (or (emr-blank-line?)
+                 (emr-line-matches?
+                  (eval `(rx (* space) ,comment-start))))))
+    (forward-line -1)))
+
+(defun emr-lisp:end-of-comment-block ()
+  "Move to the end of the current comment block,
+ignoring blank lines."
+  (while
+      (save-excursion
+        (forward-line)
+        (unless (eobp)
+          (or (emr-blank-line?)
+              (emr-line-matches?
+               (eval `(rx (* space) ,comment-start))))))
+    (forward-line)))
+
 ;;;###autoload
 (defun emr-lisp-uncomment-block ()
   "Uncomment the Lisp form or forms at point.
@@ -73,23 +95,13 @@ textual comments."
          ;; 1. Find the absolute end of the commented region.
          (end
           (save-excursion
-            (while (save-excursion
-                     (forward-line)
-                     (or (emr-blank-line?)
-                         (emr-line-matches?
-                          (eval `(rx (* space) ,comment-start)))))
-              (forward-line))
+            (emr-lisp:end-of-comment-block)
             (line-end-position)))
 
          ;; 2. Find the absolute start of the commented region.
          (beg
           (save-excursion
-            (while (save-excursion
-                     (forward-line -1)
-                     (or (emr-blank-line?)
-                         (emr-line-matches?
-                          (eval `(rx (* space) ,comment-start)))))
-              (forward-line -1))
+            (emr-lisp:start-of-comment-block)
 
             ;; 3. Restrict the starting position by finding the first open
             ;; paren in the comment block.
