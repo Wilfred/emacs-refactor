@@ -31,28 +31,10 @@
 (require 'dash)
 (require 'thingatpt)
 (require 'emr)
+(require 'emr-lisp)
 (autoload 'paredit-splice-sexp-killing-backward "paredit")
 (autoload 'ido-yes-or-no-p "ido-yes-or-no")
 (autoload 'redshank-letify-form-up "redshank")
-
-(defcustom emr-el-lines-between-toplevel-forms 1
-  "The number of lines to try to preserve between toplevel forms when refactoring Elisp."
-  :group 'emr)
-
-(defun emr-el:collapse-vertical-whitespace ()
-  "Collapse blank lines around point.
-Ensure there are at most `emr-el-lines-between-toplevel-forms' blanks."
-  (cl-flet ((this-line () (buffer-substring (line-beginning-position) (line-end-position))))
-    (when (emr-blank? (this-line))
-      (save-excursion
-        ;; Delete blank lines.
-        (search-backward-regexp (rx (not (any space "\n"))) nil t)
-        (forward-line 1)
-        (while (emr-blank? (this-line))
-          (forward-line)
-          (join-line))
-        ;; Open a user-specified number of blanks.
-        (open-line emr-el-lines-between-toplevel-forms)))))
 
 (defun emr-el:print (form)
   "Print FORM as a Lisp expression."
@@ -75,24 +57,6 @@ Ensure there are at most `emr-el-lines-between-toplevel-forms' blanks."
 
 (defun emr-el:looking-at-decl? ()
   (-contains? '(interactive declare) (car-safe (list-at-point))))
-
-(defun emr-el:goto-open-round ()
-  "Move to the opening paren for the Lisp list at point."
-  (interactive)
-  (when (or (not (equal "(" (thing-at-point 'char)))
-            (emr-looking-at-string?))
-    (beginning-of-sexp)
-    (unless (equal "(" (thing-at-point 'char))
-      (search-backward "("))))
-
-(defun emr-el:goto-open-round-or-quote ()
-  "Move to the opening paren or quote for the Lisp list at point."
-  (interactive)
-  (emr-el:goto-open-round)
-  (when (or (thing-at-point-looking-at "'")
-            (thing-at-point-looking-at "`")
-            (emr-looking-at-string?))
-    (search-backward-regexp (rx (or "'" "`")))))
 
 ;;;; Formatting commands
 
@@ -217,7 +181,7 @@ BODY is a list of forms to execute after extracting the sexp near point."
        ;; Either extract the active region or the sexp near point.
        (if (region-active-p)
            (kill-region (region-beginning) (region-end))
-         (emr-el:goto-open-round-or-quote)
+         (emr-lisp:back-to-open-round-or-quote)
          (kill-sexp))
 
        (emr-el:reindent-defun)
@@ -312,10 +276,12 @@ Returns a list of lines where changes were made."
 ;;;###autoload
 (defun emr-el-inline-variable ()
   "Inline the variable defined at point.
-Uses of the variable are replaced with the initvalue in the variable definition."
+
+Uses of the variable in the current buffer are replaced with the
+initvalue in the variable definition."
   (interactive "*")
   (save-excursion
-    (emr-el:goto-open-round)
+    (emr-lisp:back-to-open-round)
     (-if-let (def (emr-el:extract-var-values (list-at-point)))
       (if (or (consp def) (> (length def) 1))
           (emr-el:extraction-refactor () "Inlining applied at"
@@ -413,7 +379,7 @@ CONTEXT is the top level form that encloses FORM."
 
 ;;;###autoload
 (defun emr-el-extract-function (name arglist)
-  "Extract a function, using the current region or form point as the body.
+  "Extract a function, using the current region or form at point as the body.
 NAME is the name of the new function.
 ARGLIST is its argument list."
   (interactive (list (read-string "Name: ")
@@ -516,17 +482,6 @@ The variable will be called NAME."
     ;; Insert definition.
     (emr-el:insert-above-defun (format "(defconst %s %s)" name sexp))))
 
-;;;###autoload
-(defun emr-el-comment-form ()
-  "Comment out the current region or from at point."
-  (interactive "*")
-  (if (region-active-p)
-      (comment-region (region-beginning)
-                      (region-end))
-    (emr-el:goto-open-round-or-quote)
-    (mark-sexp)
-    (comment-region (region-beginning) (region-end))))
-
 ; ------------------
 
 (defun emr-el:autoload-exists? (function str)
@@ -605,9 +560,15 @@ Order autoloads alphabetically by their file, then by their function name."
 
 ;;;###autoload
 (defun emr-el-extract-autoload (function file)
-  "Create an autoload for FUNCTION.
-FILE is the file that declares FUNCTION.
-See `autoload' for details."
+  "Create an autoload for FUNCTION and insert it into the buffer.
+FILE is the file that declares FUNCTION.  See `autoload' for
+details.
+
+* If there are no autoloads in the buffer, the new autoload will
+  be inserted above the current toplevel form.
+
+* If other autoloads exist in the buffer, the new autoload will
+  be inserted near them."
   (interactive
    (let* ((sym  (intern (or (thing-at-point 'symbol) (read-string "Function: "))))
           (file (or (emr-el:symbol-file-name sym)
@@ -695,7 +656,7 @@ form or replace with `progn'."
     (unwind-protect
         (save-excursion
           ;; Delete binding.
-          (emr-el:goto-open-round)
+          (emr-lisp:back-to-open-round)
           (kill-sexp)
 
           ;; Ensure whole form is correctly reindented.
@@ -774,7 +735,7 @@ wrap the form with a let statement at a sensible place."
         ;; the list or region.
         (if (region-active-p)
             (goto-char (region-beginning))
-          (emr-el:goto-open-round))
+          (emr-lisp:back-to-open-round))
         (redshank-letify-form-up (symbol-name symbol))
 
         ;; Tidy let binding after insertion.
@@ -813,7 +774,7 @@ wrap the form with a let statement at a sensible place."
     (ignore-errors
       (let ((maybe-binding-list
              (save-excursion
-               (emr-el:goto-open-round)
+               (emr-lisp:back-to-open-round)
                (list-at-point))))
         (save-excursion
           ;; Select binding list for the let expression.
@@ -992,7 +953,7 @@ Replaces all usages in the current buffer."
 
           ;; There will now be a blank line where the defun used to be. Join
           ;; lines to fix this.
-          (emr-el:collapse-vertical-whitespace)
+          (emr-collapse-vertical-whitespace)
 
           (let ((fname (nth 1 (s-split (rx space) def)))
                 ;; Tracks the line numbers where inlinings are performed.
@@ -1068,7 +1029,7 @@ the cdr is the usage form."
       (beginning-of-thing 'defun)
       (kill-sexp)
 
-      (emr-el:collapse-vertical-whitespace))))
+      (emr-collapse-vertical-whitespace))))
 
 (defcustom emr-el-definition-macro-names
   '(defun defun* cl-defun defmacro defmacro* cl-defmacro defcustom defvar defvar-local defconst)
@@ -1121,8 +1082,10 @@ The result is a list of `emr-el-ref'."
 
 ;;;###autoload
 (defun emr-el-find-unused-definitions ()
-  "Search the buffer for functions and variabes that have no usages.
-Definitions with export directives are ignored."
+  "Search the buffer for functions and variables that have no usages.
+Definitions with export directives are ignored.  If any unused
+definitions are found, they will be collated and displayed in a
+popup window."
   (interactive)
 
   (let ((buf (get-buffer-create "*Unused Definitions*")))
@@ -1278,12 +1241,6 @@ Definitions with export directives are ignored."
   :predicate (and (emr-el:looking-at-definition?)
                   (not (emr-el:autoload-directive-exsts-above-defun?))
                   (not (emr-el:def-find-usages (list-at-point)))))
-
-(emr-declare-action emr-el-comment-form
-  :title "comment"
-  :modes emacs-lisp-mode
-  :predicate (and (thing-at-point 'defun)
-                  (not (emr-looking-at-comment?))))
 
 
 (provide 'emr-elisp)

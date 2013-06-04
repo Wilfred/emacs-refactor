@@ -77,7 +77,8 @@
 
 ;;;###autoload
 (defun emr-c-tidy-includes ()
-  "Separate includes depending on whether they're library or project headers."
+  "Collate and reorder include directives in the current buffer.
+Library and project includes are kept separate."
   (interactive "*")
   (let (includes)
     (save-excursion
@@ -108,11 +109,8 @@
 (defun emr-c:headers-in-project ()
   "Return a list of available C header files.
 
-If Projectile is available, use it to find header files in the
-project.
-
-If Projectile is not installed, or if this is not a
-valid project, return all header files in the current directory."
+Find header files in the current project.  If this is not a valid
+project, return all header files in the current directory."
   (->> (-if-let (proj (and (featurep 'projectile) (projectile-project-p)))
          (--map (concat proj it) (projectile-project-files proj))
          (-> (buffer-file-name) (file-name-directory) (directory-files t)))
@@ -124,7 +122,7 @@ valid project, return all header files in the current directory."
   "Insert an include for HEADER and tidy the includes in the buffer."
   (interactive
    (list
-    (if (yes-or-no-p "System header?")
+    (if (yes-or-no-p "Library header?")
         (format "<%s>" (ido-completing-read "Header: " emr-c:standard-headers))
       (format "\"%s\"" (ido-completing-read "Header: " (emr-c:headers-in-project))))))
 

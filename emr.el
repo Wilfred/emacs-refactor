@@ -3,7 +3,7 @@
 ;; Copyright (C) 2013 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.3.4
+;; Version: 0.3.5
 ;; Keywords: tools convenience refactoring
 ;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (redshank "1.0.0") (paredit "24.0.0"))
 ;; This file is not part of GNU Emacs.
@@ -39,6 +39,7 @@
 (require 'cl-lib)
 (require 'popup)
 (autoload 'in-string-p "thingatpt")
+(autoload 'beginning-of-thing "thingatpt")
 
 (defgroup emacs-refactor nil
   "Provides refactoring tools for Emacs."
@@ -49,6 +50,14 @@
   "Non-nil means display an indication when a refactoring results in an insertion."
   :type 'checkbox
   :group 'emacs-refactor)
+
+(defcustom emr-lines-between-toplevel-forms 1
+  "The number of lines to try to preserve between toplevel forms when refactoring Lisps."
+  :group 'emr)
+
+(defcustom emr-popup-help-delay 1
+  "The time to wait before showing documentation in the refactor menu."
+  :group 'emr)
 
 ; ------------------
 
@@ -89,12 +98,24 @@ If the defun is preceded by comments, move above them."
   (s-blank? (s-trim str)))
 
 ;;;###autoload
+(defun emr-line-str ()
+  "Return the contents of the current line."
+  (buffer-substring (line-beginning-position)
+                    (line-end-position)))
+
+;;;###autoload
 (defun* emr-blank-line? (&optional (point (point)))
   "Non-nil if POINT is on a blank line."
   (save-excursion
     (goto-char point)
-    (emr-blank? (buffer-substring (line-beginning-position)
-                                  (line-end-position)))))
+    (emr-blank? (emr-line-str))))
+
+;;;###autoload
+(defun* emr-line-matches? (regex &optional (point (point)))
+  "Non-nil if POINT is on a line that matches REGEX."
+  (save-excursion
+    (goto-char point)
+    (s-matches? regex (emr-line-str))))
 
 ;;;###autoload
 (defun emr-insert-above-defun (str)
@@ -116,6 +137,21 @@ Return the position of the end of STR."
                   (emr-blank-line?))
           (open-line 1)))
       (point))))
+
+;;;###autoload
+(defun emr-collapse-vertical-whitespace ()
+  "Collapse blank lines around point.
+Ensure there are at most `emr-lines-between-toplevel-forms' blanks."
+  (when (emr-blank-line?)
+    (save-excursion
+      ;; Delete blank lines.
+      (search-backward-regexp (rx (not (any space "\n"))) nil t)
+      (forward-line 1)
+      (while (emr-blank-line?)
+        (forward-line)
+        (join-line))
+      ;; Open a user-specified number of blanks.
+      (open-line emr-lines-between-toplevel-forms))))
 
 ; ------------------
 
@@ -185,8 +221,22 @@ The index is the car and the line is the cdr."
 ;;;###autoload
 (defun emr-initialize ()
   "Activate language support for EMR."
+  (eval-after-load "simple"    '(require 'emr-prog))
+  (eval-after-load "lisp-mode" '(require 'emr-lisp))
   (eval-after-load "lisp-mode" '(require 'emr-elisp))
   (eval-after-load "cc-mode"   '(progn (require 'emr-c) (emr-c-initialize))))
+
+(defun emr:documentation (sym)
+  "Get the docstring for SYM. Does not display the arglist for functions."
+  (ignore-errors
+    (->> (documentation sym)
+      (s-lines)
+      ;; Remove the function arglist.
+      (nreverse)
+      (--drop-while (s-matches? (rx bol (* space) "(") it))
+      (nreverse)
+      (s-join "\n")
+      (s-trim))))
 
 ;;;###autoload
 (defmacro* emr-declare-action (function &key modes title (predicate t) description)
@@ -212,7 +262,10 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
                  (when (and (apply 'derived-mode-p ',modes)
                             (ignore-errors
                               (eval ,predicate)))
-                   (popup-make-item ,title :value ',function :summary ,description)))))
+                   (popup-make-item ,title
+                                    :value ',function
+                                    :summary ,description
+                                    :document (emr:documentation ',function))))))
        ;; Create a function and insert it into the commands table.
        (puthash fname fn emr:refactor-commands)
        ',function)))
@@ -229,7 +282,10 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
                       (-map 'funcall)
                       (-remove 'null)))
     (atomic-change-group
-      (-when-let (action (popup-menu* actions :isearch t))
+      (-when-let (action (popup-menu*
+                          actions
+                          :isearch t
+                          :help-delay emr-popup-help-delay))
         (call-interactively action)))
     (message "No refactorings available")))
 
