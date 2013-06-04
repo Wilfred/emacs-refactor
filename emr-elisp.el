@@ -1072,11 +1072,14 @@ the cdr is the usage form."
 Used when searching for usages across the whole buffer."
   :group 'emr)
 
-(defstruct emr-el-usage file line col identifier type form)
+;;; `emr-el-ref'
+;;;
+;;; Defines a reference to a function or variable within a file.
+(defstruct emr-el-ref file line col identifier type form)
 
 (defun emr-el:find-unused-defs ()
   "Return a list of all unused definitions in the buffer.
-The result is a list of `emr-el-usage'."
+The result is a list of `emr-el-ref'."
   (save-excursion
     (let (acc)
       (goto-char (point-min))
@@ -1090,20 +1093,20 @@ The result is a list of `emr-el-usage'."
                          symbol-end))
               nil t)
         (unless (emr-el:autoload-directive-exsts-above-defun?)
-         ;; Collect definitions that do not have usages.
-         (-when-let* ((form (list-at-point))
-                      (col  (save-excursion
-                              (beginning-of-thing 'defun)
-                              (current-column))))
-           (unless (emr-el:def-find-usages form)
-             (push
-              (make-emr-el-usage :file (buffer-file-name)
-                                 :line (line-number-at-pos)
-                                 :col  col
-                                 :type (car form)
-                                 :identifier (nth 1 form)
-                                 :form form)
-              acc)))))
+          ;; Collect definitions that do not have usages.
+          (-when-let* ((form (list-at-point))
+                       (col  (save-excursion
+                               (beginning-of-thing 'defun)
+                               (current-column))))
+            (unless (emr-el:def-find-usages form)
+              (push
+               (make-emr-el-ref :file (buffer-file-name)
+                                :line (line-number-at-pos)
+                                :col  col
+                                :type (car form)
+                                :identifier (nth 1 form)
+                                :form form)
+               acc)))))
       (nreverse acc))))
 
 (define-compilation-mode emr-buffer-report-mode "EMR Report"
@@ -1137,11 +1140,11 @@ Definitions with export directives are ignored."
             (->> defs
               (--map (format
                       "%s:%s:%s:%s: %s"
-                      (file-name-nondirectory (emr-el-usage-file it))
-                      (emr-el-usage-line it)
-                      (emr-el-usage-col  it)
-                      (emr-el-usage-type it)
-                      (symbol-name (emr-el-usage-identifier it))))
+                      (file-name-nondirectory (emr-el-ref-file it))
+                      (emr-el-ref-line it)
+                      (emr-el-ref-col  it)
+                      (emr-el-ref-type it)
+                      (symbol-name (emr-el-ref-identifier it))))
               (s-join "\n\n")
               (insert))
 
