@@ -393,10 +393,15 @@ CONTEXT is the top level form that encloses FORM."
   "Extract a function, using the current region or form at point as the body.
 NAME is the name of the new function.
 ARGLIST is its argument list."
-  (interactive (list (read-string "Name: ")
-                     ;; Prompt user with default arglist.
-                     (emr-el:read-args (emr-el:form-extent-for-extraction)
-                                       (thing-at-point 'defun))))
+  (interactive
+   (list
+    ;; Read a name for the function, ensuring it is not blank.
+    (let ((x (read-string "Name: ")))
+      (if (s-blank? x) (error "Name must not be blank") x))
+
+    ;; Prompt user with default arglist.
+    (emr-el:read-args (emr-el:form-extent-for-extraction)
+                      (thing-at-point 'defun))))
 
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
 
