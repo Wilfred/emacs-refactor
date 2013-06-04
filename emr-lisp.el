@@ -142,15 +142,15 @@ textual comments."
                            (emr-looking-at-comment?)))))
 
 (emr-declare-action emr-lisp-uncomment-block
-    :title "uncomment"
-    :description "block"
-    :modes
-    (clojure-mode
-     lisp-mode
-     emacs-lisp-mode
-     scheme-mode)
-    :predicate (and (not (region-active-p))
-                    (emr-line-matches? (rx bol (* space) ";"))))
+  :title "uncomment"
+  :description "block"
+  :modes
+  (clojure-mode
+   lisp-mode
+   emacs-lisp-mode
+   scheme-mode)
+  :predicate (and (not (region-active-p))
+                  (emr-line-matches? (rx bol (* space) ";"))))
 
 (provide 'emr-lisp)
 
