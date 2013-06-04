@@ -164,6 +164,7 @@ valid project, return all header files in the current directory."
   "A minor-mode for C that makes extra key bidings available."
   nil " emr" emr-c-mode-map)
 
+;;;###autoload
 (defun emr-c-initialize ()
   "Activate emr-c-mode for all C buffers."
   (add-hook 'c-mode-hook 'emr-c-mode)
