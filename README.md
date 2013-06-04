@@ -121,6 +121,10 @@ Pull requests are welcome. If appropriate, please add unit tests. See the tests 
 
 ## TODO
 
+* Elisp:
+    * Simplify let statements when inlining functions
+    * Use destructuring-bind when inlining functions that use destructuring
+      in their arglists.
 * C: More useful refactorings, eg, inline function/variable
 * Support for other languages (esp. Clojure, Python, Ruby)
 
