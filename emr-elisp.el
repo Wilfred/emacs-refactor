@@ -617,6 +617,14 @@ form or replace with `progn'."
         (insert "progn"))))
     (emr-lisp-reindent-defun)))
 
+(defun emr-el:join-line-after-let-binding-kill ()
+  "Tidy up newlines after modifiying a let-form binding list."
+  (when (or (emr-blank-line?)
+            (emr-line-matches? (rx "(" (* space) eol))
+            (emr-line-matches? (rx bol (* space) ")" (* space) eol)))
+    (forward-char 1)
+    (join-line)))
+
 ;;;###autoload
 (defun emr-el-delete-let-binding-form ()
   "Delete the let binding around point."
@@ -628,6 +636,9 @@ form or replace with `progn'."
           ;; Delete binding.
           (emr-lisp-back-to-open-round)
           (kill-sexp)
+
+          ;; Reformat after kill.
+          (emr-el:join-line-after-let-binding-kill)
 
           ;; Ensure whole form is correctly reindented.
           (mark-defun)
@@ -821,11 +832,10 @@ bindings or body of the enclosing let expression."
               (replace-match value 'fixcase t nil 1)))))))
   ;; Clean up.
   ;;
-  ;; The binding has been deleted, leaving a blank line. Join with the
-  ;; previous line to clean up.
+  ;; Ensure the binding list is well-formatted after removing the
+  ;; binding. Perform general tidyups.
   (save-excursion
-    (forward-char 1)
-    (join-line)
+    (emr-el:join-line-after-let-binding-kill)
     (emr-el:clean-let-form-at-point)
     (emr-lisp-reindent-defun)))
 
