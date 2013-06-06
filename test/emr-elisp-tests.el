@@ -30,7 +30,7 @@
 (require 'emr (expand-file-name "../emr.el"))
 (require 'emr-elisp (expand-file-name "../emr-elisp.el"))
 
-;;; Function implementation.
+;;;; Function implementation.
 
 (check "uses symbol names when inferring arglists from callsites"
   (let ((fname (cl-gensym)))
@@ -43,7 +43,7 @@
    '(arg1 arg2)
    (emr-el:infer-arglist-for-usage '(hello 9 8))))
 
-;;; Bound variables
+;;;; Bound variables
 
 (check "finds free vars in let form"
   (should=
@@ -124,6 +124,95 @@
    (emr-el:free-variables '(funcall message y)
                         '(let (message)
                            (funcall message y)))))
+
+;;;; Commands
+
+(defmacro* check-command (desc before command-form _-> after
+                               &key (point-marker "|"))
+  "Check that a given refactoring command has an expect result.
+
+* BEFORE and AFTER are strings to compare.
+
+* DESC is a description of the test.
+
+* POINT-MARKER is the character that will represent the position
+  of point in BEFORE and AFTER strings."
+  (declare (indent 1))
+  (assert (stringp desc))
+  (assert (stringp before))
+  (assert (listp command-form))
+  (assert (stringp after))
+  (assert (stringp point-marker))
+  (assert (s-contains? point-marker before))
+  `(check ,(concat "check command: " desc)
+     (with-temp-buffer
+       (lisp-mode)
+       ;; Do all sorts of wacky string replacement. I could have just compared
+       ;; the position of point against the pipe character, but comparing
+       ;; strings gives you much better error feedback in ERT.
+       (save-excursion (insert ,(s-trim before)))
+       ;; delete the point marker in BEFORE
+       (search-forward ,point-marker)
+       (delete-char -1)
+       ;; Perform the refactoring command.
+       ,command-form
+
+       ;; Remove text properties from result.
+       (let ((expected (rx ,(s-trim after)))
+             (result (s-trim (buffer-string))))
+         (set-text-properties 0 (length result) nil result)
+         (set-text-properties 0 (length expected) nil expected)
+
+         ;; assert that the buffer now looks like AFTER.
+         (should (s-matches? expected result))))))
+
+(check-command "inline variable - defvar"
+  "
+  (defvar x| value)
+
+  x
+
+  (application x)"
+  (emr-el-inline-variable) ->
+  "
+  value
+
+  (application value)")
+
+(check-command "inline variable - defconst"
+  "
+  (defconst x| value)
+
+  x
+
+  (application x)"
+  (emr-el-inline-variable) ->
+  "
+  value
+
+  (application value)")
+
+(check-command "eval-and-replace at top level"
+  "(+ 1 2)|"
+  (emr-el-eval-and-replace) ->
+  "3")
+
+(check-command "eval-and-replace inside other forms"
+  "(+ (+ 1 2)| 3)"
+  (emr-el-eval-and-replace) ->
+  "(+ 3 3)")
+
+(check-command "extract function at top level"
+  "
+(defun orig (x)
+  (application| x))"
+  (emr-el-extract-function "extracted" '(x)) ->
+  "
+(defun extracted (x)
+  (application x))
+
+(defun orig (x)
+  (extracted x))")
 
 (provide 'emr-elisp-tests)
 
