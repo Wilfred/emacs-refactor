@@ -202,7 +202,7 @@ CONTEXT is the top level form that encloses FORM."
 
 (defun emr-el:looking-at-definition? ()
   "Non-nil if point is at a definition form."
-  (or (emr-el:definition? (list-at-point))
+  (or (ignore-errors (emr-el:definition? (list-at-point)))
       (-when-let (def (thing-at-point 'defun))
         (->> (emr-el:safe-read def)
           (cl-third)
