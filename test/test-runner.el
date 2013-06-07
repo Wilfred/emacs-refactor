@@ -38,6 +38,9 @@
 (require 'emr-elisp)
 (require 'emr-c)
 
+(message "--> Preparing emr...")
+(emr-initialize)
+
 (message "--> Loading tests...")
 (require 'test-utils)
 (require 'emr-elisp-tests)
@@ -48,7 +51,7 @@
 
 ;; Local Variables:
 ;; lexical-binding: t
-;; byte-compile-warnings: (not cl-functions)
+;; no-byte-compile: t
 ;; End:
 
 ;;; test-runner.el ends here

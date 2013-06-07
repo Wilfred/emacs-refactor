@@ -25,15 +25,11 @@
 
 ;;; Code:
 
-(require 'ert)
-(require 'test-utils (expand-file-name "./test-utils.el"))
-(require 'emr (expand-file-name "../emr.el"))
-(require 'emr-c (expand-file-name "../emr-c.el"))
-
 (provide 'emr-c-tests)
 
 ;; Local Variables:
 ;; lexical-binding: t
+;; no-byte-compile: t
 ;; End:
 
 ;;; emr-c-tests.el ends here

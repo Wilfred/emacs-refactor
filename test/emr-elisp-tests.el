@@ -25,11 +25,6 @@
 
 ;;; Code:
 
-(require 'ert)
-(require 'test-utils (expand-file-name "./test-utils.el"))
-(require 'emr (expand-file-name "../emr.el"))
-(require 'emr-elisp (expand-file-name "../emr-elisp.el"))
-
 ;;;; Function implementation.
 
 (check "uses symbol names when inferring arglists from callsites"
@@ -146,7 +141,7 @@
   (assert (s-contains? point-marker before))
   `(check ,(concat "check command: " desc)
      (with-temp-buffer
-       (lisp-mode)
+       (emacs-lisp-mode)
        ;; Do all sorts of wacky string replacement. I could have just compared
        ;; the position of point against the pipe character, but comparing
        ;; strings gives you much better error feedback in ERT.
@@ -179,6 +174,7 @@
 
   (application value)")
 
+
 (check-command "inline variable - defconst"
   "
   (defconst x| value)
@@ -192,15 +188,21 @@
 
   (application value)")
 
+
 (check-command "eval-and-replace at top level"
   "(+ 1 2)|"
   (emr-el-eval-and-replace) ->
   "3")
 
+
+;; (check-command "implement function" "(hell|o x y)" (emr-el-implement-function "hello" '(x y)) -> " (defun hello (x y)) (hello x y)")
+
+
 (check-command "eval-and-replace inside other forms"
   "(+ (+ 1 2)| 3)"
   (emr-el-eval-and-replace) ->
   "(+ 3 3)")
+
 
 (check-command "extract function at top level"
   "
@@ -214,10 +216,37 @@
 (defun orig (x)
   (extracted x))")
 
+
+(check-command "extract to constant"
+  "(application (+ 1 2)|)"
+  (emr-el-extract-constant "x") ->
+  "
+(defconst x (+ 1 2))
+
+(application x)")
+
+
+(check-command "extract to variable"
+  "(application (+ 1 2)|)"
+  (emr-el-extract-variable "x") ->
+  "
+(defvar x (+ 1 2))
+
+(application x)")
+
+
+(check-command "insert autoload directive"
+  "(defun hello| ())"
+  (emr-el-insert-autoload-directive) ->
+  "
+;;;###autoload
+(defun hello ())")
+
 (provide 'emr-elisp-tests)
 
 ;; Local Variables:
 ;; lexical-binding: t
+;; no-byte-compile: t
 ;; End:
 
 ;;; emr-elisp-tests.el ends here
