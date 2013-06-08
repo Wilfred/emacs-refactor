@@ -36,7 +36,6 @@
 (require 'ert)
 (require 'emr)
 (require 'emr-elisp)
-(require 'emr-c)
 
 (message "--> Preparing emr...")
 (emr-initialize)
@@ -44,7 +43,6 @@
 (message "--> Loading tests...")
 (require 'test-utils)
 (require 'emr-elisp-tests)
-(require 'emr-c-tests)
 
 (message "--> Running tests...")
 (ert-run-tests-batch-and-exit nil)

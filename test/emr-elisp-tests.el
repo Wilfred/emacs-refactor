@@ -27,20 +27,20 @@
 
 ;;;; Function implementation.
 
-(check "uses symbol names when inferring arglists from callsites"
+(check "elisp--uses symbol names when inferring arglists from callsites"
   (let ((fname (cl-gensym)))
     (should=
      '(x y)
      (emr-el:infer-arglist-for-usage `(,fname x y)))))
 
-(check "uses argn for non-symbol names when inferring arglists from callsites"
+(check "elisp--uses argn for non-symbol names when inferring arglists from callsites"
   (should=
    '(arg1 arg2)
    (emr-el:infer-arglist-for-usage '(hello 9 8))))
 
 ;;;; Bound variables
 
-(check "finds free vars in let form"
+(check "elisp--finds free vars in let form"
   (should=
    '(a b c d)
 
@@ -51,7 +51,7 @@
          c
          (list d))))))
 
-(check "finds free vars in let* form"
+(check "elisp--finds free vars in let* form"
   (should=
    '(a b c d)
 
@@ -62,7 +62,7 @@
          c
          (list d))))))
 
-(check "finds free vars in lambda form"
+(check "elisp--finds free vars in lambda form"
   (should=
    '(a b c)
 
@@ -73,7 +73,7 @@
        (lambda (z w)
          c)))))
 
-(check "finds free vars in progn form"
+(check "elisp--finds free vars in progn form"
   (should=
    '(a b c)
 
@@ -83,7 +83,7 @@
        (lambda (x &rest y) b)
        (let (z w) c)))))
 
-(check "finds free vars in destructuring-bind"
+(check "elisp--finds free vars in destructuring-bind"
   (should=
    '(a b c d)
 
@@ -94,7 +94,7 @@
        (cl-destructuring-bind (z . w) (list 3 4 5)
          (list c d))))))
 
-(check "finds free vars in defun form"
+(check "elisp--finds free vars in defun form"
   (should=
    '(a b)
 
@@ -104,7 +104,7 @@
        (progn
          (list b y))))))
 
-(check "survives function symbol followed by non-lambda term"
+(check "elisp--survives function symbol followed by non-lambda term"
   (let ((fname (cl-gensym)))
     (should=
      `(,fname)
@@ -112,7 +112,7 @@
      (emr-el:free-variables
       `(function ,fname)))))
 
-(check "checks outer scope for bindings that share names with functions"
+(check "elisp--checks outer scope for bindings that share names with functions"
   (should=
    '(message y)
 
@@ -122,125 +122,114 @@
 
 ;;;; Commands
 
-(defmacro* check-command (desc before command-form _-> after
-                               &key (point-marker "|"))
-  "Check that a given refactoring command has an expect result.
+(defstruct emr-el-test-spec form before after)
 
-* BEFORE and AFTER are strings to compare.
+(defun emr-el-test:example-call-from-docstring (str)
+  "Extract the function usage from from a docstring test spec."
+  (with-temp-buffer
+    (insert str)
+    (let ((beg (save-excursion (goto-char (point-min))
+                               (search-forward-regexp (rx bol "EXAMPLE:"))))
+          (end (save-excursion (goto-char (point-max))
+                               (search-backward "BEFORE:"))))
 
-* DESC is a description of the test.
+      (s-trim (buffer-substring beg end)))))
 
-* POINT-MARKER is the character that will represent the position
-  of point in BEFORE and AFTER strings."
-  (declare (indent 1))
-  (assert (stringp desc))
-  (assert (stringp before))
-  (assert (listp command-form))
-  (assert (stringp after))
-  (assert (stringp point-marker))
-  (assert (s-contains? point-marker before))
-  `(check ,(concat "check command: " desc)
-     (with-temp-buffer
-       (emacs-lisp-mode)
-       ;; Do all sorts of wacky string replacement. I could have just compared
-       ;; the position of point against the pipe character, but comparing
-       ;; strings gives you much better error feedback in ERT.
-       (save-excursion (insert ,(s-trim before)))
-       ;; delete the point marker in BEFORE
-       (search-forward ,point-marker)
-       (delete-char -1)
-       ;; Perform the refactoring command.
-       ,command-form
+(defun emr-el-test-spec-from-docstring (str)
+  "Parse STR for a test spec.
+Returns a cons where the car is the BEFORE state and the cdr is
+the AFTER state."
+  ;; Extract the test usage.
+  (-if-let (form (emr-el-test:example-call-from-docstring str))
+    ;; Extract the BEFORE and AFTER states to test.
+    (destructuring-bind (_ spec)
+        (s-split (rx bol "BEFORE:") str)
+      (destructuring-bind (before after)
+          (s-split (rx bol "AFTER:") spec)
+        (make-emr-el-test-spec
+         :form   (read form)
+         :before (s-trim before)
+         :after  (s-trim after))))
 
-       ;; Remove text properties from result.
-       (let ((expected (rx ,(s-trim after)))
-             (result (s-trim (buffer-string))))
-         (set-text-properties 0 (length result) nil result)
-         (set-text-properties 0 (length expected) nil expected)
+    (error "No test form in STR.")))
 
-         ;; assert that the buffer now looks like AFTER.
-         (should (s-matches? expected result))))))
+(defun emr-el-tests:remove-indentation (str)
+  (->> (s-trim str) (s-split "\n") (-map 's-trim) (s-join "\n")))
 
-(check-command "inline variable - defvar"
-  "
-  (defvar x| value)
+(defmacro gentest-from-docstring (fname)
+  "Define an ERT test according to the spec in FNAME's docstring.
+FNAME is a refactoring command with a docstring of the following style:
 
-  x
+<General description>
 
-  (application x)"
-  (emr-el-inline-variable) ->
-  "
-  value
+EXAMPLE:
+  <The command form that will be called.>
 
-  (application value)")
+BEFORE:
 
+  <Buffer state before executing command, where a pipe ('|') char
+   signifies POINT. >
 
-(check-command "inline variable - defconst"
-  "
-  (defconst x| value)
+AFTER:
 
-  x
+  <Buffer state after executing command>
 
-  (application x)"
-  (emr-el-inline-variable) ->
-  "
-  value
+"
+  (let ((docstring (documentation fname)))
+    ;; Perform some basic expansion-time checking.
+    (assert (not (s-blank? docstring)))
+    (assert (s-contains? "EXAMPLE:" docstring))
+    (assert (s-contains? "BEFORE:" docstring))
+    (assert (s-contains? "AFTER:" docstring))
+    (assert (s-contains? "|" docstring)))
 
-  (application value)")
+  `(check ,(format "elisp--%s" fname)
+     (let ((docstring (->> (documentation ',fname)
+                        (s-trim)
+                        (s-lines)
+                        (reverse)
+                        (-drop 1)
+                        (reverse)
+                        (s-join "\n"))))
 
+       ;; Basic sanity checks before running.
+       (assert (not (s-blank? docstring)))
+       (assert (s-contains? "EXAMPLE:" docstring))
+       (assert (s-contains? "BEFORE:" docstring))
+       (assert (s-contains? "AFTER:" docstring))
+       (assert (s-contains? "|" docstring))
+       (let ((spec (emr-el-test-spec-from-docstring docstring)))
+         (assert (s-contains? "|" (emr-el-test-spec-before spec)))
 
-(check-command "eval-and-replace at top level"
-  "(+ 1 2)|"
-  (emr-el-eval-and-replace) ->
-  "3")
+         (with-temp-buffer
+           ;; Insert the BEFORE state from the spec into the buffer, then perform
+           ;; the refactor command.
+           (lisp-mode)
+           (save-excursion
+             (insert (s-trim (emr-el-test-spec-before spec)))
+             (indent-region (point-min) (point-max)))
+           ;; Move to position.
+           (search-forward "|")
+           (delete-char -1)
+           (eval (emr-el-test-spec-form spec))
 
+           ;; Remove leading indentation - the forms inside the docstrings are
+           ;; probably indented for aesthetics.
+           (let ((expected (eval `(rx ,(emr-el-tests:remove-indentation
+                                        (emr-el-test-spec-after spec)))))
+                 (result (emr-el-tests:remove-indentation (buffer-string))))
+             ;; Remove text properties from result.
+             (set-text-properties 0 (length result) nil result)
+             (set-text-properties 0 (length expected) nil expected)
 
-;; (check-command "implement function" "(hell|o x y)" (emr-el-implement-function "hello" '(x y)) -> " (defun hello (x y)) (hello x y)")
+             (should (s-matches? expected result))))))))
 
-
-(check-command "eval-and-replace inside other forms"
-  "(+ (+ 1 2)| 3)"
-  (emr-el-eval-and-replace) ->
-  "(+ 3 3)")
-
-
-(check-command "extract function at top level"
-  "
-(defun orig (x)
-  (application| x))"
-  (emr-el-extract-function "extracted" '(x)) ->
-  "
-(defun extracted (x)
-  (application x))
-
-(defun orig (x)
-  (extracted x))")
-
-
-(check-command "extract to constant"
-  "(application (+ 1 2)|)"
-  (emr-el-extract-constant "x") ->
-  "
-(defconst x (+ 1 2))
-
-(application x)")
-
-
-(check-command "extract to variable"
-  "(application (+ 1 2)|)"
-  (emr-el-extract-variable "x") ->
-  "
-(defvar x (+ 1 2))
-
-(application x)")
-
-
-(check-command "insert autoload directive"
-  "(defun hello| ())"
-  (emr-el-insert-autoload-directive) ->
-  "
-;;;###autoload
-(defun hello ())")
+(gentest-from-docstring emr-el-inline-variable)
+(gentest-from-docstring emr-el-eval-and-replace)
+(gentest-from-docstring emr-el-extract-function)
+(gentest-from-docstring emr-el-extract-constant)
+(gentest-from-docstring emr-el-extract-variable)
+(gentest-from-docstring emr-el-insert-autoload-directive)
 
 (provide 'emr-elisp-tests)
 

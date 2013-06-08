@@ -32,9 +32,10 @@
 (require 'thingatpt)
 (require 'emr)
 (require 'emr-lisp)
-(autoload 'paredit-splice-sexp-killing-backward "paredit")
 (autoload 'ido-yes-or-no-p "ido-yes-or-no")
 (autoload 'redshank-letify-form-up "redshank")
+(autoload 'paredit-splice-sexp-killing-backward "paredit")
+(autoload 'define-compilation-mode "compile")
 
 (defun emr-el:safe-read (sexp)
   "A wrapper around `read' that returns nil immediately if SEXP is null.
@@ -244,7 +245,22 @@ Returns a list of lines where changes were made."
   "Inline the variable defined at point.
 
 Uses of the variable in the current buffer are replaced with the
-initvalue in the variable definition."
+initvalue in the variable definition.
+
+EXAMPLE:
+
+  (emr-el-inline-variable)
+
+BEFORE:
+
+  (defvar x| value)
+
+  (usage x)
+
+AFTER:
+
+  (usage value)
+ "
   (interactive "*")
   (save-excursion
     (emr-lisp-back-to-open-round)
@@ -279,7 +295,20 @@ initvalue in the variable definition."
 
 ;;;###autoload
 (defun emr-el-eval-and-replace ()
-  "Replace the current region or the form at point with its value."
+  "Replace the current region or the form at point with its value.
+
+EXAMPLE:
+
+  (emr-el-eval-and-replace)
+
+BEFORE:
+
+  (+ (+ 1 2)| 3)
+
+AFTER:
+
+  (+ 3 3)
+"
   (interactive "*")
   (emr-lisp-extraction-refactor (sexp) "Replacement at"
 
@@ -350,7 +379,25 @@ CONTEXT is the top level form that encloses FORM."
 (defun emr-el-extract-function (name arglist)
   "Extract a function, using the current region or form at point as the body.
 NAME is the name of the new function.
-ARGLIST is its argument list."
+ARGLIST is its argument list.
+
+EXAMPLE:
+
+  (emr-el-extract-function \"extracted\" '(x))
+
+BEFORE:
+
+  (defun orig (x)
+    (application| x))
+
+AFTER:
+
+  (defun extracted (x)
+    (application x))
+
+  (defun orig (x)
+    (extracted x))
+"
   (interactive
    (list
     ;; Read a name for the function, ensuring it is not blank.
@@ -388,7 +435,23 @@ ARGLIST is its argument list."
 ;;;###autoload
 (defun emr-el-implement-function (name arglist)
   "Create a function definition for the symbol at point.
-The function will be called NAME and have the given ARGLIST."
+The function will be called NAME and have the given ARGLIST.
+
+EXAMPLE:
+
+  (emr-el-implement-function \"hello\" '(x y))
+
+BEFORE:
+
+  |(hello x y)
+
+AFTER:
+
+  (defun hello (x y)
+    )
+
+  (hello x y)
+"
   (interactive (list
                 (emr-el:safe-read
                  (emr-el:read-with-default "Name" (symbol-at-point)))
@@ -436,7 +499,22 @@ The function will be called NAME and have the given ARGLIST."
 ;;;###autoload
 (defun emr-el-extract-variable (name)
   "Extract the current region or form at point to a special variable.
-The variable will be called NAME."
+The variable will be called NAME.
+
+EXAMPLE:
+
+  (emr-el-extract-variable \"x\")
+
+BEFORE:
+
+  (usage (+ 1 2)|)
+
+AFTER:
+
+  (defvar x (+ 1 2))
+
+  (usage x)
+"
   (interactive "*sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr-lisp-extraction-refactor (sexp) "Extracted to"
@@ -448,7 +526,23 @@ The variable will be called NAME."
 ;;;###autoload
 (defun emr-el-extract-constant (name)
   "Extract the current region or form at point to a constant special variable.
-The variable will be called NAME."
+The variable will be called NAME.
+
+EXAMPLE:
+
+  (emr-el-extract-constant \"x\")
+
+BEFORE:
+
+  (usage (+ 1 2)|)
+
+AFTER:
+
+  (defconst x (+ 1 2))
+
+  (usage x)
+
+"
   (interactive "*sName: ")
   (cl-assert (not (s-blank? name)) () "Name must not be blank")
   (emr-lisp-extraction-refactor (sexp) "Extracted to"
@@ -472,7 +566,21 @@ The variable will be called NAME."
 
 ;;;###autoload
 (defun emr-el-insert-autoload-directive ()
-  "Insert an autoload directive above the current defun, macro or keymap."
+  "Insert an autoload directive above the current defun, macro or keymap.
+
+EXAMPLE:
+
+  (emr-el-insert-autoload-directive)
+
+BEFORE:
+
+  (defun hello| ())
+
+AFTER:
+
+  ;;;###autoload
+  (defun hello ())
+"
   (interactive "*")
   (unless (emr-el:autoload-directive-exsts-above-defun?)
     (emr-reporting-buffer-changes "Inserted autoload"

@@ -72,7 +72,8 @@ If the defun is preceded by comments, move above them."
   (interactive)
   ;; If we're at a defun already, prevent `beginning-of-defun' from moving
   ;; back to the preceding defun.
-  (beginning-of-thing 'defun)
+  (ignore-errors
+    (beginning-of-thing 'defun))
   ;; If there is a comment attached to this defun, skip over it.
   (while (save-excursion
            (forward-line -1)
