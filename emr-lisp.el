@@ -179,7 +179,7 @@ textual comments."
 
 ; ------------------
 
-(emr-declare-action emr-lisp-comment-form
+(emr-declare-command emr-lisp-comment-form
   :title "comment"
   :description "form"
   :modes
@@ -192,7 +192,7 @@ textual comments."
                   (not (or (emr-line-matches? (rx bol (* space) ";"))
                            (emr-looking-at-comment?)))))
 
-(emr-declare-action emr-lisp-uncomment-block
+(emr-declare-command emr-lisp-uncomment-block
   :title "uncomment"
   :description "block"
   :modes

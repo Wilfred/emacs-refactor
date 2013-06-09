@@ -142,7 +142,7 @@ project, return all header files in the current directory."
 
 ;;; EMR Declarations
 
-(emr-declare-action emr-c-tidy-includes
+(emr-declare-command emr-c-tidy-includes
   :title "tidy"
   :description "includes"
   :modes c-mode

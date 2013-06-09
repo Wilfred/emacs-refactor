@@ -91,7 +91,7 @@ Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
 # Extension
 
-Use the `emr-declare-action` macro to declare a refactoring action. The
+Use the `emr-declare-command` macro to declare a refactoring action. The
 action will automatically become available in the refactoring popup menu.
 
 This macro supports predicate expressions, allowing the options displayed to be
@@ -100,7 +100,7 @@ context-sensitive.
 As an example, here is the declaration for a refactoring command that ships with EMR:
 
 ```lisp
-(emr-declare-action emr-el-extract-constant
+(emr-declare-command emr-el-extract-constant
   :title "constant"
   :description "defconst"
   :modes emacs-lisp-mode

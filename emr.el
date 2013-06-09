@@ -246,13 +246,14 @@ buffer."
       (s-trim))))
 
 ;;;###autoload
-(defmacro* emr-declare-action (function &key modes title (predicate t) description)
+(defmacro* emr-declare-command (function &key modes title (predicate t) description)
   "Define a refactoring command.
 
 * FUNCTION is the refactoring command to perform.
 
-* MODE is the major mode in which this command will be
-  available. Includes derived modes.
+* MODES is a symbol or list of symbols of the modes in which this
+  command will be available. This will also enable the command
+  for derived modes.
 
 * TITLE is the name of the command that will be displayed in the popup menu.
 

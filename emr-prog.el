@@ -28,13 +28,13 @@
 
 (require 'emr)
 
-(emr-declare-action comment-region
+(emr-declare-command comment-region
   :title "comment"
   :description "region"
   :modes prog-mode
   :predicate (region-active-p))
 
-(emr-declare-action uncomment-region
+(emr-declare-command uncomment-region
   :title "uncomment"
   :description "region"
   :modes prog-mode
