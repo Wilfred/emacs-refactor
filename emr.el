@@ -245,7 +245,7 @@ buffer."
 
 ;;;###autoload
 (defmacro* emr-declare-command
-    (function &key modes title (predicate t) description)
+    (function &key modes title description predicate)
   "Define a refactoring command.
 
 * FUNCTION is the refactoring command to perform. It should be
@@ -260,9 +260,7 @@ buffer."
   popup menu.
 
 * PREDICATE is a condition that must be satisfied to display this
-  item.  If PREDICATE is not supplied, the item will always be
-  visible for this mode.  It should be a lambda-expression or
-  function name.
+  item. It should be a lambda-expression or function name.
 
 * DESCRIPTION is shown to the left of the title in the popup
   menu."
@@ -270,7 +268,8 @@ buffer."
   (cl-assert (functionp function))
   (cl-assert title)
   (cl-assert modes)
-  (cl-assert (or (null predicate) (functionp predicate)))
+  (cl-assert (or (functionp predicate)
+                 (symbolp predicate)))
   ;; Add the created function into the global table of refactoring commands.
   `(puthash ',function
             (make-emr-refactor-spec
@@ -283,23 +282,26 @@ buffer."
             emr:refactor-commands))
 
 ;;;###autoload
-(defmacro* emr-extend-command (function &key modes (predicate nil))
+(defmacro* emr-extend-command
+    (function &optional &key modes (predicate nil))
   "Extend an existing refactoring command to other major modes.
 See the documentation for `emr-declare-command'."
   (declare (indent 1))
   (cl-assert (functionp function))
   (cl-assert modes)
-  (cl-assert (or (null predicate) (functionp predicate)))
-  `(let ((ms ',(if (symbolp modes) (list modes) modes))
-         (struct (gethash ',function emr:refactor-commands)))
-     (setf (emr-refactor-spec-modes struct)
-           (->> (emr-refactor-spec-modes struct) (-concat ms) (-uniq)))
+  (cl-assert (or (null predicate)
+                 (functionp predicate)
+                 (symbolp predicate)))
+  (let ((ms (if (symbolp modes) (list modes) modes)))
+    `(let ((struct (gethash ',function emr:refactor-commands)))
+       (setf (emr-refactor-spec-modes struct)
+             (->> (emr-refactor-spec-modes struct) (-concat ',ms) (-uniq)))
 
-     ;; Override the original predicate if one is supplied.
-     (unless (null ',predicate)
-       (let ((cur (emr-refactor-spec-predicate struct)))
-         (setf (emr-refactor-spec-predicate struct)
-               (lambda () (funcall (if (derived-mode-p ms) ,predicate cur))))))))
+       ;; Override the original predicate if one is supplied.
+       (unless (null ',predicate)
+         (let ((cur (emr-refactor-spec-predicate struct)))
+           (setf (emr-refactor-spec-predicate struct)
+                 (lambda () (funcall (if (derived-mode-p ',ms) ,predicate cur)))))))))
 
 (defun emr:hash-values (ht)
   "Return the hash values in hash table HT."
