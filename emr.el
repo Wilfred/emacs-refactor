@@ -299,9 +299,9 @@ See the documentation for `emr-declare-command'."
 
        ;; Override the original predicate if one is supplied.
        (unless (null ',predicate)
-         (let ((cur (emr-refactor-spec-predicate struct)))
-           (setf (emr-refactor-spec-predicate struct)
-                 (lambda () (funcall (if (derived-mode-p ',ms) ,predicate cur)))))))))
+         (let* ((cur (emr-refactor-spec-predicate struct))
+                (fn (lambda () (funcall (if (derived-mode-p ',ms) ,predicate cur)))))
+           (setf (emr-refactor-spec-predicate struct) fn))))))
 
 (defun emr:hash-values (ht)
   "Return the hash values in hash table HT."
