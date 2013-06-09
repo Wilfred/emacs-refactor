@@ -719,7 +719,7 @@ form or replace with `progn'."
        ;; parameter.
        ((and (null bindings)
              (-contains? (cons 'progn emr-el:scope-boundary-forms)
-                         (emr-el:peek-back-upwards)))
+                         (emr-lisp-peek-back-upwards)))
         (backward-kill-sexp 2))
 
        ;; Otherwise replace `let' with `progn'.
@@ -761,28 +761,12 @@ form or replace with `progn'."
 
 ; ------------------
 
-(defun emr-el:find-upwards (sym)
-  "Search upwards from POINT for an enclosing form beginning with SYM."
-  (save-excursion
-    (cl-loop
-     while (ignore-errors (backward-up-list) t)
-     when (thing-at-point-looking-at
-           (eval `(rx "(" ,(format "%s" sym) symbol-end)))
-     do (return (point)))))
-
-(defun emr-el:peek-back-upwards ()
-  "Return the car of the enclosing form."
-  (save-excursion
-    (when (ignore-errors (backward-up-list) t)
-      (forward-char 1)
-      (sexp-at-point))))
-
 (defun emr-el:goto-containing-body-form ()
   "Search upwards for the first function or macro declaration enclosing point.
 Move to that body form that encloses point."
   (cl-loop
    while (ignore-errors (backward-up-list) t)
-   do (when (-contains? emr-el:scope-boundary-forms (emr-el:peek-back-upwards))
+   do (when (-contains? emr-el:scope-boundary-forms (emr-lisp-peek-back-upwards))
         (return (point)))))
 
 (defun emr-el:wrap-body-form-at-point-with-let ()
@@ -816,8 +800,8 @@ wrap the form with a let statement at a sensible place."
         ;; sexp it's extracting. Instead, we want the let form to be as close to the
         ;; containing defun as possible.
         (save-excursion
-          (unless (or (emr-el:find-upwards 'let)
-                      (emr-el:find-upwards 'let*))
+          (unless (or (emr-lisp-find-upwards 'let)
+                      (emr-lisp-find-upwards 'let*))
             (emr-el:wrap-body-form-at-point-with-let)
             (setq did-wrap-form? t)))
 
@@ -835,7 +819,7 @@ wrap the form with a let statement at a sensible place."
         ;; Redshank leaves an extra newline when inserting into an empty
         ;; let-form. Find that let-form and remove the extra newline.
         (when did-wrap-form?
-          (goto-char (emr-el:find-upwards 'let))
+          (goto-char (emr-lisp-find-upwards 'let))
           (end-of-line)
           (forward-char)
           (join-line))))))
@@ -847,8 +831,8 @@ wrap the form with a let statement at a sensible place."
   Otherwise move to the previous one in the current top level form."
   (cl-flet ((max-safe (&rest ns) (apply 'max (--map (or it 0) ns))))
 
-    (-when-let (pos (max-safe (emr-el:find-upwards 'let)
-                              (emr-el:find-upwards 'let*)))
+    (-when-let (pos (max-safe (emr-lisp-find-upwards 'let)
+                              (emr-lisp-find-upwards 'let*)))
       (when (< 0 pos)
         (goto-char pos)
         (point)))))

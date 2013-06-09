@@ -48,6 +48,24 @@
             (emr-looking-at-string?))
     (search-backward-regexp (rx (or "'" "`")))))
 
+(defun emr-lisp-find-upwards (sym)
+  "Search upwards from POINT for an enclosing form beginning with SYM."
+  (save-excursion
+    (cl-loop
+     while (ignore-errors (backward-up-list) t)
+     when (thing-at-point-looking-at
+           (eval `(rx "(" ,(format "%s" sym) symbol-end)))
+     do (return (point)))))
+
+(defun emr-lisp-peek-back-upwards ()
+  "Return the car of the enclosing form."
+  (save-excursion
+    (when (ignore-errors (backward-up-list) t)
+      (forward-char 1)
+      (sexp-at-point))))
+
+; ------------------
+
 (defun emr-lisp-reindent-defun ()
   "Reindent the current top level form."
   (save-excursion (end-of-defun) (beginning-of-defun) (indent-sexp)))
