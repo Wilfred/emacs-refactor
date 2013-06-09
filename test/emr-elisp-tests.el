@@ -184,6 +184,8 @@ AFTER:
     (assert (s-contains? "|" docstring)))
 
   `(check ,(format "elisp--%s" fname)
+     ;; `documentation' returns the functions docstring concatenated with
+     ;; its arglist. Remove the arglist.
      (let ((docstring (->> (documentation ',fname)
                         (s-trim)
                         (s-lines)
