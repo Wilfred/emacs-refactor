@@ -1230,108 +1230,122 @@ popup window."
 (emr-declare-command emr-el-implement-function
   :title "implement function"
   :modes emacs-lisp-mode
-  :predicate (and (symbol-at-point)
-                  (not (emr-looking-at-string?))
-                  (not (emr-looking-at-comment?))
-                  (not (thing-at-point 'number))
-                  (not (emr-el:looking-at-definition?))
-                  (not (emr-el:looking-at-let-binding-symbol?))
-                  (not (boundp (symbol-at-point)))
-                  (not (fboundp (symbol-at-point)))))
+  :predicate (lambda ()
+               (and (symbol-at-point)
+                    (not (emr-looking-at-string?))
+                    (not (emr-looking-at-comment?))
+                    (not (thing-at-point 'number))
+                    (not (emr-el:looking-at-definition?))
+                    (not (emr-el:looking-at-let-binding-symbol?))
+                    (not (boundp (symbol-at-point)))
+                    (not (fboundp (symbol-at-point))))))
 
 (emr-declare-command emr-el-inline-variable
   :title "inline"
   :modes emacs-lisp-mode
-  :predicate (and (emr-el:variable-definition? (list-at-point))
-                  (emr-el:def-find-usages (list-at-point))))
+  :predicate (lambda ()
+               (and (emr-el:variable-definition? (list-at-point))
+                    (emr-el:def-find-usages (list-at-point)))))
 
 (emr-declare-command emr-el-inline-function
   :title "inline"
   :modes emacs-lisp-mode
-  :predicate (and (emr-el:function-definition? (list-at-point))
-                  (emr-el:def-find-usages (list-at-point))))
+  :predicate (lambda ()
+               (and (emr-el:function-definition? (list-at-point))
+                    (emr-el:def-find-usages (list-at-point)))))
 
 (emr-declare-command emr-el-extract-function
   :title "function"
   :description "defun"
   :modes emacs-lisp-mode
-  :predicate (not (or (emr-el:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+               (not (or (emr-el:looking-at-definition?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
 
 (emr-declare-command emr-el-extract-variable
   :title "variable"
   :description "defvar"
   :modes emacs-lisp-mode
-  :predicate (and (not (emr-el:looking-at-definition?))
-                  (not (emr-el:looking-at-let-binding-symbol?))
-                  (thing-at-point 'defun)))
+  :predicate (lambda ()
+               (and (not (emr-el:looking-at-definition?))
+                    (not (emr-el:looking-at-let-binding-symbol?))
+                    (thing-at-point 'defun))))
 
 (emr-declare-command emr-el-extract-constant
   :title "constant"
   :description "defconst"
   :modes emacs-lisp-mode
-  :predicate (not (or (emr-el:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+               (not (or (emr-el:looking-at-definition?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
 
 (emr-declare-command emr-el-extract-to-let
   :title "let-bind"
   :description "let"
   :modes emacs-lisp-mode
-  :predicate (not (or (emr-el:looking-at-definition?)
-                      (emr-el:looking-at-decl?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+               (not (or (emr-el:looking-at-definition?)
+                        (emr-el:looking-at-decl?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
 
 (emr-declare-command emr-el-delete-let-binding-form
   :title "delete binding"
   :description "unused"
   :modes emacs-lisp-mode
-  :predicate (and (emr-el:looking-at-let-binding-symbol?)
-                  (not (emr-el:let-bound-var-at-point-has-usages?))))
+  :predicate (lambda ()
+               (and (emr-el:looking-at-let-binding-symbol?)
+                    (not (emr-el:let-bound-var-at-point-has-usages?)))))
 
 (emr-declare-command emr-el-inline-let-variable
-    :title "inline binding"
-    :modes emacs-lisp-mode
-    :predicate (and (emr-el:looking-at-let-binding-symbol?)
-                    (emr-el:let-bound-var-at-point-has-usages?)))
+  :title "inline binding"
+  :modes emacs-lisp-mode
+  :predicate (lambda ()
+               (and (emr-el:looking-at-let-binding-symbol?)
+                    (emr-el:let-bound-var-at-point-has-usages?))))
 
 (emr-declare-command emr-el-extract-autoload
   :title "autoload"
   :description "autoload"
   :modes emacs-lisp-mode
-  :predicate (and (not (emr-el:autoload-exists? (symbol-at-point) (buffer-string)))
-                  (not (emr-el:looking-at-definition?))
-                  (not (emr-el:variable-definition? (list-at-point)))
-                  (or (functionp (symbol-at-point))
-                      (emr-el:macro-boundp (symbol-at-point)))))
+  :predicate (lambda ()
+               (and (not (emr-el:autoload-exists? (symbol-at-point) (buffer-string)))
+                    (not (emr-el:looking-at-definition?))
+                    (not (emr-el:variable-definition? (list-at-point)))
+                    (or (functionp (symbol-at-point))
+                        (emr-el:macro-boundp (symbol-at-point))))))
 
 (emr-declare-command emr-el-insert-autoload-directive
   :title "autoload"
   :description "directive"
   :modes emacs-lisp-mode
-  :predicate (and (emr-el:looking-at-definition?)
-                  (not (emr-el:autoload-directive-exsts-above-defun?))))
+  :predicate (lambda ()
+               (and (emr-el:looking-at-definition?)
+                    (not (emr-el:autoload-directive-exsts-above-defun?)))))
 
 (emr-declare-command emr-el-eval-and-replace
   :title "eval"
   :description "value"
   :modes emacs-lisp-mode
-  :predicate (not (or (emr-el:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+               (not (or (emr-el:looking-at-definition?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
 
 (emr-declare-command emr-el-tidy-autoloads
   :title "tidy"
   :description "autoloads"
   :modes emacs-lisp-mode
-  :predicate (thing-at-point-looking-at
-              (rx bol (* space) "(autoload " (* nonl))))
+  :predicate (lambda ()
+               (thing-at-point-looking-at
+                (rx bol (* space) "(autoload " (* nonl)))))
 
 (emr-declare-command emr-el-delete-unused-definition
   :title "delete"
   :description "unused"
   :modes emacs-lisp-mode
-  :predicate (and (emr-el:looking-at-definition?)
-                  (not (emr-el:autoload-directive-exsts-above-defun?))
-                  (not (emr-el:def-find-usages (list-at-point)))))
+  :predicate (lambda ()
+               (and (emr-el:looking-at-definition?)
+                    (not (emr-el:autoload-directive-exsts-above-defun?))
+                    (not (emr-el:def-find-usages (list-at-point))))))
 
 
 (provide 'emr-elisp)

@@ -83,15 +83,37 @@ The variable will be called NAME."
   :title "function"
   :description "define"
   :modes scheme-mode
-  :predicate (not (or (emr-scm:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+               (not (or (emr-scm:looking-at-definition?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
 
 (emr-declare-command emr-scm-extract-variable
   :title "variable"
   :description "define"
   :modes scheme-mode
-  :predicate (not (or (emr-scm:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+               (not (or (emr-scm:looking-at-definition?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
+
+(emr-extend-command emr-el-inline-variable
+  :modes scheme-mode)
+
+(emr-extend-command emr-el-inline-function
+  :modes scheme-mode)
+
+(emr-extend-command emr-el-extract-to-let
+  :modes scheme-mode)
+
+(emr-extend-command emr-el-delete-let-binding-form
+  :predicate (lambda ()
+               t)
+  :modes scheme-mode)
+
+(emr-extend-command emr-el-inline-let-variable
+  :predicate (lambda ()
+               (message "HELLO")
+               t)
+  :modes scheme-mode)
 
 (provide 'emr-scheme)
 

@@ -32,16 +32,18 @@
   :title "comment"
   :description "region"
   :modes prog-mode
-  :predicate (region-active-p))
+  :predicate (lambda ()
+               (region-active-p)))
 
 (emr-declare-command uncomment-region
   :title "uncomment"
   :description "region"
   :modes prog-mode
-  :predicate (and (region-active-p)
-                  (s-contains? comment-start
-                               (buffer-substring (region-beginning)
-                                                 (region-end)))))
+  :predicate (lambda ()
+               (and (region-active-p)
+                    (s-contains? comment-start
+                                 (buffer-substring (region-beginning)
+                                                   (region-end))))))
 
 (provide 'emr-prog)
 

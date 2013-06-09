@@ -238,53 +238,68 @@ buffer."
       (s-lines)
       ;; Remove the function arglist.
       (nreverse)
-      (--drop-while (s-matches? (rx bol (* space) "(") it))
+      (-drop 1)
       (nreverse)
       (s-join "\n")
       (s-trim))))
 
 ;;;###autoload
-(defmacro* emr-declare-command (function &key modes title (predicate t) description)
+(defmacro* emr-declare-command
+    (function &key modes title (predicate t) description)
   "Define a refactoring command.
 
-* FUNCTION is the refactoring command to perform.
+* FUNCTION is the refactoring command to perform. It should be
+  either the name of a refactoring command or a
+  lambda-expression.
 
 * MODES is a symbol or list of symbols of the modes in which this
   command will be available. This will also enable the command
   for derived modes.
 
-* TITLE is the name of the command that will be displayed in the popup menu.
+* TITLE is the name of the command that will be displayed in the
+  popup menu.
 
-* PREDICATE is a condition that must be satisfied to display this item.
-If PREDICATE is not supplied, the item will always be visible for this mode.
+* PREDICATE is a condition that must be satisfied to display this
+  item.  If PREDICATE is not supplied, the item will always be
+  visible for this mode.  It should be a lambda-expression or
+  function name.
 
-* DESCRIPTION is shown to the left of the title in the popup menu."
+* DESCRIPTION is shown to the left of the title in the popup
+  menu."
   (declare (indent 1))
-  (cl-assert modes)
+  (cl-assert (functionp function))
   (cl-assert title)
-  ;; Add the created function into the global table of refactoring
-  ;; commands.
+  (cl-assert modes)
+  (cl-assert (or (null predicate) (functionp predicate)))
+  ;; Add the created function into the global table of refactoring commands.
   `(puthash ',function
-            ,(make-emr-refactor-spec
-              :function function
-              :title title
-              :modes (if (symbolp modes) (list modes) modes)
-              :predicate predicate
-              :description description
-              )
+            (make-emr-refactor-spec
+             :function ',function
+             :title ,title
+             :modes ',(if (symbolp modes) (list modes) modes)
+             :predicate ,predicate
+             :description ,description
+             )
             emr:refactor-commands))
 
 ;;;###autoload
-(defmacro* emr-extend-command (function &key modes)
+(defmacro* emr-extend-command (function &key modes (predicate nil))
   "Extend an existing refactoring command to other major modes.
 See the documentation for `emr-declare-command'."
   (declare (indent 1))
+  (cl-assert (functionp function))
   (cl-assert modes)
-  `(let ((struct (gethash ',function emr:refactor-commands)))
+  (cl-assert (or (null predicate) (functionp predicate)))
+  `(let ((ms ',(if (symbolp modes) (list modes) modes))
+         (struct (gethash ',function emr:refactor-commands)))
      (setf (emr-refactor-spec-modes struct)
-           (->> (emr-refactor-spec-modes struct)
-             (-concat (if (symbolp modes) (list modes) modes))
-             (-uniq)))))
+           (->> (emr-refactor-spec-modes struct) (-concat ms) (-uniq)))
+
+     ;; Override the original predicate if one is supplied.
+     (unless (null ',predicate)
+       (let ((cur (emr-refactor-spec-predicate struct)))
+         (setf (emr-refactor-spec-predicate struct)
+               (lambda () (funcall (if (derived-mode-p ms) ,predicate cur))))))))
 
 (defun emr:hash-values (ht)
   "Return the hash values in hash table HT."
@@ -300,7 +315,7 @@ Return a popup item for the refactoring menu if so."
          ;; 2. Run the declared predicate to test whether the refactoring
          ;; command is available in the current context.
          (ignore-errors
-           (eval (emr-refactor-spec-predicate struct))))
+           (funcall (emr-refactor-spec-predicate struct))))
     ;; If the above tests succeed, create a popup for the
     ;; refactor menu.
     (popup-make-item (emr-refactor-spec-title struct)
@@ -332,6 +347,11 @@ Return a popup item for the refactoring menu if so."
 
 ; ------------------
 
+(defmacro emr:after-load (feature &rest forms)
+  (declare (indent 1))
+  `(eval-after-load ,feature
+     '(progn ,@forms)))
+
 ;;;###autoload
 (defun emr-initialize ()
   "Activate language support for EMR."
@@ -340,15 +360,14 @@ Return a popup item for the refactoring menu if so."
 
   ;; Lazily load support for individual languages.
 
-  (eval-after-load "lisp-mode"
-    '(progn
-       (require 'emr-lisp)
-       (require 'emr-elisp)))
-
-  (eval-after-load "cc-mode"
-    '(progn
-       (require 'emr-c)
-       (emr-c-initialize))))
+  (emr:after-load "lisp-mode"
+    (require 'emr-lisp)
+    (require 'emr-elisp))
+  (emr:after-load "cc-mode"
+    (require 'emr-c)
+    (emr-c-initialize))
+  (emr:after-load "scheme"
+    (require 'emr-scheme)))
 
 (provide 'emr)
 

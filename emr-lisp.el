@@ -187,10 +187,11 @@ textual comments."
    lisp-mode
    emacs-lisp-mode
    scheme-mode)
-  :predicate (and (not (region-active-p))
-                  (thing-at-point 'defun)
-                  (not (or (emr-line-matches? (rx bol (* space) ";"))
-                           (emr-looking-at-comment?)))))
+  :predicate (lambda ()
+               (and (not (region-active-p))
+                    (thing-at-point 'defun)
+                    (not (or (emr-line-matches? (rx bol (* space) ";"))
+                             (emr-looking-at-comment?))))))
 
 (emr-declare-command emr-lisp-uncomment-block
   :title "uncomment"
@@ -200,8 +201,9 @@ textual comments."
    lisp-mode
    emacs-lisp-mode
    scheme-mode)
-  :predicate (and (not (region-active-p))
-                  (emr-line-matches? (rx bol (* space) ";"))))
+  :predicate (lambda ()
+               (and (not (region-active-p))
+                    (emr-line-matches? (rx bol (* space) ";")))))
 
 (provide 'emr-lisp)
 

@@ -146,7 +146,8 @@ project, return all header files in the current directory."
   :title "tidy"
   :description "includes"
   :modes c-mode
-  :predicate (emr-c:looking-at-include?))
+  :predicate (lambda ()
+               (emr-c:looking-at-include?)))
 
 ; ------------------
 

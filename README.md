@@ -104,8 +104,9 @@ As an example, here is the declaration for a refactoring command that ships with
   :title "constant"
   :description "defconst"
   :modes emacs-lisp-mode
-  :predicate (not (or (emr-el:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+                        (not (or (emr-el:looking-at-definition?)
+                          (emr-el:looking-at-let-binding-symbol?)))))
 ```
 
 This wires the `emr-el-extract-constant` function to be displayed in
