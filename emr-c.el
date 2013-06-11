@@ -153,12 +153,14 @@ project, return all header files in the current directory."
 
 ;;;; Minor Mode
 
+;;;###autoload
 (defvar emr-c-mode-map
   (let ((km (make-sparse-keymap)))
     (define-key km (kbd "C-c i") 'emr-c-insert-include)
     km)
   "Key map for `emr-c-mode'.")
 
+;;;###autoload
 (define-minor-mode emr-c-mode
   "A minor-mode for C that makes extra key bidings available."
   nil " emr" emr-c-mode-map)
