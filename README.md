@@ -51,7 +51,12 @@ the menu bar.
 
 ## General
 
-The *comment region* command is available whenever a region is active.
+These commands are available for all programming languages.
+
+The following context-sensitive refactoring commands are available:
+
+* *comment region*
+* *uncomment region*
 
 ## C
 
