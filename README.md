@@ -44,7 +44,7 @@ Once MELPA is configured:
 
   ```lisp
  (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
- (eval-after-load "emr" '(emr-initialize))
+ (add-hook 'prog-mode-hook 'emr-initialize)
    ```
 
 # Development
@@ -71,7 +71,7 @@ You will need *carton*, *make* and *git* to build the project.
   ```lisp
  (autoload 'emr-show-refactor-menu "emr"')
  (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
- (eval-after-load "emr" '(emr-initialize))
+ (add-hook 'prog-mode-hook 'emr-initialize)
    ```
 
 ## Dependencies
