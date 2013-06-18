@@ -37,6 +37,13 @@
 (autoload 'paredit-splice-sexp-killing-backward "paredit")
 (autoload 'define-compilation-mode "compile")
 
+(defcustom emr-el-definition-macro-names
+  '(defun defun* cl-defun defmacro defmacro* cl-defmacro defcustom
+     defvar defvar-local defconst defsubst defsubst* cl-defsubst)
+  "Lists the function, macro and variable definition forms in Elisp.
+Used when searching for usages across the whole buffer."
+  :group 'emr)
+
 (defun emr-el:safe-read (sexp)
   "A wrapper around `read' that returns nil immediately if SEXP is null.
 
@@ -557,10 +564,25 @@ AFTER:
   "Returns true if an autoload for FUNCTION exists in string STR."
   (s-contains? (format "(autoload '%s " function) str))
 
+(defun emr-el:beginning-of-defun ()
+  "A safe version of beginning-of-defun.
+Attempts to find an enclosing defun form first, rather than
+relying on indentation."
+  (or
+   ;; Search for known defun form enclosing point.
+   (cl-loop
+    while (ignore-errors (backward-up-list) t)
+    do (when (thing-at-point-looking-at
+              (eval `(rx "(" (or ,@(-map 'symbol-name emr-el-definition-macro-names)))))
+         (return (point))))
+   ;; Fall back to using indentation.
+   (ignore-errors
+     (beginning-of-thing 'defun))))
+
 (defun emr-el:autoload-directive-exsts-above-defun? ()
   "Non-nil if the current defun is preceeded by an autoload directive."
   (save-excursion
-    (beginning-of-thing 'defun)
+    (emr-el:beginning-of-defun)
     (forward-line -1)
     (emr-line-matches? (rx bol (* space) ";;;###autoload" (* space) eol))))
 
@@ -1119,15 +1141,7 @@ the cdr is the usage form."
 
       (emr-collapse-vertical-whitespace))))
 
-(defcustom emr-el-definition-macro-names
-  '(defun defun* cl-defun defmacro defmacro* cl-defmacro defcustom defvar defvar-local defconst)
-  "Lists the function, macro and variable definition forms in Elisp.
-Used when searching for usages across the whole buffer."
-  :group 'emr)
-
-;;; `emr-el-ref'
-;;;
-;;; Defines a reference to a function or variable within a file.
+;;; `emr-el-ref': A reference to a function or variable within a file.
 (defstruct emr-el-ref file line col identifier type form)
 
 (defun emr-el:find-unused-defs ()
@@ -1145,11 +1159,13 @@ The result is a list of `emr-el-ref'."
               (eval `(rx "(" (or ,@(-map 'symbol-name emr-el-definition-macro-names))
                          symbol-end))
               nil t)
-        (unless (emr-el:autoload-directive-exsts-above-defun?)
+        (unless (or (emr-looking-at-string?)
+                    (emr-looking-at-comment?)
+                    (emr-el:autoload-directive-exsts-above-defun?))
           ;; Collect definitions that do not have usages.
           (-when-let* ((form (list-at-point))
                        (col  (save-excursion
-                               (beginning-of-thing 'defun)
+                               (emr-el:beginning-of-defun)
                                (current-column))))
             (unless (emr-el:def-find-usages form)
               (push
