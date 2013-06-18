@@ -711,19 +711,21 @@ form or replace with `progn'."
       ;; Move to position after bindings list.
       (forward-list 1)
       (cond
-       ;; Splice contents in directly if the let body has only a single form.
-       ((and (null bindings) (>= 1 (length body)))
+       ;; If there are no bindings, splice the body forms into the
+       ;; surrounding context if any of the following are true:
+       ;;
+       ;; 1. the let body has only a single form
+       ;;
+       ;; 2. the let expression is an &body or &rest argument to the
+       ;; enclosing form.
+       ;;
+       ((and (null bindings)
+             (or (>= 1 (length body))
+                 (-contains? (cons 'progn emr-el:scope-boundary-forms)
+                             (emr-lisp-peek-back-upwards))))
         (paredit-splice-sexp-killing-backward))
 
-       ;; Splice contents into surrounding form in if it has an &body
-       ;; parameter.
-       ((and (null bindings)
-             (-contains? (cons 'progn emr-el:scope-boundary-forms)
-                         (emr-lisp-peek-back-upwards)))
-        (backward-kill-sexp 2))
-
-       ;; If there's only a single form in the bindings list, replace
-       ;; `let*' with `let'.
+       ;; Replace `let*' with `let' if there's only a single binding form.
        ((equal 1 (length bindings))
         (save-excursion
           (emr-el:goto-start-of-let-binding)
@@ -736,6 +738,7 @@ form or replace with `progn'."
        ((null bindings)
         (backward-kill-sexp 2)
         (insert "progn"))))
+
     (emr-lisp-reindent-defun)))
 
 (defun emr-el:join-line-after-let-binding-kill ()
