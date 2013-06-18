@@ -1176,17 +1176,17 @@ definitions are found, they will be collated and displayed in a
 popup window."
   (interactive)
 
-  (let ((buf (get-buffer-create "*Unused Definitions*")))
-    ;; Find unused refs. If there are none, delete any windows showing `buf'.
+  (let ((defs-buf (get-buffer-create "*Unused Definitions*")))
+    ;; Find unused refs. If there are none, delete any windows showing `defs-buf'.
     (-if-let (defs (emr-el:find-unused-defs))
 
       ;; Show results window.
       ;;
       ;; The results buffer uses a custom compilation mode so the user can
       ;; navigate to unused declarations.
-      (with-help-window buf
+      (with-help-window defs-buf
         (let ((header (format "Unused definitions in %s:\n\n" (buffer-file-name))))
-          (with-current-buffer buf
+          (with-current-buffer defs-buf
             (atomic-change-group
               (emr-buffer-report-mode)
               ;; Prepare buffer.
@@ -1216,9 +1216,10 @@ popup window."
       ;; No results to show. Clean results window.
       (progn
         (message "No unused definitions found")
-        (-when-let (win (get-window-with-predicate (lambda (w) (equal buf (window-buffer w)))))
+        (-when-let (win (get-window-with-predicate
+                         (lambda (w) (equal defs-buf (window-buffer w)))))
           (delete-window win)
-          (kill-buffer buf))))))
+          (kill-buffer defs-buf))))))
 
 ; ------------------
 
