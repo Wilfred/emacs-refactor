@@ -72,10 +72,8 @@ and Common Lisp.
 
 The following context-sensitive refactoring commands are available:
 
-* *comment form*  - comment out the sexp at point
-* *uncomment block* - intelligently uncomment a block of comments. The
-  comments may span several lines. It will avoid uncommenting lines
-  that are clearly textual comments.
+* *comment form*
+* *uncomment block*
 
 ## Elisp
 
