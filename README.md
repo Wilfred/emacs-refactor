@@ -43,7 +43,7 @@ Once MELPA is configured:
  (add-hook 'prog-mode-hook 'emr-initialize)
    ```
 
-# Lang age support
+# Language support
 
 Most EMR commands are context-sensitive and are available through the
 refactor menu. Some actions affect the whole buffer and are available in
@@ -63,7 +63,7 @@ The following buffer-wide actions are available:
 
 * *insert include*
 
-Refactoring support for C is a work in progress. Contributions are welcom.
+Refactoring support for C is a work in progress. Contributions are welcome.
 
 ## Lisps
 
