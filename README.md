@@ -84,20 +84,20 @@ The following context-sensitive refactoring commands are available:
 
 The following context-sensitive refactoring commands are available:
 
-* *inline variable*
+* *delete unused definition*
+* *delete unused let binding form*
 * *eval and replace*
-* *extract function*
-* *implement function*
-* *extract variable*
+* *extract autoload*
 * *extract constant*
+* *extract function*
+* *extract to let*
+* *extract variable*
+* *implement function*
+* *inline function*
+* *inline let variable*
+* *inline variable*
 * *insert autoload directive*
 * *tidy autoloads*
-* *extract autoload*
-* *delete unused let binding form*
-* *extract to let*
-* *inline let variable*
-* *inline function*
-* *delete unused definition*
 
 The following buffer-wide actions are available:
 
