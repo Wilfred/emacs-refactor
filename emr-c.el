@@ -30,7 +30,7 @@
 (require 'dash)
 (require 'thingatpt)
 (autoload 'ido-completing-read "ido")
-(autoload 'projectile-project-files "projectile")
+(autoload 'projectile-dir-files "projectile")
 (autoload 'projectile-project-p "projectile")
 
 (defvar emr-c:standard-headers
@@ -112,7 +112,7 @@ Library and project includes are kept separate."
 Find header files in the current project.  If this is not a valid
 project, return all header files in the current directory."
   (->> (-if-let (proj (projectile-project-p))
-         (--map (concat proj it) (projectile-project-files proj))
+         (--map (concat proj it) (projectile-dir-files proj))
          (-> (buffer-file-name) (file-name-directory) (directory-files t)))
     (--filter (-contains? '("h" "hpp") (file-name-extension it)))
     (-map 'file-relative-name)))
