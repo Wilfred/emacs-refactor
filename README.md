@@ -2,19 +2,15 @@
 <!-- Travis builds are disabled until cassou/emacs updates to Emacs 24.3 -->
 <!-- [![Build Status](https://travis-ci.org/chrisbarrett/emacs-refactor.png?branch=master)](https://travis-ci.org/chrisbarrett/emacs-refactor) -->
 
-EMR allows you to define language-specific refactoring commands in Emacs. It has
-a simple declarative interface for easy extension.
+Emacs Refactor (EMR) provides language-specific refactoring support for
+Emacs. It has a simple declarative interface for easy extension.
 
 To use EMR when editing, simply move point to an expression and invoke the refactor menu.
 
 ![Refactoring menu example](https://raw.github.com/chrisbarrett/emacs-refactor/master/assets/emr.png)
 
-EMR ships with useful refactorings for the following languages:
-
-* Elisp
-* C (in progress)
-
-More languages are forthcoming. See
+EMR ships with many refactoring commands, and pull requests for extensions
+are welcome. See
 [Extension](https://github.com/chrisbarrett/emacs-refactor#extension) for
 details on extending EMR to other language modes. It's easy (honest!).
 
@@ -44,8 +40,72 @@ Once MELPA is configured:
 
   ```lisp
  (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
- (eval-after-load "emr" '(emr-initialize))
+ (add-hook 'prog-mode-hook 'emr-initialize)
    ```
+
+# Lang age support
+
+Most EMR commands are context-sensitive and are available through the
+refactor menu. Some actions affect the whole buffer and are available in
+the menu bar.
+
+## General
+
+The *comment region* command is available whenever a region is active.
+
+## C
+
+The following context-sensitive refactoring commands are available:
+
+* *tidy includes*
+
+The following buffer-wide actions are available:
+
+* *insert include*
+
+Refactoring support for C is a work in progress. Contributions are welcom.
+
+## Lisps
+
+These commands are available to all Lisp dialects, including Clojure, Elisp
+and Common Lisp.
+
+The following context-sensitive refactoring commands are available:
+
+* *comment form*  - comment out the sexp at point
+* *uncomment block* - intelligently uncomment a block of comments. The
+  comments may span several lines. It will avoid uncommenting lines
+  that are clearly textual comments.
+
+## Elisp
+
+The following context-sensitive refactoring commands are available:
+
+* *inline variable*
+* *eval and replace*
+* *extract function*
+* *implement function*
+* *extract variable*
+* *extract constant*
+* *insert autoload directive*
+* *tidy autoloads*
+* *extract autoload*
+* *delete unused let binding form*
+* *extract to let*
+* *inline let variable*
+* *inline function*
+* *delete unused definition*
+
+The following buffer-wide actions are available:
+
+* *find unused definitions*
+
+## Scheme
+
+The following refactoring commands are available:
+
+* *extract function*
+* *extract variable*
 
 # Development
 
@@ -71,7 +131,7 @@ You will need *carton*, *make* and *git* to build the project.
   ```lisp
  (autoload 'emr-show-refactor-menu "emr"')
  (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
- (eval-after-load "emr" '(emr-initialize))
+ (add-hook 'prog-mode-hook 'emr-initialize)
    ```
 
 ## Dependencies
@@ -91,7 +151,7 @@ Shout out to [@magnars](https://twitter.com/magnars) for his awesome libraries.
 
 # Extension
 
-Use the `emr-declare-action` macro to declare a refactoring action. The
+Use the `emr-declare-command` macro to declare a refactoring action. The
 action will automatically become available in the refactoring popup menu.
 
 This macro supports predicate expressions, allowing the options displayed to be
@@ -100,12 +160,13 @@ context-sensitive.
 As an example, here is the declaration for a refactoring command that ships with EMR:
 
 ```lisp
-(emr-declare-action emr-el-extract-constant
+(emr-declare-command emr-el-extract-constant
   :title "constant"
   :description "defconst"
   :modes emacs-lisp-mode
-  :predicate (not (or (emr-el:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+                        (not (or (emr-el:looking-at-definition?)
+                          (emr-el:looking-at-let-binding-symbol?)))))
 ```
 
 This wires the `emr-el-extract-constant` function to be displayed in
@@ -117,7 +178,8 @@ simple to wire them up with EMR using this interface.
 
 # Contributing
 
-Pull requests are welcome. If appropriate, please add unit tests. See the tests for `emr-elisp` for examples.
+Pull requests are welcome. If appropriate, please add unit tests. See the
+tests for `emr-elisp` for examples.
 
 ## TODO
 

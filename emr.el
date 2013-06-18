@@ -5,7 +5,7 @@
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
 ;; Version: 0.3.6
 ;; Keywords: tools convenience refactoring
-;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (redshank "1.0.0") (paredit "24.0.0") (projectile "0.9.0"))
+;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (redshank "1.0.0") (paredit "24.0.0") (projectile "0.9.1"))
 ;; This file is not part of GNU Emacs.
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -72,7 +72,8 @@ If the defun is preceded by comments, move above them."
   (interactive)
   ;; If we're at a defun already, prevent `beginning-of-defun' from moving
   ;; back to the preceding defun.
-  (beginning-of-thing 'defun)
+  (ignore-errors
+    (beginning-of-thing 'defun))
   ;; If there is a comment attached to this defun, skip over it.
   (while (save-excursion
            (forward-line -1)
@@ -218,19 +219,17 @@ buffer."
 ;;;; Popup menu
 
 ;;; Items to be displayed in the refactoring popup menu are declared using
-;;; the `emr-declare-action' macro. This macro transforms a specification
-;;; into an executable function and adds it to the list of available
-;;; refactoring commands.
+;;; the `emr-declare-command' macro. This macro adds builds a struct to
+;;; represent the command and adds it to a table for later retrieval.
 ;;;
-;;; The `emr:refactor-commands' table stores those functions. Each function
-;;; will dynamically create the popups to populate the menu.
-;;;
-;;; Whenever the user invokes the menu, we loop through the function in the
-;;; hash table. Each function checks the current mode and runs a predicate,
-;;; returning a popup item to display in the list if these tests succeed.
+;;; When the user invokes the popup menu, each struct is transformed into a
+;;; function that will return a popup if that command is available.
+
+(cl-defstruct emr-refactor-spec
+  function title description modes predicate)
 
 (defvar emr:refactor-commands (make-hash-table :test 'equal)
-  "A hashtable of refactoring commands used to build menu items.")
+  "A table of refactoring specs used to build menu items.")
 
 (defun emr:documentation (sym)
   "Get the docstring for SYM. Does not display the arglist for functions."
@@ -239,63 +238,70 @@ buffer."
       (s-lines)
       ;; Remove the function arglist.
       (nreverse)
-      (--drop-while (s-matches? (rx bol (* space) "(") it))
+      (-drop 1)
       (nreverse)
       (s-join "\n")
       (s-trim))))
 
 ;;;###autoload
-(defmacro* emr-declare-action (function &key modes title (predicate t) description)
+(defmacro* emr-declare-command
+    (function &key modes title description predicate)
   "Define a refactoring command.
 
-* FUNCTION is the refactoring command to perform.
+* FUNCTION is the refactoring command to perform. It should be
+  either the name of a refactoring command or a
+  lambda-expression.
 
-* MODE is the major mode in which this command will be
-  available. Includes derived modes.
+* MODES is a symbol or list of symbols of the modes in which this
+  command will be available. This will also enable the command
+  for derived modes.
 
-* TITLE is the name of the command that will be displayed in the popup menu.
+* TITLE is the name of the command that will be displayed in the
+  popup menu.
 
-* PREDICATE is a condition that must be satisfied to display this item.
-If PREDICATE is not supplied, the item will always be visible for this mode.
+* PREDICATE is a condition that must be satisfied to display this
+  item. It should be a lambda-expression or function name.
 
-* DESCRIPTION is shown to the left of the title in the popup menu."
+* DESCRIPTION is shown to the left of the title in the popup
+  menu."
   (declare (indent 1))
-  (cl-assert modes)
+  (cl-assert (functionp function))
   (cl-assert title)
-  ;; Allow both lists and symbols for the MODES argument.
-  (let ((modes (if (symbolp modes) (list modes) modes)))
-    `(let ((fname ',(intern (format "%s--%s" function title)))
-
-           ;; Create factory function.
-           ;;
-           ;; This function will be run whenever the user invokes the popup
-           ;; menu. It checks whether the given refactoring is available,
-           ;; and returns either a new popup menu item or nil.
-           (fn (lambda ()
-                 (when (and
-                        ;; 1. Test whether this command is available in the
-                        ;; current buffer's major mode.
-                        (apply 'derived-mode-p ',modes)
-                        ;; 2. Run the declared predicate to test whether
-                        ;; the refactoring command is available in the
-                        ;; current context.
-                        (ignore-errors
-                          (eval ,predicate)))
-                   ;; If the above tests succeed, create a popup for the
-                   ;; refactor menu.
-                   (popup-make-item ,title
-                                    :value ',function
-                                    :summary ,description
-                                    :document (emr:documentation ',function))))))
-
-       ;; Add the created function into the global table of refactoring
-       ;; commands.
-       (puthash fname fn emr:refactor-commands)
-       ',function)))
+  (cl-assert modes)
+  (cl-assert (or (functionp predicate)
+                 (symbolp predicate)))
+  ;; Add the created function into the global table of refactoring commands.
+  `(puthash ',function
+            (make-emr-refactor-spec
+             :function ',function
+             :title ,title
+             :modes ',(if (symbolp modes) (list modes) modes)
+             :predicate ,predicate
+             :description ,description
+             )
+            emr:refactor-commands))
 
 (defun emr:hash-values (ht)
   "Return the hash values in hash table HT."
   (cl-loop for v being the hash-values in ht collect v))
+
+(defun emr:make-popup (struct)
+  "Test whether the refactoring specified by STRUCT is available.
+Return a popup item for the refactoring menu if so."
+  (when (and
+         ;; 1. Test whether this command is available in the current
+         ;; buffer's major mode.
+         (apply 'derived-mode-p (emr-refactor-spec-modes struct))
+         ;; 2. Run the declared predicate to test whether the refactoring
+         ;; command is available in the current context.
+         (ignore-errors
+           (funcall (emr-refactor-spec-predicate struct))))
+    ;; If the above tests succeed, create a popup for the
+    ;; refactor menu.
+    (popup-make-item (emr-refactor-spec-title struct)
+                     :value (emr-refactor-spec-function struct)
+                     :summary (emr-refactor-spec-description struct)
+                     :document (emr:documentation (emr-refactor-spec-function struct)))))
 
 ;;;###autoload
 (defun emr-show-refactor-menu ()
@@ -305,7 +311,7 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
   ;; available commands.
   (-if-let (actions (->> emr:refactor-commands
                       (emr:hash-values)
-                      (-map 'funcall)
+                      (-map 'emr:make-popup)
                       (-remove 'null)))
     ;; Display the menu.
     (atomic-change-group
@@ -321,6 +327,11 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
 
 ; ------------------
 
+(defmacro emr:after-load (feature &rest forms)
+  (declare (indent 1))
+  `(eval-after-load ,feature
+     '(progn ,@forms)))
+
 ;;;###autoload
 (defun emr-initialize ()
   "Activate language support for EMR."
@@ -329,15 +340,17 @@ If PREDICATE is not supplied, the item will always be visible for this mode.
 
   ;; Lazily load support for individual languages.
 
-  (eval-after-load "lisp-mode"
-    '(progn
-       (require 'emr-lisp)
-       (require 'emr-elisp)))
+  (emr:after-load "lisp-mode"
+    (require 'emr-lisp)
+    (require 'emr-elisp)
+    (emr-el-initialize))
 
-  (eval-after-load "cc-mode"
-    '(progn
-       (require 'emr-c)
-       (emr-c-initialize))))
+  (emr:after-load "cc-mode"
+    (require 'emr-c)
+    (emr-c-initialize))
+
+  (emr:after-load "scheme"
+    (require 'emr-scheme)))
 
 (provide 'emr)
 

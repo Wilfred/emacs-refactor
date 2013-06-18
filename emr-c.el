@@ -30,7 +30,8 @@
 (require 'dash)
 (require 'thingatpt)
 (autoload 'ido-completing-read "ido")
-(autoload 'projectile-project-files "projectile")
+(autoload 'c-mode-map "cc-mode")
+(autoload 'projectile-dir-files "projectile")
 (autoload 'projectile-project-p "projectile")
 
 (defvar emr-c:standard-headers
@@ -112,7 +113,7 @@ Library and project includes are kept separate."
 Find header files in the current project.  If this is not a valid
 project, return all header files in the current directory."
   (->> (-if-let (proj (projectile-project-p))
-         (--map (concat proj it) (projectile-project-files proj))
+         (--map (concat proj it) (projectile-dir-files proj))
          (-> (buffer-file-name) (file-name-directory) (directory-files t)))
     (--filter (-contains? '("h" "hpp") (file-name-extension it)))
     (-map 'file-relative-name)))
@@ -142,33 +143,45 @@ project, return all header files in the current directory."
 
 ;;; EMR Declarations
 
-(emr-declare-action emr-c-tidy-includes
+(emr-declare-command emr-c-tidy-includes
   :title "tidy"
   :description "includes"
   :modes c-mode
-  :predicate (emr-c:looking-at-include?))
+  :predicate (lambda ()
+               (emr-c:looking-at-include?)))
 
 ; ------------------
 
 ;;;; Minor Mode
 
+;;;###autoload
 (defvar emr-c-mode-map
   (let ((km (make-sparse-keymap)))
     (define-key km (kbd "C-c i") 'emr-c-insert-include)
     km)
   "Key map for `emr-c-mode'.")
 
+;;;###autoload
 (define-minor-mode emr-c-mode
   "A minor-mode for C that makes extra key bidings available."
   nil " emr" emr-c-mode-map)
 
+(defun emr-c:show-menu ()
+  (when (boundp 'c-mode-map)
+    (easy-menu-add-item
+     nil
+     '("EMR")
+     ["Insert #include" emr-c-insert-include])))
+
 ;;;###autoload
 (defun emr-c-initialize ()
-  "Activate emr-c-mode for all C buffers."
+  "Initialize EMR in C buffers and enable the EMR menu."
   (add-hook 'c-mode-hook 'emr-c-mode)
+  (add-hook 'c-mode-hook 'emr-c:show-menu)
   (--each (buffer-list)
     (with-current-buffer it
       (when (derived-mode-p 'c-mode)
+        (emr-c:show-menu)
         (emr-c-mode +1)))))
 
 (provide 'emr-c)

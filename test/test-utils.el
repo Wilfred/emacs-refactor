@@ -46,6 +46,7 @@ BODY lists the forms to be executed."
 
 ;; Local Variables:
 ;; lexical-binding: t
+;; no-byte-compile: t
 ;; End:
 
 ;;; test-utils.el ends here

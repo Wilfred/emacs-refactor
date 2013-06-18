@@ -31,11 +31,15 @@
 (require 'emr-elisp)
 (require 'dash)
 
-(defun emr-scm:looking-at-definition? ()
+(defun emr-scm:looking-at-def? ()
   "Non-nil if point is looking at a definition form."
-  (-when-let (def (list-at-point))
-    (s-matches? (rx bol (* space) "(define" (+ space) "(")
-                (prin1-to-string def))))
+  (emr-line-matches? (rx bol (* space) "(define" (+ space))))
+
+(defun emr-scm:inside-def? ()
+  "Non-nil if point is inside a definition form."
+  (and
+   (emr-lisp-find-upwards 'define)
+   (not (emr-scm:looking-at-def?))))
 
 ;;;###autoload
 (defun emr-scm-extract-function (name arglist)
@@ -79,19 +83,21 @@ The variable will be called NAME."
 
 ; ------------------
 
-(emr-declare-action emr-scm-extract-function
+(emr-declare-command emr-scm-extract-function
   :title "function"
   :description "define"
   :modes scheme-mode
-  :predicate (not (or (emr-scm:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+               (not (or (emr-scm:looking-at-def?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
 
-(emr-declare-action emr-scm-extract-variable
+(emr-declare-command emr-scm-extract-variable
   :title "variable"
   :description "define"
   :modes scheme-mode
-  :predicate (not (or (emr-scm:looking-at-definition?)
-                      (emr-el:looking-at-let-binding-symbol?))))
+  :predicate (lambda ()
+               (not (or (emr-scm:looking-at-def?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
 
 (provide 'emr-scheme)
 
