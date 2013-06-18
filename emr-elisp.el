@@ -698,7 +698,7 @@ details.
   "A list of forms that define some kind of scope or context.
 They will bound upward searches when looking for places to insert let forms.")
 
-(defun emr-el:clean-let-form-at-point ()
+(defun emr-el:simplify-let-form-at-point ()
   "Tidy the let form at point.
 If it has no bindings, splice its contents into the surrounding
 form or replace with `progn'."
@@ -708,7 +708,7 @@ form or replace with `progn'."
     (forward-char 1)
     (let ((bindings (emr-el:let-binding-list (list-at-point)))
           (body     (emr-el:let-body (list-at-point))))
-      ;; Move to after bindings list.
+      ;; Move to position after bindings list.
       (forward-list 1)
       (cond
        ;; Splice contents in directly if the let body has only a single form.
@@ -721,6 +721,16 @@ form or replace with `progn'."
              (-contains? (cons 'progn emr-el:scope-boundary-forms)
                          (emr-lisp-peek-back-upwards)))
         (backward-kill-sexp 2))
+
+       ;; If there's only a single form in the bindings list, replace
+       ;; `let*' with `let'.
+       ((equal 1 (length bindings))
+        (save-excursion
+          (emr-el:goto-start-of-let-binding)
+          (forward-char 1)
+          (when (search-forward-regexp (rx "let*")
+                                       (save-excursion (forward-sexp) (point)) t)
+            (replace-match "let"))))
 
        ;; Otherwise replace `let' with `progn'.
        ((null bindings)
@@ -757,7 +767,7 @@ form or replace with `progn'."
 
       ;; Restore kill-ring.
       (setq kill-ring kr)
-      (emr-el:clean-let-form-at-point))))
+      (emr-el:simplify-let-form-at-point))))
 
 ; ------------------
 
@@ -931,7 +941,7 @@ bindings or body of the enclosing let expression."
   ;; binding. Perform general tidyups.
   (save-excursion
     (emr-el:join-line-after-let-binding-kill)
-    (emr-el:clean-let-form-at-point)
+    (emr-el:simplify-let-form-at-point)
     (emr-lisp-reindent-defun)))
 
 ; ------------------
@@ -1003,7 +1013,7 @@ Its variables will be let-bound."
       (lisp-mode)
       (save-excursion
         (insert (format "(let %s\n %s)" bindings body)))
-      (emr-el:clean-let-form-at-point)
+      (emr-el:simplify-let-form-at-point)
       (emr-lisp-reindent-defun)
       (buffer-string))))
 
