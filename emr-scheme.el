@@ -99,27 +99,6 @@ The variable will be called NAME."
                (not (or (emr-scm:looking-at-def?)
                         (emr-el:looking-at-let-binding-symbol?)))))
 
-(emr-extend-command emr-el-inline-variable
-  :modes scheme-mode)
-
-(emr-extend-command emr-el-inline-function
-  :modes scheme-mode)
-
-(emr-extend-command emr-el-extract-to-let
-  :modes scheme-mode)
-
-(emr-extend-command emr-el-delete-let-binding-form
-  :predicate (lambda ()
-               t)
-  :modes scheme-mode)
-
-(emr-extend-command emr-el-inline-let-variable
-  :predicate (lambda ()
-               (message "HELLO")
-               t)
-  :modes scheme-mode)
-
-
 (provide 'emr-scheme)
 
 ;; Local Variables:

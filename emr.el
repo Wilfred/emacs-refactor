@@ -281,28 +281,6 @@ buffer."
              )
             emr:refactor-commands))
 
-;;;###autoload
-(defmacro* emr-extend-command
-    (function &optional &key modes (predicate nil))
-  "Extend an existing refactoring command to other major modes.
-See the documentation for `emr-declare-command'."
-  (declare (indent 1))
-  (cl-assert (functionp function))
-  (cl-assert modes)
-  (cl-assert (or (null predicate)
-                 (functionp predicate)
-                 (symbolp predicate)))
-  (let ((ms (if (symbolp modes) (list modes) modes)))
-    `(let ((struct (gethash ',function emr:refactor-commands)))
-       (setf (emr-refactor-spec-modes struct)
-             (->> (emr-refactor-spec-modes struct) (-concat ',ms) (-uniq)))
-
-       ;; Override the original predicate if one is supplied.
-       (unless (null ',predicate)
-         (let* ((cur (emr-refactor-spec-predicate struct))
-                (fn (lambda () (funcall (if (derived-mode-p ',ms) ,predicate cur)))))
-           (setf (emr-refactor-spec-predicate struct) fn))))))
-
 (defun emr:hash-values (ht)
   "Return the hash values in hash table HT."
   (cl-loop for v being the hash-values in ht collect v))
