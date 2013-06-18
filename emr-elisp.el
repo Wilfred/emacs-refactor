@@ -1345,6 +1345,22 @@ popup window."
                     (not (emr-el:autoload-directive-exsts-above-defun?))
                     (not (emr-el:def-find-usages (list-at-point))))))
 
+;;;; Setup
+
+(defun emr-el:show-menu ()
+  (easy-menu-add-item
+   nil
+   '("EMR")
+   ["Find unused definitions" emr-el-find-unused-definitions]))
+
+;;;###autoload
+(defun emr-el-initialize ()
+  "Enable the EMR menu for Elisp buffers."
+  (add-hook 'emacs-lisp-mode-hook 'emr-el:show-menu)
+  (--each (buffer-list)
+    (with-current-buffer it
+      (when (derived-mode-p 'emacs-lisp-mode)
+        (emr-el:show-menu)))))
 
 (provide 'emr-elisp)
 

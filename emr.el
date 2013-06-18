@@ -342,10 +342,13 @@ Return a popup item for the refactoring menu if so."
 
   (emr:after-load "lisp-mode"
     (require 'emr-lisp)
-    (require 'emr-elisp))
+    (require 'emr-elisp)
+    (emr-el-initialize))
+
   (emr:after-load "cc-mode"
     (require 'emr-c)
     (emr-c-initialize))
+
   (emr:after-load "scheme"
     (require 'emr-scheme)))
 

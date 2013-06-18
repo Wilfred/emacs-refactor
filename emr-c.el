@@ -30,6 +30,7 @@
 (require 'dash)
 (require 'thingatpt)
 (autoload 'ido-completing-read "ido")
+(autoload 'c-mode-map "cc-mode")
 (autoload 'projectile-dir-files "projectile")
 (autoload 'projectile-project-p "projectile")
 
@@ -165,13 +166,22 @@ project, return all header files in the current directory."
   "A minor-mode for C that makes extra key bidings available."
   nil " emr" emr-c-mode-map)
 
+(defun emr-c:show-menu ()
+  (when (boundp 'c-mode-map)
+    (easy-menu-add-item
+     nil
+     '("EMR")
+     ["Insert #include" emr-c-insert-include])))
+
 ;;;###autoload
 (defun emr-c-initialize ()
-  "Activate emr-c-mode for all C buffers."
+  "Initialize EMR in C buffers and enable the EMR menu."
   (add-hook 'c-mode-hook 'emr-c-mode)
+  (add-hook 'c-mode-hook 'emr-c:show-menu)
   (--each (buffer-list)
     (with-current-buffer it
       (when (derived-mode-p 'c-mode)
+        (emr-c:show-menu)
         (emr-c-mode +1)))))
 
 (provide 'emr-c)
