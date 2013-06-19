@@ -125,7 +125,7 @@
 (defstruct emr-el-test-spec form before after)
 
 (defun emr-el-test:example-call-from-docstring (str)
-  "Extract the function usage from from a docstring test spec."
+  "Extract the function usage form from a docstring test spec."
   (with-temp-buffer
     (insert str)
     (let ((beg (save-excursion (goto-char (point-min))

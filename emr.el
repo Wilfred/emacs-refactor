@@ -52,7 +52,7 @@
   :group 'emacs-refactor)
 
 (defcustom emr-lines-between-toplevel-forms 1
-  "The number of lines to try to preserve between toplevel forms when refactoring Lisps."
+  "The number of lines to try to preserve between toplevel forms."
   :group 'emr)
 
 (defcustom emr-popup-help-delay 1
@@ -70,8 +70,6 @@
   "Move to the start of the current defun.
 If the defun is preceded by comments, move above them."
   (interactive)
-  ;; If we're at a defun already, prevent `beginning-of-defun' from moving
-  ;; back to the preceding defun.
   (ignore-errors
     (beginning-of-thing 'defun))
   ;; If there is a comment attached to this defun, skip over it.
