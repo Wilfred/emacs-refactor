@@ -1,9 +1,9 @@
-TEST_D     = $(abspath ./test)
+CARTON ?= carton
+EMACS  ?= emacs
 
-CARTON     = carton
-EMACS      = emacs --batch -q -l package
-EMACS_D    = $(shell $(EMACS) --eval '(princ (expand-file-name user-emacs-directory))')
-VERSION    = $(shell carton version)
+EMACS_CMD  = $(EMACS) --batch -q -l package
+EMACS_D    = $(shell $(EMACS_CMD) --eval '(princ (expand-file-name user-emacs-directory))')
+VERSION    = $(shell $(CARTON) version)
 
 PACKAGE_DIR = emr-$(VERSION)
 PACKAGE_TAR = $(abspath emr-$(VERSION).tar)
@@ -12,6 +12,7 @@ SRCS        = $(filter-out $(wildcard *-pkg.el), $(wildcard *.el))
 PACKAGE_INCLUDES = $(SRCS) $(MANIFEST)
 
 LOAD_EL     = $(patsubst %,-l %, $(SRCS))
+TEST_D     = $(abspath ./test)
 TEST_RUNNER = $(abspath $(TEST_D)/test-runner.el)
 
 # ============================================================================
@@ -22,7 +23,7 @@ default : uninstall elpa install clean-package
 # Installs the package to .emacs.d/elpa
 .PHONY : install
 install : package
-	$(EMACS) -f package-initialize \
+	$(EMACS_CMD) -f package-initialize \
 		--eval "(package-install-file \"$(PACKAGE_TAR)\")"
 
 # Deletes all installed instances in .emacs.d/elpa
@@ -78,11 +79,11 @@ $(MANIFEST) :
 
 # Byte-compile Elisp files
 %.elc : .%el
-	$(CARTON) exec $(EMACS) $(LOAD_EL) -f batch-byte-compile $<
+	$(CARTON) exec $(EMACS_CMD) $(LOAD_EL) -f batch-byte-compile $<
 
 # ----------------------------------------------------------------------------
 # Tests
 
 .PHONY: test
 test : elpa
-	$(CARTON) exec $(EMACS) -Q --no-site-lisp --script $(TEST_RUNNER)
+	$(CARTON) exec $(EMACS_CMD) -Q --no-site-lisp --script $(TEST_RUNNER)

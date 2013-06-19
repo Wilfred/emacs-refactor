@@ -4,13 +4,14 @@
 language: emacs-lisp
 
 env:
-  EMACS=emacs24
-  #EMACS=emacs-snapshot
+  - EMACS=emacs24 CARTON="${HOME}/.carton/bin/carton"
+  #- EMACS=emacs-snapshot CARTON="${HOME}/.carton/bin/carton"
 
 before_install:
   - git submodule --quiet update --init --recursive
 
 install:
+  # install emacs
   - if [ "$EMACS" = "emacs24" ]; then
         sudo add-apt-repository -y ppa:cassou/emacs &&
         sudo apt-get update -qq &&
@@ -22,12 +23,11 @@ install:
         sudo apt-get install -qq emacs-snapshot &&
         sudo apt-get install -qq emacs-snapshot-el emacs-snapshot-gtk;
     fi
-
-script:
   # install carton
   - curl -fsSkL https://raw.github.com/rejeep/carton/master/go | sh
-  # run tests
-  - export PATH="$PATH:${HOME}/.carton/bin" && $EMACS --version && make test
+
+script:
+  - make test
 
 # notifications:
 #   email: false
