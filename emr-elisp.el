@@ -174,7 +174,8 @@ CONTEXT is the top level form that encloses FORM."
                     (unless (-contains? ctx-bound it)
                       (or
                        (special-variable-p it)
-                       (symbol-function it))))))))
+                       (ignore-errors
+                        (symbol-function it)))))))))
 
 ;;;; Definition site tests
 
