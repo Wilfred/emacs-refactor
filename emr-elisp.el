@@ -32,10 +32,10 @@
 (require 'thingatpt)
 (require 'emr)
 (require 'emr-lisp)
+(autoload 'define-compilation-mode "compile")
 (autoload 'ido-yes-or-no-p "ido-yes-or-no")
 (autoload 'redshank-letify-form-up "redshank")
 (autoload 'paredit-splice-sexp-killing-backward "paredit")
-(autoload 'define-compilation-mode "compile")
 
 (defcustom emr-el-definition-macro-names
   '(defun defun* cl-defun defmacro defmacro* cl-defmacro defcustom
@@ -61,6 +61,14 @@ stdin. Bad."
         (print-escape-newlines t)
         )
     (prin1-to-string form)))
+
+;;;; Compatibility
+
+(eval-and-compile
+  (unless (fboundp 'backward-down-list)
+    (defun backward-down-list (&optional arg)
+      (interactive "^p")
+      (down-list (- (or arg 1))))))
 
 ;;;; Navigation commands
 
