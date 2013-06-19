@@ -24,7 +24,10 @@ install:
     fi
 
 script:
-  $EMACS --version && make test
+  # install carton
+  - curl -fsSkL https://raw.github.com/rejeep/carton/master/go | sh
+  # run tests
+  - export PATH="$PATH:${HOME}/.carton/bin" && $EMACS --version && make test
 
 # notifications:
 #   email: false
