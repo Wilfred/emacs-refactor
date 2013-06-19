@@ -1,6 +1,5 @@
 # emacs-refactor
-<!-- Travis builds are disabled until cassou/emacs updates to Emacs 24.3 -->
-<!-- [![Build Status](https://travis-ci.org/chrisbarrett/emacs-refactor.png?branch=master)](https://travis-ci.org/chrisbarrett/emacs-refactor) -->
+[![Build Status](https://travis-ci.org/chrisbarrett/emacs-refactor.png?branch=master)](https://travis-ci.org/chrisbarrett/emacs-refactor)
 
 Emacs Refactor (EMR) provides language-specific refactoring support for
 Emacs. It has a simple declarative interface for easy extension.

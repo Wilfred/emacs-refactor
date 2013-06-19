@@ -1,6 +1,3 @@
-# Notes: Travis Builds are disabled until cassou/emacs updates the emacs version
-# to 24.3
-
 language: emacs-lisp
 
 env:
