@@ -168,20 +168,26 @@ textual comments."
               (save-excursion
                 (emr-lisp:start-of-comment-block)
 
-                ;; 3. Restrict the starting position by finding the first open
-                ;; paren in the comment block.
-                (let ((list-start (eval `(rx (* space) ,comment-start (* space) "("))))
+                ;; 3. Restrict the starting position by finding the first
+                ;; opening delimiter in the comment block.
+                (let ((list-start
+                       (eval `(rx
+                               (* space) ,comment-start (* space)
+                               (* (or "'" "`" "#"))
+                               (or "[" "{" "(" "\"")))))
                   (unless (emr-line-matches? list-start)
                     (search-forward-regexp list-start end nil)))
                 (line-beginning-position)))
 
              ;; 4. Restrict the ending position by finding the first closing
-             ;; paren in the comment block.
+             ;; delimiter in the comment block.
              (end
               (save-excursion
                 (goto-char end)
                 (end-of-line)
-                (let ((list-end (rx ")" (* space) eol)))
+                (let ((list-end
+                       (rx (or ")" "]" "}" "\"")
+                           (* space) eol)))
                   (unless (emr-line-matches? list-end)
                     (search-backward-regexp list-end beg nil)))
                 (line-end-position)))
