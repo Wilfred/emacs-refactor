@@ -232,16 +232,27 @@ buffer."
   "A table of refactoring specs used to build menu items.")
 
 (defun emr:documentation (sym)
-  "Get the docstring for SYM. Does not display the arglist for functions."
-  (ignore-errors
-    (->> (documentation sym)
-      (s-lines)
-      ;; Remove the function arglist.
-      (nreverse)
-      (-drop 1)
-      (nreverse)
-      (s-join "\n")
-      (s-trim))))
+  "Get the docstring for SYM.
+Removes the function arglist and lisp usage example."
+  (destructuring-bind (before-example &optional after-example)
+      (->> (documentation sym)
+        (s-lines)
+        ;; Remove the function arglist.
+        (nreverse)
+        (-drop 1)
+        (nreverse)
+        (s-join "\n")
+        (s-trim)
+        ;; Find the EXAMPLE section.
+        (s-split (rx bol "EXAMPLE:")))
+    ;; Rejoin with the EXAMPLE removed.
+    (concat before-example
+            (when after-example
+              (->> after-example
+                (s-lines)
+                (--drop-while (or (emr-blank? it)
+                                  (s-matches? (rx bol (+ space)) it)))
+                (s-join "\n"))))))
 
 ;;;###autoload
 (defmacro* emr-declare-command
@@ -301,7 +312,9 @@ Return a popup item for the refactoring menu if so."
     (popup-make-item (emr-refactor-spec-title struct)
                      :value (emr-refactor-spec-function struct)
                      :summary (emr-refactor-spec-description struct)
-                     :document (emr:documentation (emr-refactor-spec-function struct)))))
+                     :document (ignore-errors
+                                 (emr:documentation
+                                  (emr-refactor-spec-function struct))))))
 
 ;;;###autoload
 (defun emr-show-refactor-menu ()
