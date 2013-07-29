@@ -131,7 +131,7 @@ You will need *carton*, *make* and *git* to build the project.
 3. Configure your init.el:
 
   ```lisp
- (autoload 'emr-show-refactor-menu "emr"')
+ (autoload 'emr-show-refactor-menu "emr")
  (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
  (add-hook 'prog-mode-hook 'emr-initialize)
    ```
