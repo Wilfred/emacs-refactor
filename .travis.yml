@@ -1,8 +1,8 @@
 language: emacs-lisp
 
 env:
-  - EMACS=emacs24 CASK"${HOME}/.cask/bin/cask"
-  #- EMACS=emacs-snapshot CASK"${HOME}/.cask/bin/cask"
+  - EMACS=emacs24 CASK="${HOME}/.cask/bin/cask"
+  #- EMACS=emacs-snapshot CASK="${HOME}/.cask/bin/cask"
 
 before_install:
   - git submodule --quiet update --init --recursive
