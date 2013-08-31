@@ -1,8 +1,8 @@
 language: emacs-lisp
 
 env:
-  - EMACS=emacs24 CARTON="${HOME}/.carton/bin/carton"
-  #- EMACS=emacs-snapshot CARTON="${HOME}/.carton/bin/carton"
+  - EMACS=emacs24 CASK"${HOME}/.cask/bin/cask"
+  #- EMACS=emacs-snapshot CASK"${HOME}/.cask/bin/cask"
 
 before_install:
   - git submodule --quiet update --init --recursive
@@ -20,8 +20,8 @@ install:
         sudo apt-get install -qq emacs-snapshot &&
         sudo apt-get install -qq emacs-snapshot-el emacs-snapshot-gtk;
     fi
-  # install carton
-  - curl -fsSkL https://raw.github.com/rejeep/carton/master/go | sh
+  # install cask
+  - curl -fsSkL https://raw.github.com/rejeep/cask/master/go | sh
 
 script:
   - make test

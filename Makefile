@@ -1,9 +1,9 @@
-CARTON ?= carton
-EMACS  ?= emacs
+CASK  ?= cask
+EMACS ?= emacs
 
 EMACS_CMD  = $(EMACS) --batch -q -l package
 EMACS_D    = $(shell $(EMACS_CMD) --eval '(princ (expand-file-name user-emacs-directory))')
-VERSION    = $(shell $(CARTON) version)
+VERSION    = $(shell $(CASK) version)
 
 PACKAGE_DIR = emr-$(VERSION)
 PACKAGE_TAR = $(abspath emr-$(VERSION).tar)
@@ -12,7 +12,7 @@ SRCS        = $(filter-out $(wildcard *-pkg.el), $(wildcard *.el))
 PACKAGE_INCLUDES = $(SRCS) $(MANIFEST)
 
 LOAD_EL     = $(patsubst %,-l %, $(SRCS))
-TEST_D     = $(abspath ./test)
+TEST_D      = $(abspath ./test)
 TEST_RUNNER = $(abspath $(TEST_D)/test-runner.el)
 
 # ============================================================================
@@ -33,11 +33,11 @@ uninstall :
 
 # Install package dependencies.
 elpa :
-	$(CARTON) install
+	$(CASK) install
 
 .PHONY : deps
 deps : elpa
-	$(CARTON) update
+	$(CASK) update
 
 # ----------------------------------------------------------------------------
 # Cleaning tasks
@@ -74,16 +74,16 @@ package : clean-package $(MANIFEST) $(PACKAGE_INCLUDES)
 
 # Generate package file
 $(MANIFEST) :
-	$(CARTON) package
+	$(CASK) package
 	mv emacs-refactor-pkg.el $(MANIFEST)
 
 # Byte-compile Elisp files
 %.elc : .%el
-	$(CARTON) exec $(EMACS_CMD) $(LOAD_EL) -f batch-byte-compile $<
+	$(CASK) exec $(EMACS_CMD) $(LOAD_EL) -f batch-byte-compile $<
 
 # ----------------------------------------------------------------------------
 # Tests
 
 .PHONY: test
 test : elpa
-	$(CARTON) exec $(EMACS_CMD) -Q --no-site-lisp --script $(TEST_RUNNER)
+	$(CASK) exec $(EMACS_CMD) -Q --no-site-lisp --script $(TEST_RUNNER)

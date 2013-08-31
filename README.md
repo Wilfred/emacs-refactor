@@ -111,12 +111,12 @@ The following refactoring commands are available:
 
 # Development
 
-You will need *carton*, *make* and *git* to build the project.
+You will need *cask*, *make* and *git* to build the project.
 
-1. Install [Carton](https://github.com/rejeep/carton):
+1. Install [Cask](https://github.com/rejeep/cask.el):
 
    ```shell
-   curl -fsSkL https://raw.github.com/rejeep/carton/master/go | sh
+   curl -fsSkL https://raw.github.com/rejeep/cask.el/master/go | sh
    ```
 
 2. Clone and install with `make`:
@@ -138,7 +138,7 @@ You will need *carton*, *make* and *git* to build the project.
 
 ## Dependencies
 
-These will be installed automatically by Carton.
+These will be installed automatically by Cask.
 
 * [cl-lib](https://github.com/emacsmirror/cl-lib)
 * [dash](https://github.com/magnars/dash.el)
