@@ -21,7 +21,7 @@ install:
         sudo apt-get install -qq emacs-snapshot-el emacs-snapshot-gtk;
     fi
   # install cask
-  - curl -fsSkL https://raw.github.com/rejeep/cask/master/go | sh
+  - curl -fsSkL https://raw.github.com/rejeep/cask.el/master/go | sh
 
 script:
   - make test
