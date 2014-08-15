@@ -126,7 +126,32 @@ The following refactoring commands are available:
 * *extract function*
 * *extract variable*
 
-## Development
+##Ruby
+
+Inorder get ruby refactoring support, please install [ruby refactor](https://github.com/ajvargo/ruby-refactor) and load the [ruby refactoring bridge](https://github.com/tacticiankerala/dotemacs.d/blob/master/lib/ruby-refactoring-bridge.el) in your init.el
+
+The following refactoring commands are available:
+
+* *extract function*
+* *extract variable*
+* *extract constant*
+* *add parameter*
+* *extract to let*
+
+##JavaScript
+
+Inorder get javascript refactoring support, please install [js2 refactor](https://github.com/magnars/js2-refactor.el) and load the [js2 refactoring bridge](https://github.com/tacticiankerala/dotemacs.d/blob/master/lib/js2-refactoring-bridge.el) to your init.el
+
+The following refactoring commands are available:
+
+* *extract function*
+* *extract method*
+* *extract variable*
+* *add parameter*
+* *local variable to instance variable*
+* *log region*
+
+# Development
 
 You will need [Cask][], [make][] and [git][] to build the project.
 
