@@ -82,14 +82,12 @@ If the defun is preceded by comments, move above them."
 ;;;###autoload
 (defun emr-looking-at-string? ()
   "Return non-nil if point is inside a string."
-  (or (ignore-errors (and (in-string-p) t))
-      (equal 'font-lock-string-face (face-at-point))))
+  (nth 3 (syntax-ppss)))
 
 ;;;###autoload
 (defun emr-looking-at-comment? ()
   "Non-nil if point is on a comment."
-  (-contains? '(font-lock-comment-face font-lock-comment-delimiter-face)
-              (face-at-point)))
+  (nth 4 (syntax-ppss)))
 
 ;;;###autoload
 (defun emr-blank? (str)
