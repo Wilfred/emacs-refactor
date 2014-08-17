@@ -27,10 +27,9 @@ To use EMR when editing, simply move point to an expression and invoke the refac
 
 ![Example][example-pic]
 
-EMR ships with many refactoring commands, and pull requests for extensions
-are welcome. See
-[Extension](https://github.com/chrisbarrett/emacs-refactor#extension) for
-details on extending EMR to other language modes. It's easy (honest!).
+EMR ships with many refactoring commands, and pull requests for extensions are
+welcome. See [Extension](#user-content-extension) for details on extending EMR
+to other language modes. It's easy (honest!).
 
 Tested on Emacs 24.3.
 
