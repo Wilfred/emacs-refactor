@@ -28,17 +28,17 @@
 
 (require 'emr)
 
-(emr-declare-command comment-region
+(emr-declare-command 'comment-region
   :title "comment"
   :description "region"
-  :modes prog-mode
+  :modes 'prog-mode
   :predicate (lambda ()
                (region-active-p)))
 
-(emr-declare-command uncomment-region
+(emr-declare-command 'uncomment-region
   :title "uncomment"
   :description "region"
-  :modes prog-mode
+  :modes 'prog-mode
   :predicate (lambda ()
                (and (region-active-p)
                     (s-contains? comment-start

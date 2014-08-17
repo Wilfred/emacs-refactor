@@ -3,6 +3,9 @@
 
 # emacs-refactor
 
+Emacs Refactor (EMR) provides language-specific refactoring support for Emacs.
+It has a simple declarative interface for easy extension.
+
 - [Summary](#user-content-summary)
 - [Installation](#user-content-installation)
 - [Language support](#user-content-language-support)
@@ -13,17 +16,14 @@
     - [JavaScript](#user-content-javascript)
     - [Ruby](#user-content-ruby)
     - [Scheme](#user-content-scheme)
+- [Extension](#user-content-extension)
 - [Development](#user-content-development)
     - [Dependencies](#user-content-dependencies)
-- [Extension](#user-content-extension)
 - [Contributing](#user-content-contributing)
     - [TODO](#user-content-todo)
 - [License](#user-content-license)
 
 ## Summary
-
-Emacs Refactor (EMR) provides language-specific refactoring support for
-Emacs. It has a simple declarative interface for easy extension.
 
 To use EMR when editing, simply move point to an expression and invoke the refactor menu.
 
@@ -153,7 +153,35 @@ The following refactoring commands are available:
 * *extract function*
 * *extract variable*
 
-# Development
+## Extension
+
+Use the `emr-declare-command` function to declare a refactoring action. The
+action will automatically become available in the refactoring popup menu.
+
+This function supports predicate expressions, allowing the options displayed to
+be context-sensitive.
+
+As an example, here is the declaration for a refactoring command that ships with
+EMR:
+
+```lisp
+(emr-declare-command 'emr-el-extract-constant
+  :title "constant"
+  :description "defconst"
+  :modes 'emacs-lisp-mode
+  :predicate (lambda ()
+               (not (or (emr-el:looking-at-definition?)
+                        (emr-el:looking-at-let-binding-symbol?)))))
+```
+
+This wires the `emr-el-extract-constant` function to be displayed in
+`emacs-lisp-mode`, provided point is not looking at an Elisp definition or
+let-binding form.
+
+If your favourite language mode already offers refactoring commands, it is
+simple to wire them up with EMR using this interface.
+
+## Development
 
 You will need [Cask][], [make][] and [git][] to build the project.
 
@@ -194,33 +222,6 @@ These will be installed automatically by Cask.
 * [s](https://github.com/magnars/s.el)
 
 Shout out to [@magnars][] for his awesome libraries.
-
-## Extension
-
-Use the `emr-declare-command` macro to declare a refactoring action. The
-action will automatically become available in the refactoring popup menu.
-
-This macro supports predicate expressions, allowing the options displayed to be
-context-sensitive.
-
-As an example, here is the declaration for a refactoring command that ships with EMR:
-
-```lisp
-(emr-declare-command emr-el-extract-constant
-  :title "constant"
-  :description "defconst"
-  :modes emacs-lisp-mode
-  :predicate (lambda ()
-               (not (or (emr-el:looking-at-definition?)
-                 (emr-el:looking-at-let-binding-symbol?)))))
-```
-
-This wires the `emr-el-extract-constant` function to be displayed in
-`emacs-lisp-mode`, provided point is not looking at an Elisp definition or
-let-binding form.
-
-If your favourite language mode already offers refactoring commands, it is
-simple to wire them up with EMR using this interface.
 
 ## Contributing
 

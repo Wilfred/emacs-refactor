@@ -244,17 +244,17 @@ Removes the function arglist and lisp usage example."
                 (s-join "\n"))))))
 
 ;;;###autoload
-(cl-defmacro emr-declare-command
+(cl-defun emr-declare-command
     (function &key modes title description predicate)
   "Define a refactoring command.
 
 * FUNCTION is the refactoring command to perform. It should be
-  either the name of a refactoring command or a
+  either the name of a refactoring command as a symbol or a
   lambda-expression.
 
-* MODES is a symbol or list of symbols of the modes in which this
-  command will be available. This will also enable the command
-  for derived modes.
+* MODES is a symbol or list of symbols. These are the modes in
+  which this command will be available. This will also enable the
+  command for derived modes.
 
 * TITLE is the name of the command that will be displayed in the
   popup menu.
@@ -270,15 +270,15 @@ Removes the function arglist and lisp usage example."
   (cl-assert (or (functionp predicate)
                  (symbolp predicate)))
   ;; Add the created function into the global table of refactoring commands.
-  `(puthash ',function
-            (make-emr-refactor-spec
-             :function ',function
-             :title ,title
-             :modes ',(if (symbolp modes) (list modes) modes)
-             :predicate ,predicate
-             :description ,description
-             )
-            emr:refactor-commands))
+  (puthash function
+           (make-emr-refactor-spec
+            :function function
+            :title title
+            :modes (if (symbolp modes) (list modes) modes)
+            :predicate predicate
+            :description description
+            )
+           emr:refactor-commands))
 
 (defun emr:hash-values (ht)
   "Return the hash values in hash table HT."

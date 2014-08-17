@@ -143,10 +143,10 @@ project, return all header files in the current directory."
 
 ;;; EMR Declarations
 
-(emr-declare-command emr-c-tidy-includes
+(emr-declare-command 'emr-c-tidy-includes
   :title "tidy"
   :description "includes"
-  :modes c-mode
+  :modes 'c-mode
   :predicate (lambda ()
                (emr-c:looking-at-include?)))
 

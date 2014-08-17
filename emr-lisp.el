@@ -203,28 +203,20 @@ textual comments."
 
 ; ------------------
 
-(emr-declare-command emr-lisp-comment-form
+(emr-declare-command 'emr-lisp-comment-form
   :title "comment"
   :description "form"
-  :modes
-  (clojure-mode
-   lisp-mode
-   emacs-lisp-mode
-   scheme-mode)
+  :modes '(clojure-mode lisp-mode emacs-lisp-mode scheme-mode)
   :predicate (lambda ()
                (and (not (region-active-p))
                     (thing-at-point 'defun)
                     (not (or (emr-line-matches? (rx bol (* space) ";"))
                              (emr-looking-at-comment?))))))
 
-(emr-declare-command emr-lisp-uncomment-block
+(emr-declare-command 'emr-lisp-uncomment-block
   :title "uncomment"
   :description "block"
-  :modes
-  (clojure-mode
-   lisp-mode
-   emacs-lisp-mode
-   scheme-mode)
+  :modes '(clojure-mode lisp-mode emacs-lisp-mode scheme-mode)
   :predicate (lambda ()
                (and (not (region-active-p))
                     (emr-line-matches? (rx bol (* space) ";")))))

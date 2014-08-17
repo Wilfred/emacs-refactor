@@ -31,55 +31,55 @@
 
 (require 'emr)
 
-(emr-declare-command js2r-extract-function
+(emr-declare-command 'js2r-extract-function
   :title "extract to function"
   :description nil
-  :modes js2-mode
+  :modes 'js2-mode
   :predicate (lambda ()
                (and
                 (require 'js2-refactor nil t)
                 (use-region-p))))
 
-(emr-declare-command js2r-extract-var
+(emr-declare-command 'js2r-extract-var
   :title "extract local variable"
   :description nil
-  :modes js2-mode
+  :modes 'js2-mode
   :predicate (lambda ()
                (and
                 (require 'js2-refactor nil t)
                 (use-region-p))))
 
-(emr-declare-command js2r-var-to-this
+(emr-declare-command 'js2r-var-to-this
   :title "local variable to instance variable"
   :description nil
-  :modes js2-mode
+  :modes 'js2-mode
   :predicate (lambda ()
                (and
                 (require 'js2-refactor nil t)
                 (use-region-p))))
 
-(emr-declare-command js2r-log-this
+(emr-declare-command 'js2r-log-this
   :title "log this"
   :description nil
-  :modes js2-mode
+  :modes 'js2-mode
   :predicate (lambda ()
                (and
                 (require 'js2-refactor nil t)
                 (use-region-p))))
 
-(emr-declare-command js2r-introduce-parameter
+(emr-declare-command 'js2r-introduce-parameter
   :title "add parameter"
   :description nil
-  :modes js2-mode
+  :modes 'js2-mode
   :predicate (lambda ()
                (and
                 (require 'js2-refactor nil t)
                 (use-region-p))))
 
-(emr-declare-command js2r-extract-method
+(emr-declare-command 'js2r-extract-method
   :title "extract to method"
   :description nil
-  :modes js2-mode
+  :modes 'js2-mode
   :predicate (lambda ()
                (and
                 (require 'js2-refactor nil t)
