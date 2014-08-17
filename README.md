@@ -126,7 +126,7 @@ The following refactoring commands are available:
 * *extract function*
 * *extract variable*
 
-##Ruby
+### Ruby
 
 Inorder get ruby refactoring support, please install [ruby refactor](https://github.com/ajvargo/ruby-refactor) and load the [ruby refactoring bridge](https://github.com/tacticiankerala/dotemacs.d/blob/master/lib/ruby-refactoring-bridge.el) in your init.el
 
@@ -138,7 +138,7 @@ The following refactoring commands are available:
 * *add parameter*
 * *extract to let*
 
-##JavaScript
+### JavaScript
 
 Inorder get javascript refactoring support, please install [js2 refactor](https://github.com/magnars/js2-refactor.el) and load the [js2 refactoring bridge](https://github.com/tacticiankerala/dotemacs.d/blob/master/lib/js2-refactoring-bridge.el) to your init.el
 
