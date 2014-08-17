@@ -226,6 +226,10 @@ simple to wire them up with EMR using this interface.
 
 Yes, please do. See [CONTRIBUTING][] for guidelines.
 
+Thanks to the following contributors:
+
+- Sreenath Nannat ([@tacticiankerala][]) for adding Ruby and JavaScript bindings
+
 ### TODO
 
 * Elisp:
@@ -241,7 +245,6 @@ See [COPYING][]. Copyright (c) 2014 Chris Barrett.
 [badge-license]: https://img.shields.io/badge/license-GPL_3-green.svg
 [badge-travis]: https://travis-ci.org/chrisbarrett/emacs-refactor.png?branch=master
 [example-pic]: https://raw.github.com/chrisbarrett/emacs-refactor/master/assets/emr.png
-[@magnars]: https://twitter.com/magnars
 [Cask]: https://github.com/cask/cask
 [make]: http://www.gnu.org/software/make/
 [js2 refactor]: https://github.com/magnars/js2-refactor.el
@@ -250,3 +253,5 @@ See [COPYING][]. Copyright (c) 2014 Chris Barrett.
 [MELPA]: http://melpa.milkbox.net/
 [CONTRIBUTING]: ./CONTRIBUTING.md
 [COPYING]: ./COPYING
+[@magnars]: https://twitter.com/magnars
+[@tacticiankerala]: https://github.com/tacticiankerala
