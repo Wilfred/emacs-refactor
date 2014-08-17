@@ -83,7 +83,7 @@
 Return the position of the end of FORM-STR."
   (emr-insert-above-defun (emr-lisp-reindent-string form-str)))
 
-(defmacro* emr-lisp-extraction-refactor ((&optional binding) description &rest body)
+(cl-defmacro emr-lisp-extraction-refactor ((&optional binding) description &rest body)
   "Kill the sexp near point then execute forms.
 BINDING is the name to bind to the extracted form.
 DESCRIPTION is used to report the result of the refactoring.

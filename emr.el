@@ -103,14 +103,14 @@ If the defun is preceded by comments, move above them."
                     (line-end-position)))
 
 ;;;###autoload
-(defun* emr-blank-line? (&optional (point (point)))
+(cl-defun emr-blank-line? (&optional (point (point)))
   "Non-nil if POINT is on a blank line."
   (save-excursion
     (goto-char point)
     (emr-blank? (emr-line-str))))
 
 ;;;###autoload
-(defun* emr-line-matches? (regex &optional (point (point)))
+(cl-defun emr-line-matches? (regex &optional (point (point)))
   "Non-nil if POINT is on a line that matches REGEX."
   (save-excursion
     (goto-char point)
@@ -159,7 +159,7 @@ Ensure there are at most `emr-lines-between-toplevel-forms' blanks."
 ;;; These commands may be used to describe the changes made to buffers. See
 ;;; example in emr-elisp.
 
-(defun* emr:ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
+(cl-defun emr:ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
   "Chop STR and add ellipses if it exceeds MAXLEN in length."
   (if (> (length str) maxlen)
       (concat (substring-no-properties str 0 (1- maxlen)) "…")
@@ -175,7 +175,7 @@ The index is the car and the line is the cdr."
   (--remove (equal (car it) (cdr it))
             (-zip (emr:indexed-lines str1) (emr:indexed-lines str2))))
 
-(defun* emr:report-action (description line text)
+(cl-defun emr:report-action (description line text)
   "Report the action that occured at the point of difference.
 
 Displays a short summary containing the line number, a
@@ -232,7 +232,7 @@ buffer."
 (defun emr:documentation (sym)
   "Get the docstring for SYM.
 Removes the function arglist and lisp usage example."
-  (destructuring-bind (before-example &optional after-example)
+  (cl-destructuring-bind (before-example &optional after-example)
       (->> (documentation sym)
         (s-lines)
         ;; Remove the function arglist.
@@ -253,7 +253,7 @@ Removes the function arglist and lisp usage example."
                 (s-join "\n"))))))
 
 ;;;###autoload
-(defmacro* emr-declare-command
+(cl-defmacro emr-declare-command
     (function &key modes title description predicate)
   "Define a refactoring command.
 
