@@ -113,10 +113,10 @@ The following refactoring commands are available:
 
 You will need *cask*, *make* and *git* to build the project.
 
-1. Install [Cask](https://github.com/rejeep/cask.el):
+1. Install [Cask](https://github.com/cask/cask):
 
    ```shell
-   curl -fsSkL https://raw.github.com/rejeep/cask.el/master/go | sh
+   curl -fsSkL https://raw.github.com/cask/cask/master/go | python
    ```
 
 2. Clone and install with `make`:
