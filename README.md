@@ -3,6 +3,21 @@
 
 # emacs-refactor
 
+- [Summary](#user-content-summary)
+- [Installation](#user-content-installation)
+- [Language support](#user-content-language-support)
+    - [General](#user-content-general)
+    - [C](#user-content-c)
+    - [Lisps](#user-content-lisps)
+    - [Elisp](#user-content-elisp)
+    - [Scheme](#user-content-scheme)
+- [Development](#user-content-development)
+    - [Dependencies](#user-content-dependencies)
+- [Extension](#user-content-extension)
+- [Contributing](#user-content-contributing)
+    - [TODO](#user-content-todo)
+- [License](#user-content-license)
+
 ## Summary
 
 Emacs Refactor (EMR) provides language-specific refactoring support for
