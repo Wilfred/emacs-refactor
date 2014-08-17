@@ -357,7 +357,12 @@ Return a popup item for the refactoring menu if so."
     (emr-c-initialize))
 
   (emr:after-load "scheme"
-    (require 'emr-scheme)))
+    (require 'emr-scheme))
+
+  (eval-after-load 'js2-refactor '(require emr-js))
+  (eval-after-load 'ruby-refactor '(require emr-ruby)))
+  (eval-after-load 'js2-refactor  '(require 'emr-js))
+  (eval-after-load 'ruby-refactor '(require 'emr-ruby)))
 
 (provide 'emr)
 
