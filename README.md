@@ -1,5 +1,5 @@
-[![License GPL 3][badge-license]][copying]
-[![Build Status][badge-travis]][travis]
+![License GPL 3][badge-license]
+![Build Status][badge-travis]
 
 # emacs-refactor
 
@@ -10,7 +10,7 @@ Emacs. It has a simple declarative interface for easy extension.
 
 To use EMR when editing, simply move point to an expression and invoke the refactor menu.
 
-[![Example][example-pic]][pic]
+![Example][example-pic]
 
 EMR ships with many refactoring commands, and pull requests for extensions
 are welcome. See
