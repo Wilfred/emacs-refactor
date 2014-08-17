@@ -39,6 +39,8 @@
 (require 'cl-lib)
 (require 'popup)
 (autoload 'beginning-of-thing "thingatpt")
+(autoload 'emr-c-initialize "emr-c")
+(autoload 'emr-el-initialize "emr-elisp")
 
 (defgroup emacs-refactor nil
   "Provides refactoring tools for Emacs."
@@ -332,17 +334,8 @@ Return a popup item for the refactoring menu if so."
 
   ;; Lazily load support for individual languages.
 
-  (eval-after-load "lisp-mode"
-    '(progn
-       (require 'emr-lisp)
-       (require 'emr-elisp)
-       (emr-el-initialize)))
-
-  (eval-after-load 'cc-mode
-    '(progn
-       (require 'emr-c)
-       (emr-c-initialize)))
-
+  (eval-after-load 'lisp-mode     '(emr-el-initialize))
+  (eval-after-load 'cc-mode       '(emr-c-initialize))
   (eval-after-load 'scheme        '(require 'emr-scheme))
   (eval-after-load 'js2-refactor  '(require 'emr-js))
   (eval-after-load 'ruby-refactor '(require 'emr-ruby)))
