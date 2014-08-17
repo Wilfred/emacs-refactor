@@ -1,89 +1,66 @@
-CASK  ?= cask
-EMACS ?= emacs
+CASK        ?= cask
+EMACS       ?= emacs
+DIST        ?= dist
+CASK_DIR    ?= .cask
+EMACSFLAGS   = --batch -Q -L . -L test
 
-EMACS_CMD  = $(EMACS) --batch -q -l package
-EMACS_D    = $(shell $(EMACS_CMD) --eval '(princ (expand-file-name user-emacs-directory))')
-VERSION    = $(shell $(CASK) version)
+VERSION     := $(shell EMACS=$(EMACS) $(CASK) version)
+PKG_DIR     := $(shell EMACS=$(EMACS) $(CASK) package-directory)
 
-PACKAGE_DIR = emr-$(VERSION)
-PACKAGE_TAR = $(abspath emr-$(VERSION).tar)
-MANIFEST    = $(abspath emr-pkg.el)
-SRCS        = $(filter-out $(wildcard *-pkg.el), $(wildcard *.el))
-PACKAGE_INCLUDES = $(SRCS) $(MANIFEST)
+EMACS_D      = ~/.emacs.d
+USER_ELPA_D  = $(EMACS_D)/elpa
 
-LOAD_EL     = $(patsubst %,-l %, $(SRCS))
-TEST_D      = $(abspath ./test)
-TEST_RUNNER = $(abspath $(TEST_D)/test-runner.el)
+SRCS        = $(filter-out %-pkg.el, $(wildcard *.el))
+TESTS       = $(wildcard test/*.el)
 
-# ============================================================================
+DIST_SRCS   = $(patsubst %,$(DIST)/% , $(SRCS))
+DIST_PKG    = $(DIST)/emr-pkg.el
+DIST_README = $(DIST)/emr-readme.txt
+DIST_TAR    = $(DIST)/emr-$(VERSION).tar
 
-.PHONY: default
-default : uninstall elpa install clean-package
 
-# Installs the package to .emacs.d/elpa
-.PHONY : install
-install : package
-	$(EMACS_CMD) -f package-initialize \
-		--eval "(package-install-file \"$(PACKAGE_TAR)\")"
+.PHONY: all check install uninstall reinstall clean-all clean
+all : $(PKG_DEPS) $(DIST_TAR)
 
-# Deletes all installed instances in .emacs.d/elpa
-.PHONY : uninstall
-uninstall :
-	rm -rf $(EMACS_D)elpa/emr-*
-
-# Install package dependencies.
-elpa :
+$(PKG_DEPS) :
 	$(CASK) install
 
-.PHONY : deps
-deps : elpa
-	$(CASK) update
+check : $(PKG_DEPS)
+	$(CASK) exec $(EMACS) $(EMACSFLAGS)  \
+	$(patsubst %,-l % , $(SRCS) $(TESTS))\
+	-f ert-run-tests-batch-and-exit
 
-# ----------------------------------------------------------------------------
-# Cleaning tasks
+install : $(DIST_TAR)
+	$(EMACS) $(EMACSFLAGS) -l package \
+	-f package-initialize  --eval '(package-install-file "$(DIST_TAR)")'
 
-.PHONY: clean
-clean : clean-elc clean-deps clean-package clean-tests
+uninstall :
+	rm -rf $(USER_ELPA_D)/emr-*
 
-.PHONY: clean-elc
-clean-elc :
+reinstall : clean uninstall install
+
+clean-all : clean
+	rm -rf $(PKG_DEPS)
+
+clean :
+	$(CASK) clean-elc
 	rm -f *.elc
+	rm -rf $(DIST)
+	rm -f $(INFO_MANUAL)
+	rm -f *-pkg.el
 
-.PHONY: clean-tests
-clean-tests :
-	rm -f $(TEST_D)/*.elc
+$(DIST_TAR) : $(DIST_README) $(DIST_PKG) $(DIST_SRCS)
+	tar -cvf $@ -C $(DIST) --exclude $(@F) .
 
-.PHONY: clean-deps
-clean-deps :
-	rm -rf elpa
+$(DIST_README) :
+	$(CASK) package $(DIST)
 
-.PHONY: clean-package
-clean-package :
-	rm -rf $(PACKAGE_DIR) $(MANIFEST) $(PACKAGE_TAR)
+$(DIST_SRCS) : $(DIST)
+	cp -f $(@F) $@
 
-# ----------------------------------------------------------------------------
-# Build tasks
+$(DIST_PKG) : $(DIST)
+	cask pkg-file
+	cp -f $(@F) $@
 
-# Create a package tar and clean up.
-.PHONY: package
-package : clean-package $(MANIFEST) $(PACKAGE_INCLUDES)
-	mkdir -p  $(PACKAGE_DIR)
-	cp    -f  $(PACKAGE_INCLUDES) $(PACKAGE_DIR)
-	tar   cf  $(PACKAGE_TAR) $(PACKAGE_DIR)
-	rm    -rf $(PACKAGE_DIR)
-
-# Generate package file
-$(MANIFEST) :
-	$(CASK) package
-	mv emacs-refactor-pkg.el $(MANIFEST)
-
-# Byte-compile Elisp files
-%.elc : .%el
-	$(CASK) exec $(EMACS_CMD) $(LOAD_EL) -f batch-byte-compile $<
-
-# ----------------------------------------------------------------------------
-# Tests
-
-.PHONY: test
-test : elpa
-	$(CASK) exec $(EMACS_CMD) -Q --no-site-lisp --script $(TEST_RUNNER)
+$(DIST) :
+	mkdir $(DIST)

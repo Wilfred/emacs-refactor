@@ -25,6 +25,9 @@
 
 ;;; Code:
 
+(require 'test-utils)
+(require 'emr-elisp)
+
 ;;;; Function implementation.
 
 (check "elisp--uses symbol names when inferring arglists from callsites"
@@ -83,12 +86,12 @@
        (lambda (x &rest y) b)
        (let (z w) c)))))
 
-(check "elisp--finds free vars in destructuring-bind"
+(check "elisp--finds free vars in cl-destructuring-bind"
   (should=
    '(a b c d)
 
    (emr-el:free-variables
-    '(destructuring-bind (x y) (list 1 2)
+    '(cl-destructuring-bind (x y) (list 1 2)
        a
        (list b)
        (cl-destructuring-bind (z . w) (list 3 4 5)
@@ -142,9 +145,9 @@ the AFTER state."
   ;; Extract the test usage.
   (-if-let (form (emr-el-test:example-call-from-docstring str))
     ;; Extract the BEFORE and AFTER states to test.
-    (destructuring-bind (_ spec)
+    (cl-destructuring-bind (_ spec)
         (s-split (rx bol "BEFORE:") str)
-      (destructuring-bind (before after)
+      (cl-destructuring-bind (before after)
           (s-split (rx bol "AFTER:") spec)
         (make-emr-el-test-spec
          :form   (read form)
