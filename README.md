@@ -10,6 +10,8 @@
     - [C](#user-content-c)
     - [Lisps](#user-content-lisps)
     - [Elisp](#user-content-elisp)
+    - [JavaScript](#user-content-javascript)
+    - [Ruby](#user-content-ruby)
     - [Scheme](#user-content-scheme)
 - [Development](#user-content-development)
     - [Dependencies](#user-content-dependencies)
@@ -119,28 +121,9 @@ The following buffer-wide actions are available:
 
 * *find unused definitions*
 
-### Scheme
-
-The following refactoring commands are available:
-
-* *extract function*
-* *extract variable*
-
-### Ruby
-
-Inorder get ruby refactoring support, please install [ruby refactor](https://github.com/ajvargo/ruby-refactor) and load the [ruby refactoring bridge](https://github.com/tacticiankerala/dotemacs.d/blob/master/lib/ruby-refactoring-bridge.el) in your init.el
-
-The following refactoring commands are available:
-
-* *extract function*
-* *extract variable*
-* *extract constant*
-* *add parameter*
-* *extract to let*
-
 ### JavaScript
 
-Inorder get javascript refactoring support, please install [js2 refactor](https://github.com/magnars/js2-refactor.el) and load the [js2 refactoring bridge](https://github.com/tacticiankerala/dotemacs.d/blob/master/lib/js2-refactoring-bridge.el) to your init.el
+JavaScript refactoring support requires [js2 refactor][].
 
 The following refactoring commands are available:
 
@@ -150,6 +133,25 @@ The following refactoring commands are available:
 * *add parameter*
 * *local variable to instance variable*
 * *log region*
+
+### Ruby
+
+Ruby refactoring support requires [ruby refactor][].
+
+The following refactoring commands are available:
+
+* *extract function*
+* *extract variable*
+* *extract constant*
+* *add parameter*
+* *extract to let*
+
+### Scheme
+
+The following refactoring commands are available:
+
+* *extract function*
+* *extract variable*
 
 # Development
 
@@ -231,7 +233,6 @@ Yes, please do. See [CONTRIBUTING][] for guidelines.
     * Use destructuring-bind when inlining functions that use destructuring
       in their arglists.
 * C: More useful refactorings, eg, inline function/variable
-* Support for other languages (esp. Clojure, Python, Ruby)
 
 ## License
 
@@ -243,6 +244,8 @@ See [COPYING][]. Copyright (c) 2014 Chris Barrett.
 [@magnars]: https://twitter.com/magnars
 [Cask]: https://github.com/cask/cask
 [make]: http://www.gnu.org/software/make/
+[js2 refactor]: https://github.com/magnars/js2-refactor.el
+[ruby refactor]: https://github.com/ajvargo/ruby-refactor
 [git]: http://git-scm.com
 [MELPA]: http://melpa.milkbox.net/
 [CONTRIBUTING]: ./CONTRIBUTING.md
