@@ -58,11 +58,7 @@
   "The time to wait before showing documentation in the refactor menu."
   :group 'emr)
 
-; ------------------
-
-;;;; Utility functions
-
-;;; Functions that could be useful to extensions.
+;;; Utility functions
 
 ;;;###autoload
 (defun emr-move-above-defun ()
@@ -149,9 +145,7 @@ Ensure there are at most `emr-lines-between-toplevel-forms' blanks."
       ;; Open a user-specified number of blanks.
       (open-line emr-lines-between-toplevel-forms))))
 
-; ------------------
-
-;;;; Reporting
+;;; Reporting
 
 ;;; These commands may be used to describe the changes made to buffers. See
 ;;; example in emr-elisp.
@@ -209,9 +203,7 @@ buffer."
          (unless (emr:line-visible? line)
            (emr:report-action ,description line text))))))
 
-; ------------------
-
-;;;; Popup menu
+;;; Popup menu
 
 ;;; Items to be displayed in the refactoring popup menu are declared using
 ;;; the `emr-declare-command' macro. This macro adds builds a struct to
@@ -320,13 +312,13 @@ Return a popup item for the refactoring menu if so."
                       (emr:hash-values)
                       (-map 'emr:make-popup)
                       (-remove 'null)))
-    ;; Display the menu.
-    (atomic-change-group
-      (-when-let (action (popup-menu*
-                          actions
-                          :isearch t
-                          :help-delay emr-popup-help-delay))
-        (call-interactively action)))
+      ;; Display the menu.
+      (atomic-change-group
+        (-when-let (action (popup-menu*
+                            actions
+                            :isearch t
+                            :help-delay emr-popup-help-delay))
+          (call-interactively action)))
 
     ;; Having no items to show implies that no refactoring commands are
     ;; available.
