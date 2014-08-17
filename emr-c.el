@@ -1,4 +1,4 @@
-;;; emr-c.el --- Refactoring commands for C
+;;; emr-c.el --- Refactoring commands for C  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -185,9 +185,5 @@ project, return all header files in the current directory."
         (emr-c-mode +1)))))
 
 (provide 'emr-c)
-
-;; Local Variables:
-;; lexical-binding: t
-;; End:
 
 ;;; emr-c.el ends here

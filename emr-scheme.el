@@ -1,4 +1,4 @@
-;;; emr-scheme.el --- Refactoring commands for Scheme.
+;;; emr-scheme.el --- Refactoring commands for Scheme.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -100,9 +100,5 @@ The variable will be called NAME."
                         (emr-el:looking-at-let-binding-symbol?)))))
 
 (provide 'emr-scheme)
-
-;; Local Variables:
-;; lexical-binding: t
-;; End:
 
 ;;; emr-scheme.el ends here

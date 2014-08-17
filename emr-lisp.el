@@ -1,4 +1,4 @@
-;;; emr-lisp.el --- Refactoring commands common to all Lisps.
+;;; emr-lisp.el --- Refactoring commands common to all Lisps.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -230,9 +230,5 @@ textual comments."
                     (emr-line-matches? (rx bol (* space) ";")))))
 
 (provide 'emr-lisp)
-
-;; Local Variables:
-;; lexical-binding: t
-;; End:
 
 ;;; emr-lisp.el ends here

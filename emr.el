@@ -1,4 +1,4 @@
-;;; emr.el --- Emacs refactoring system.
+;;; emr.el --- Emacs refactoring system.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -364,9 +364,5 @@ Return a popup item for the refactoring menu if so."
     (require 'emr-scheme)))
 
 (provide 'emr)
-
-;; Local Variables:
-;; lexical-binding: t
-;; End:
 
 ;;; emr.el ends here

@@ -1,4 +1,4 @@
-;;; test-utils.el --- Common utilities for emr tests
+;;; test-utils.el --- Common utilities for emr tests  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -43,10 +43,5 @@ BODY lists the forms to be executed."
   (should (string-match-p regex str)))
 
 (provide 'test-utils)
-
-;; Local Variables:
-;; lexical-binding: t
-;; no-byte-compile: t
-;; End:
 
 ;;; test-utils.el ends here

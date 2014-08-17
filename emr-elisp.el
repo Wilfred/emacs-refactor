@@ -1,4 +1,4 @@
-;;; emr-elisp.el --- Refactoring commands for Emacs Lisp
+;;; emr-elisp.el --- Refactoring commands for Emacs Lisp  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -1388,9 +1388,5 @@ popup window."
         (emr-el:show-menu)))))
 
 (provide 'emr-elisp)
-
-;; Local Variables:
-;; lexical-binding: t
-;; End:
 
 ;;; emr-elisp.el ends here
