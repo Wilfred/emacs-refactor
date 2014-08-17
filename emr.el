@@ -271,7 +271,6 @@ Removes the function arglist and lisp usage example."
 * DESCRIPTION is shown to the left of the title in the popup
   menu."
   (declare (indent 1))
-  (cl-assert (functionp function))
   (cl-assert title)
   (cl-assert modes)
   (cl-assert (or (functionp predicate)
