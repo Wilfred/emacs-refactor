@@ -38,7 +38,6 @@
 (require 's)
 (require 'cl-lib)
 (require 'popup)
-(autoload 'in-string-p "thingatpt")
 (autoload 'beginning-of-thing "thingatpt")
 
 (defgroup emacs-refactor nil
