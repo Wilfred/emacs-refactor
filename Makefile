@@ -1,7 +1,6 @@
 CASK        ?= cask
 EMACS       ?= emacs
 DIST        ?= dist
-CASK_DIR    ?= .cask
 EMACSFLAGS   = --batch -Q -L . -L test
 
 VERSION     := $(shell EMACS=$(EMACS) $(CASK) version)
@@ -9,6 +8,7 @@ PKG_DIR     := $(shell EMACS=$(EMACS) $(CASK) package-directory)
 
 EMACS_D      = ~/.emacs.d
 USER_ELPA_D  = $(EMACS_D)/elpa
+CASK_PKGS    = .cask
 
 SRCS        = $(filter-out %-pkg.el, $(wildcard *.el))
 TESTS       = $(wildcard test/*.el)
@@ -20,12 +20,12 @@ DIST_TAR    = $(DIST)/emr-$(VERSION).tar
 
 
 .PHONY: all check install uninstall reinstall clean-all clean
-all : $(PKG_DEPS) $(DIST_TAR)
+all : $(CASK_PKGS) $(DIST_TAR)
 
-$(PKG_DEPS) :
+$(CASK_PKGS) :
 	$(CASK) install
 
-check : $(PKG_DEPS)
+check : $(CASK_PKGS)
 	$(CASK) exec $(EMACS) $(EMACSFLAGS)  \
 	$(patsubst %,-l % , $(SRCS) $(TESTS))\
 	-f ert-run-tests-batch-and-exit
@@ -40,7 +40,7 @@ uninstall :
 reinstall : clean uninstall install
 
 clean-all : clean
-	rm -rf $(PKG_DEPS)
+	rm -rf $(CASK_PKGS)
 
 clean :
 	$(CASK) clean-elc
