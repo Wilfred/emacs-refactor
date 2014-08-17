@@ -324,13 +324,6 @@ Return a popup item for the refactoring menu if so."
     ;; available.
     (message "No refactorings available")))
 
-; ------------------
-
-(defmacro emr:after-load (feature &rest forms)
-  (declare (indent 1))
-  `(eval-after-load ,feature
-     '(progn ,@forms)))
-
 ;;;###autoload
 (defun emr-initialize ()
   "Activate language support for EMR."
@@ -339,20 +332,18 @@ Return a popup item for the refactoring menu if so."
 
   ;; Lazily load support for individual languages.
 
-  (emr:after-load "lisp-mode"
-    (require 'emr-lisp)
-    (require 'emr-elisp)
-    (emr-el-initialize))
+  (eval-after-load "lisp-mode"
+    '(progn
+       (require 'emr-lisp)
+       (require 'emr-elisp)
+       (emr-el-initialize)))
 
-  (emr:after-load "cc-mode"
-    (require 'emr-c)
-    (emr-c-initialize))
+  (eval-after-load 'cc-mode
+    '(progn
+       (require 'emr-c)
+       (emr-c-initialize)))
 
-  (emr:after-load "scheme"
-    (require 'emr-scheme))
-
-  (eval-after-load 'js2-refactor '(require emr-js))
-  (eval-after-load 'ruby-refactor '(require emr-ruby)))
+  (eval-after-load 'scheme        '(require 'emr-scheme))
   (eval-after-load 'js2-refactor  '(require 'emr-js))
   (eval-after-load 'ruby-refactor '(require 'emr-ruby)))
 
