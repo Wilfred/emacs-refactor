@@ -97,13 +97,13 @@ Library and project includes are kept separate."
       ;; Partition includes by type, subsort alphabetically and insert into
       ;; buffer.
       (->> includes
-        (--separate (s-starts-with? "<" it))
-        (--map (sort it 'string<))
-        (-flatten)
-        (--map (concat "#include " it))
-        (s-join "\n")
-        (s-append "\n")
-        (insert)))))
+           (--separate (s-starts-with? "\"" it))
+           (--map (sort it 'string<))
+           (-flatten)
+           (--map (concat "#include " it))
+           (s-join "\n")
+           (s-append "\n")
+           (insert)))))
 
 ; ------------------
 
@@ -146,7 +146,7 @@ project, return all header files in the current directory."
 (emr-declare-command 'emr-c-tidy-includes
   :title "tidy"
   :description "includes"
-  :modes 'c-mode
+  :modes '(c-mode c++-mode)
   :predicate (lambda ()
                (emr-c:looking-at-include?)))
 
@@ -183,6 +183,22 @@ project, return all header files in the current directory."
       (when (derived-mode-p 'c-mode)
         (emr-c:show-menu)
         (emr-c-mode +1)))))
+
+
+(autoload 'clang-format-region "clang-format" ""  t)
+
+(defun emr-c-format-region (start end)
+  "Foramt region using clang."
+  (interactive "rp")
+  (clang-format-region start end "Google"))
+
+
+(emr-declare-command 'emr-c-format-region
+  :title "Format region"
+  :description "using clang"
+  :modes '(prog-mode)
+  :predicate (lambda ()
+               (and mark-active (not (equal (mark) (point))))))
 
 (provide 'emr-c)
 
