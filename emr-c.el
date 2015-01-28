@@ -198,7 +198,8 @@ project, return all header files in the current directory."
   :description "using clang"
   :modes '(prog-mode)
   :predicate (lambda ()
-               (and mark-active (not (equal (mark) (point))))))
+               (and mark-active (not (equal (mark) (point)))
+                    (executable-find "clang-format"))))
 
 (provide 'emr-c)
 
