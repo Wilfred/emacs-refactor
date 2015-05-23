@@ -52,6 +52,18 @@
     "uncntrl.h" "unistd.h" "utime.h" "utmpx.h" "wchar.h" "wctype.h"
     "wordexp.h"))
 
+(defcustom emr-clang-format-style 'Google
+  "Style used to format codes with clang.
+Refer to http://clang.llvm.org/docs/ClangFormatStyleOptions.html for more
+detailed descriptions."
+  :type '(radio (const :tag "Format with style suggested by Google." Google)
+                (const :tag "Format used by LLVM project." LLVM)
+                (const :tag "Format used by Chromium project." Chromium)
+                (const :tag "Format used by Mozilla project." Mozilla)
+                (const :tag "Format used by Webkit project." WebKit)
+                (const :tag "load style configuration from file." file))
+  :group 'emr)
+
 ; ------------------
 
 (defconst emr-c:rx-include
@@ -190,7 +202,7 @@ project, return all header files in the current directory."
 (defun emr-c-format-region (start end)
   "Foramt region using clang."
   (interactive "rp")
-  (clang-format-region start end "Google"))
+  (clang-format-region start end (symbol-name emr-clang-format-style)))
 
 
 (emr-declare-command 'emr-c-format-region
