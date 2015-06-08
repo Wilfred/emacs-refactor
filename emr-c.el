@@ -109,7 +109,7 @@ Library and project includes are kept separate."
       ;; Partition includes by type, subsort alphabetically and insert into
       ;; buffer.
       (->> includes
-           (--separate (s-starts-with? "\"" it))
+           (--separate (s-starts-with? "<" it))
            (--map (sort it 'string<))
            (-flatten)
            (--map (concat "#include " it))
