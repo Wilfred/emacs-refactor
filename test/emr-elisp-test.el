@@ -1,4 +1,4 @@
-;;; emr-elisp-tests --- Tests for emr-elisp  -*- lexical-binding: t; -*-
+;;; emr-elisp-test --- Tests for emr-elisp  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
 
@@ -24,9 +24,6 @@
 ;; Tests for emr-elisp
 
 ;;; Code:
-
-(require 'test-utils)
-(require 'emr-elisp)
 
 ;;;; Function implementation.
 
@@ -236,6 +233,6 @@ AFTER:
 (gentest-from-docstring emr-el-extract-variable)
 (gentest-from-docstring emr-el-insert-autoload-directive)
 
-(provide 'emr-elisp-tests)
+(provide 'emr-elisp-test)
 
-;;; emr-elisp-tests.el ends here
+;;; emr-elisp-test.el ends here

@@ -19,16 +19,14 @@ DIST_README = $(DIST)/emr-readme.txt
 DIST_TAR    = $(DIST)/emr-$(VERSION).tar
 
 
-.PHONY: all check install uninstall reinstall clean-all clean
+.PHONY: all test install uninstall reinstall clean-all clean
 all : $(CASK_PKGS) $(DIST_TAR)
 
 $(CASK_PKGS) :
 	$(CASK) install
 
-check : $(CASK_PKGS)
-	$(CASK) exec $(EMACS) $(EMACSFLAGS)  \
-	$(patsubst %,-l % , $(SRCS) $(TESTS))\
-	-f ert-run-tests-batch-and-exit
+test : $(CASK_PKGS)
+	$(CASK) exec ert-runner
 
 install : $(DIST_TAR)
 	$(EMACS) $(EMACSFLAGS) -l package \
