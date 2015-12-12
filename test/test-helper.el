@@ -25,6 +25,10 @@
 
 ;;; Code:
 
+(require 'undercover)
+(undercover "*.el")
+(require 'emr-elisp)
+
 (defmacro check (desc &rest body)
   "Wrap `ert-deftest' with a simpler interface.
 DESC is a string describing the test.
@@ -41,8 +45,6 @@ BODY lists the forms to be executed."
 (defun should-match (regex str)
   "Assert that string STR matches REGEX."
   (should (string-match-p regex str)))
-
-(require 'emr-elisp)
 
 (provide 'test-helper)
 
