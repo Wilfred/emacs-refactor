@@ -42,6 +42,8 @@ BODY lists the forms to be executed."
   "Assert that string STR matches REGEX."
   (should (string-match-p regex str)))
 
-(provide 'test-utils)
+(require 'emr-elisp)
 
-;;; test-utils.el ends here
+(provide 'test-helper)
+
+;;; test-helper.el ends here
