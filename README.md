@@ -1,7 +1,12 @@
-![License GPL 3][badge-license]
-![Build Status][badge-travis]
-
 # emacs-refactor
+
+[![Build Status](https://travis-ci.org/chrisbarrett/emacs-refactor.svg)](https://travis-ci.org/chrisbarrett/emacs-refactor)
+[![Coverage Status](https://coveralls.io/repos/chrisbarrett/emacs-refactor/badge.svg)](https://coveralls.io/r/chrisbarrett/emacs-refactor)
+[![MELPA](http://melpa.org/packages/emr-badge.svg)](http://melpa.org/#/emr)
+[![MELPA stable](http://stable.melpa.org/packages/emr-badge.svg)](http://stable.melpa.org/#/emr)
+[![Tag Version](https://img.shields.io/github/tag/chrisbarrett/emacs-refactor.svg)](https://github.com/chrisbarrett/emacs-refactor/tags)
+[![License](http://img.shields.io/:license-gpl3-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
+
 
 Emacs Refactor (EMR) provides language-specific refactoring support for Emacs.
 It has a simple declarative interface for easy extension.
@@ -241,10 +246,8 @@ Thanks to the following contributors:
 
 ## License
 
-See [COPYING][]. Copyright (c) 2014 Chris Barrett.
+See [COPYING][]. Copyright (c) 2014-2015 Chris Barrett.
 
-[badge-license]: https://img.shields.io/badge/license-GPL_3-green.svg
-[badge-travis]: https://travis-ci.org/chrisbarrett/emacs-refactor.png?branch=master
 [example-pic]: https://raw.github.com/chrisbarrett/emacs-refactor/master/assets/emr.png
 [Cask]: https://github.com/cask/cask
 [make]: http://www.gnu.org/software/make/
