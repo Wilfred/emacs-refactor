@@ -341,16 +341,6 @@ Return a popup item for the refactoring menu if so."
   (eval-after-load 'js2-refactor  '(require 'emr-js))
   (eval-after-load 'ruby-refactor '(require 'emr-ruby)))
 
-(defun emr:try-require (feature)
-  "Attempt to load a library or module. Return true if the
-library given as argument is successfully loaded. If not, instead
-of an error, just add the package to a list of missing packages."
-  (condition-case err
-      (if (stringp feature)
-          (load-library feature)
-        (require feature))
-    nil))
-
 (provide 'emr)
 
 ;;; emr.el ends here
