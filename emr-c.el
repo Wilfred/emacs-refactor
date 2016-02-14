@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; Refactoring commands for C.
+;; Refactoring commands for C and C-Based modes..
 
 ;;; Code:
 
@@ -51,6 +51,22 @@
     "tgmath.h" "threads.h" "time.h" "trace.h" "uchar.h" "ulimit.h"
     "uncntrl.h" "unistd.h" "utime.h" "utmpx.h" "wchar.h" "wctype.h"
     "wordexp.h"))
+
+
+(defcustom emr-clang-format-style 'Google
+  "Style used to format codes with clang.
+Refer to http://clang.llvm.org/docs/ClangFormatStyleOptions.html for more
+detailed descriptions."
+  :type '(radio (const :tag "Format with style suggested by Google." Google)
+                (const :tag "Format used by LLVM project." LLVM)
+                (const :tag "Format used by Chromium project." Chromium)
+                (const :tag "Format used by Mozilla project." Mozilla)
+                (const :tag "Format used by Webkit project." WebKit)
+                (const :tag "Load style configuration from file." file)
+                (repeat :tag "Customized alist." (cons (regexp :tag "Tag")
+                                                       (directory :tag "Format"))))
+
+  :group 'emr)
 
 ; ------------------
 
@@ -97,13 +113,13 @@ Library and project includes are kept separate."
       ;; Partition includes by type, subsort alphabetically and insert into
       ;; buffer.
       (->> includes
-        (--separate (s-starts-with? "<" it))
-        (--map (sort it 'string<))
-        (-flatten)
-        (--map (concat "#include " it))
-        (s-join "\n")
-        (s-append "\n")
-        (insert)))))
+           (--separate (s-starts-with? "<" it))
+           (--map (sort it 'string<))
+           (-flatten)
+           (--map (concat "#include " it))
+           (s-join "\n")
+           (s-append "\n")
+           (insert)))))
 
 ; ------------------
 
@@ -139,16 +155,62 @@ project, return all header files in the current directory."
           (newline)
           (emr-c-tidy-includes))))))
 
+
+
+;;; EMR Declarations
+
+(autoload 'clang-format-region "clang-format" ""  t)
+(autoload 'clang-format-buffer "clang-format" ""  t)
+
+(defun emr-cc-get-style ()
+  "Return style as a string."
+  (cond
+   ((stringp emr-clang-format-style) emr-clang-format-style)
+   ((listp emr-clang-format-style)
+    (concat "{"(mapconcat (lambda (x)
+                            (format "%s: %s" (car x) (cdr x)))
+                          emr-clang-format-style ", ") "}"))
+   ((symbolp emr-clang-format-style) (symbol-name emr-clang-format-style))
+   (t nil)))
+
+(defun emr-cc-format-region (start end)
+  "Format region (START/END) using clang."
+  (interactive "rp")
+  (clang-format-region start end (emr-cc-get-style)))
+
+(defun emr-cc-format-buffer ()
+  "Format region (START/END) using clang."
+  (interactive)
+  (clang-format-buffer (emr-cc-get-style)))
+
+(defalias 'emr-cc-tidy-includes 'emr-c-tidy-includes)
+
 ; ------------------
 
 ;;; EMR Declarations
 
-(emr-declare-command 'emr-c-tidy-includes
+(emr-declare-command 'emr-cc-tidy-includes
   :title "tidy"
   :description "includes"
-  :modes 'c-mode
+  :modes '(c++-mode c-mode)
   :predicate (lambda ()
                (emr-c:looking-at-include?)))
+
+(emr-declare-command 'emr-cc-format-region
+  :title "Format region"
+  :description "with clang"
+  :modes '(c-mode c++-mode)
+  :predicate (lambda ()
+               (and mark-active (not (equal (mark) (point)))
+                    (executable-find "clang-format"))))
+(emr-declare-command 'emr-cc-format-buffer
+  :title "Format Buffer"
+  :description "with clang"
+  :modes '(c-mode c++-mode)
+  :predicate (lambda ()
+               (and (not mark-active)
+                    (executable-find "clang-format"))))
+
 
 ; ------------------
 
