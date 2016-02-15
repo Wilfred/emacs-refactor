@@ -174,16 +174,51 @@ project, return all header files in the current directory."
    (t nil)))
 
 (defun emr-cc-format-region (start end)
-  "Format region (START/END) using clang."
+  "Format region (START/END) with clang-format."
   (interactive "rp")
   (clang-format-region start end (emr-cc-get-style)))
 
 (defun emr-cc-format-buffer ()
-  "Format region (START/END) using clang."
+  "Format region (START/END) with clang-format."
   (interactive)
   (clang-format-buffer (emr-cc-get-style)))
 
 (defalias 'emr-cc-tidy-includes 'emr-c-tidy-includes)
+
+(defvar emr-cc-surround-var-hist nil
+  "A collection of variables used by if-defs..")
+
+(defun emr-cc-surround-if-end (start end)
+  "Surround region between START & END with if-def."
+  (interactive "rp")
+  (let ((var (completing-read "Variable Name: " emr-cc-surround-var-hist
+                              nil nil nil 'emr-cc-surround-var-hist)))
+    (kill-region start end)
+    (let ((s (point))
+          pos e)
+      (insert (format "#ifdef %s\n" var))
+      (yank)
+      (insert (format "\n#endif /*%s*/" var))
+      (setq pos (point))
+      (setq e (point))
+      (goto-char pos)
+      (emr-cc-format-region s e))))
+
+(defun emr-cpp-try-catch (start end)
+  "Surround region between START & END with try-catch."
+  (interactive "rp")
+  (kill-region start end)
+  (let ((s (point))
+        pos  end)
+    (insert "try {\n")
+    (yank)
+    (insert
+     "}\ncatch (exception& e) {\n")
+    (setq pos (point))
+    (insert "throw ;\n}\n")
+    (setq e (point))
+    (goto-char pos)
+    (emr-cc-format-region s e)))
 
 ; ------------------
 
@@ -197,20 +232,33 @@ project, return all header files in the current directory."
                (emr-c:looking-at-include?)))
 
 (emr-declare-command 'emr-cc-format-region
-  :title "Format region"
+  :title "format region"
   :description "with clang"
   :modes '(c-mode c++-mode)
   :predicate (lambda ()
                (and mark-active (not (equal (mark) (point)))
                     (executable-find "clang-format"))))
 (emr-declare-command 'emr-cc-format-buffer
-  :title "Format Buffer"
+  :title "format buffer"
   :description "with clang"
   :modes '(c-mode c++-mode)
   :predicate (lambda ()
                (and (not mark-active)
                     (executable-find "clang-format"))))
 
+(emr-declare-command 'emr-cc-surround-if-end
+  :title "surround"
+  :description "with if-endif"
+  :modes '(c++-mode c-mode)
+  :predicate (lambda ()
+               (and mark-active (not (equal (mark) (point))))))
+
+(emr-declare-command 'emr-cpp-try-catch
+  :title "surround"
+  :description "with try-catch"
+  :modes '(c++-mode)
+  :predicate (lambda ()
+               (and mark-active (not (equal (mark) (point))))))
 
 ; ------------------
 

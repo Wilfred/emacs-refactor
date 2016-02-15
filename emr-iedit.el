@@ -65,25 +65,9 @@
     (setq iedit-initial-string-local occurrence)
     (iedit-start (iedit-regexp-quote occurrence) beg end)))
 
-(defun emr-iedit-in-region (arg)
-  "Rename variable in this function"
-  (interactive "P")
-  (iedit-barf-if-lib-active)
-  (let (occurrence
-        complete-symbol
-        (beg (region-beginning))
-        (end (region-end)))
-    (setq occurrence  (buffer-substring-no-properties
-                       (mark) (point)))
-    (setq iedit-only-complete-symbol-local complete-symbol)
-    (setq mark-active nil)
-    (run-hooks 'deactivate-mark-hook)
-    (setq iedit-initial-string-local occurrence)
-    (iedit-start (iedit-regexp-quote occurrence) beg end)))
-
 
 (emr-declare-command 'emr-iedit-in-function
-  :title "Rename (in function)"
+  :title "rename (in function)"
   :description "in function"
   :modes '(prog-mode)
   :predicate (lambda ()
@@ -91,15 +75,8 @@
                     (emr-iedit:looking-at-iterator?)
                     (which-function))))
 
-(emr-declare-command 'emr-iedit-in-region
-  :title "Rename (in region)"
-  :description "in region"
-  :modes '(prog-mode)
-  :predicate (lambda ()
-               (iedit-region-active)))
-
 (emr-declare-command 'emr-iedit-global
-  :title "Rename"
+  :title "rename"
   :description "globally"
   :modes '(prog-mode)
   :predicate (lambda ()
