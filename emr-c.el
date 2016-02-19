@@ -191,34 +191,28 @@ project, return all header files in the current directory."
 (defun emr-cc-surround-if-end (start end)
   "Surround region between START & END with if-def."
   (interactive "rp")
-  (let ((var (completing-read "Variable Name: " emr-cc-surround-var-hist
+  (let ((content (buffer-substring-no-properties start end))
+        (var (completing-read "Variable Name: " emr-cc-surround-var-hist
                               nil nil nil 'emr-cc-surround-var-hist)))
-    (kill-region start end)
-    (let ((s (point))
-          pos e)
+    (save-excursion
+      (delete-region start end)
       (insert (format "#ifdef %s\n" var))
-      (yank)
+      (insert content)
       (insert (format "\n#endif /*%s*/" var))
-      (setq pos (point))
-      (setq e (point))
-      (goto-char pos)
-      (emr-cc-format-region s e))))
+      (emr-cc-format-region start (point)))))
 
 (defun emr-cpp-try-catch (start end)
   "Surround region between START & END with try-catch."
-  (interactive "rp")
-  (kill-region start end)
-  (let ((s (point))
-        pos  end)
-    (insert "try {\n")
-    (yank)
-    (insert
-     "}\ncatch (exception& e) {\n")
-    (setq pos (point))
-    (insert "throw ;\n}\n")
-    (setq e (point))
-    (goto-char pos)
-    (emr-cc-format-region s e)))
+      (interactive "rp")
+    (let ((content (buffer-substring-no-properties start end)))
+      (save-excursion
+        (delete-region start end)
+        (insert "try {\n")
+        (insert content)
+        (insert
+         "}\ncatch (exception& e) {\n")
+        (insert "throw ;\n}\n")
+        (emr-cc-format-region start (point)))))
 
 ; ------------------
 
