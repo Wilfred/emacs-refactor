@@ -208,7 +208,7 @@ buffer."
 ;;; Popup menu
 
 ;;; Items to be displayed in the refactoring popup menu are declared using
-;;; the `emr-declare-command' macro. This macro adds builds a struct to
+;;; the `emr-declare-command' macro. This macro builds a struct to
 ;;; represent the command and adds it to a table for later retrieval.
 ;;;
 ;;; When the user invokes the popup menu, each struct is transformed into a
