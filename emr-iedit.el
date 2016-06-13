@@ -37,33 +37,14 @@
   (thing-at-point-looking-at emr-iedit:rx-iterator))
 
 (defun emr-iedit-global ()
-  "Rename a variable in this buffer.."
+  "Rename a variable appears in current buffer.."
   (interactive)
   (iedit-mode t))
 
-(defun emr-iedit-in-function (arg)
-  "Rename variable in this function"
-  (interactive "P")
-  (iedit-barf-if-lib-active)
-  (let (occurrence
-        complete-symbol
-        (beg (if (eq major-mode 'occur-edit-mode) ; skip the first occurrence
-                 (next-single-char-property-change 1 'read-only)
-               (point-min)))
-        (end (point-max)))
-    (and iedit-current-symbol-default
-         (setq occurrence (funcall iedit-current-symbol)))
-    (when iedit-only-at-symbol-boundaries
-      (setq complete-symbol t))
-    (save-excursion
-      (mark-defun)
-      (setq beg (region-beginning))
-      (setq end (region-end)))
-    (setq iedit-only-complete-symbol-local complete-symbol)
-    (setq mark-active nil)
-    (run-hooks 'deactivate-mark-hook)
-    (setq iedit-initial-string-local occurrence)
-    (iedit-start (iedit-regexp-quote occurrence) beg end)))
+(defun emr-iedit-in-function ()
+  "Rename variable appears in current function."
+  (interactive)
+  (iedit-mode-toggle-on-function))
 
 
 (emr-declare-command 'emr-iedit-in-function
