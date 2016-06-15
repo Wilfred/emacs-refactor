@@ -68,6 +68,10 @@ detailed descriptions."
 
   :group 'emr)
 
+(defvar emr-c-format-fallback-func 'indent-region
+  "Function to indent a buffer region.
+Will be passed start and end positions of region to be formatted.")
+
 ; ------------------
 
 (defconst emr-c:rx-include
@@ -163,9 +167,9 @@ project, return all header files in the current directory."
 (autoload 'clang-format-buffer "clang-format" ""  t)
 
 (defun emr-clang-available? ()
-  "Returns whether clang-format is available."
-  (and (executable-find "clang-format")
-       (featurep 'clang-format)))
+  "Return whether clang-format is available."
+  (and (featurep 'clang-format)
+       (executable-find "clang-format")))
 
 (defun emr-cc-get-style ()
   "Return style as a string."
@@ -180,19 +184,19 @@ project, return all header files in the current directory."
 
 (defun emr-cc-format-region (start end)
   "Format region (START/END).
-Uses either clang-format, if available, or `indent-region-function'."
+Uses either clang-format, if available, or `emr-c-format-fallback-func'."
   (interactive "rp")
   (if (emr-clang-available?)
       (clang-format-region start end (emr-cc-get-style))
-    (indent-region start end)))
+    (funcall emr-c-format-fallback-func start end)))
 
 (defun emr-cc-format-buffer ()
   "Format region (START/END).
-Uses either clang-format, if available, or `indent-region-function.'"
+Uses either clang-format, if available, or `emr-c-format-fallback-func.'"
   (interactive)
   (if (emr-clang-available?)
       (clang-format-buffer (emr-cc-get-style))
-    (indent-region (point-min) (point-max))))
+    (funcall emr-c-format-fallback-func (point-min) (point-max))))
 
 (defalias 'emr-cc-tidy-includes 'emr-c-tidy-includes)
 
@@ -247,7 +251,7 @@ Uses either clang-format, if available, or `indent-region-function.'"
   :title "format region"
   :description (if (emr-clang-available?)
                    "with clang"
-                 "with indent-region-function")
+                 "with the value of emr-c-format-fallback-func")
   :modes '(c-mode c++-mode)
   :predicate 'emr-region-active?)
 
@@ -255,7 +259,7 @@ Uses either clang-format, if available, or `indent-region-function.'"
   :title "format buffer"
   :description (if (emr-clang-available?)
                    "with clang"
-                 "with indent-region-function")
+                 "with the value of emr-c-format-fallback-func")
   :modes '(c-mode c++-mode)
   :predicate 'emr-region-inactive?)
 
