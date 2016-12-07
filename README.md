@@ -1,7 +1,7 @@
 # emacs-refactor
 
-[![Build Status](https://travis-ci.org/wilfred/emacs-refactor.svg)](https://travis-ci.org/wilfred/emacs-refactor)
-[![Coverage Status](https://coveralls.io/repos/wilfred/emacs-refactor/badge.svg)](https://coveralls.io/r/wilfred/emacs-refactor)
+[![Build Status](https://travis-ci.org/Wilfred/emacs-refactor.svg)](https://travis-ci.org/Wilfred/emacs-refactor)
+[![Coverage Status](https://coveralls.io/repos/Wilfred/emacs-refactor/badge.svg)](https://coveralls.io/r/Wilfred/emacs-refactor)
 [![MELPA](http://melpa.org/packages/emr-badge.svg)](http://melpa.org/#/emr)
 [![MELPA stable](http://stable.melpa.org/packages/emr-badge.svg)](http://stable.melpa.org/#/emr)
 
@@ -194,7 +194,7 @@ You will need [Cask][], [make][] and [git][] to build the project.
 
    ```shell
    cd
-   git clone git@github.com:wilfred/emacs-refactor.git
+   git clone git@github.com:Wilfred/emacs-refactor.git
    cd emacs-refactor
    make && make install
    ```
@@ -227,7 +227,7 @@ Thanks to the following contributors:
 
 See [COPYING][]. Copyright (c) 2014-2015 Chris Barrett.
 
-[example-pic]: https://raw.github.com/wilfred/emacs-refactor/master/assets/emr.png
+[example-pic]: https://raw.github.com/Wilfred/emacs-refactor/master/assets/emr.png
 [Cask]: https://github.com/cask/cask
 [make]: http://www.gnu.org/software/make/
 [js2 refactor]: https://github.com/magnars/js2-refactor.el
