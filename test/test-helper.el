@@ -42,10 +42,6 @@ BODY lists the forms to be executed."
   "Assert that objects X and Y are equal."
   (should (equal x y)))
 
-(defun should-match (regex str)
-  "Assert that string STR matches REGEX."
-  (should (string-match-p regex str)))
-
 (provide 'test-helper)
 
 ;;; test-helper.el ends here
