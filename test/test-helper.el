@@ -29,6 +29,11 @@
 (undercover "*.el")
 (require 'emr-elisp)
 
+;; FIXME: this is an ugly hack. Tests fail in 25.1 without this.  When
+;; we read the docstring, Emacs converts ' to ` by default and
+;; suddenly our examples don't contain valid elisp.
+(setq text-quoting-style 'straight)
+
 (defmacro check (desc &rest body)
   "Wrap `ert-deftest' with a simpler interface.
 DESC is a string describing the test.
