@@ -1,10 +1,10 @@
 # emacs-refactor
 
-[![Build Status](https://travis-ci.org/chrisbarrett/emacs-refactor.svg)](https://travis-ci.org/chrisbarrett/emacs-refactor)
-[![Coverage Status](https://coveralls.io/repos/chrisbarrett/emacs-refactor/badge.svg)](https://coveralls.io/r/chrisbarrett/emacs-refactor)
+[![Build Status](https://travis-ci.org/wilfred/emacs-refactor.svg)](https://travis-ci.org/wilfred/emacs-refactor)
+[![Coverage Status](https://coveralls.io/repos/wilfred/emacs-refactor/badge.svg)](https://coveralls.io/r/wilfred/emacs-refactor)
 [![MELPA](http://melpa.org/packages/emr-badge.svg)](http://melpa.org/#/emr)
 [![MELPA stable](http://stable.melpa.org/packages/emr-badge.svg)](http://stable.melpa.org/#/emr)
-[![Tag Version](https://img.shields.io/github/tag/chrisbarrett/emacs-refactor.svg)](https://github.com/chrisbarrett/emacs-refactor/tags)
+[![Tag Version](https://img.shields.io/github/tag/wilfred/emacs-refactor.svg)](https://github.com/wilfred/emacs-refactor/tags)
 [![License](http://img.shields.io/:license-gpl3-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
 
 
@@ -200,7 +200,7 @@ You will need [Cask][], [make][] and [git][] to build the project.
 
    ```shell
    cd
-   git clone git@github.com:chrisbarrett/emacs-refactor.git
+   git clone git@github.com:wilfred/emacs-refactor.git
    cd emacs-refactor
    make && make install
    ```
@@ -248,7 +248,7 @@ Thanks to the following contributors:
 
 See [COPYING][]. Copyright (c) 2014-2015 Chris Barrett.
 
-[example-pic]: https://raw.github.com/chrisbarrett/emacs-refactor/master/assets/emr.png
+[example-pic]: https://raw.github.com/wilfred/emacs-refactor/master/assets/emr.png
 [Cask]: https://github.com/cask/cask
 [make]: http://www.gnu.org/software/make/
 [js2 refactor]: https://github.com/magnars/js2-refactor.el
