@@ -4,9 +4,6 @@
 [![Coverage Status](https://coveralls.io/repos/wilfred/emacs-refactor/badge.svg)](https://coveralls.io/r/wilfred/emacs-refactor)
 [![MELPA](http://melpa.org/packages/emr-badge.svg)](http://melpa.org/#/emr)
 [![MELPA stable](http://stable.melpa.org/packages/emr-badge.svg)](http://stable.melpa.org/#/emr)
-[![Tag Version](https://img.shields.io/github/tag/wilfred/emacs-refactor.svg)](https://github.com/wilfred/emacs-refactor/tags)
-[![License](http://img.shields.io/:license-gpl3-blue.svg)](http://www.gnu.org/licenses/gpl-3.0.html)
-
 
 Emacs Refactor (EMR) provides language-specific refactoring support for Emacs.
 It has a simple declarative interface for easy extension.
@@ -23,7 +20,6 @@ It has a simple declarative interface for easy extension.
     - [Scheme](#user-content-scheme)
 - [Extension](#user-content-extension)
 - [Development](#user-content-development)
-    - [Dependencies](#user-content-dependencies)
 - [Contributing](#user-content-contributing)
     - [TODO](#user-content-todo)
 - [License](#user-content-license)
@@ -211,21 +207,6 @@ You will need [Cask][], [make][] and [git][] to build the project.
  (add-hook 'prog-mode-hook 'emr-initialize)
    ```
 
-### Dependencies
-
-These will be installed automatically by Cask.
-
-* [cl-lib](https://github.com/emacsmirror/cl-lib)
-* [dash](https://github.com/magnars/dash.el)
-* [list-utils](https://github.com/rolandwalker/list-utils)
-* [paredit](https://github.com/emacsmirror/paredit/blob/master/paredit.el)
-* [popup](https://github.com/auto-complete/popup-el)
-* [projectile](https://github.com/bbatsov/projectile)
-* [redshank](https://github.com/emacsmirror/redshank)
-* [s](https://github.com/magnars/s.el)
-
-Shout out to [@magnars][] for his awesome libraries.
-
 ## Contributing
 
 Yes, please do. See [CONTRIBUTING][] for guidelines.
@@ -255,5 +236,4 @@ See [COPYING][]. Copyright (c) 2014-2015 Chris Barrett.
 [MELPA]: http://melpa.milkbox.net/
 [CONTRIBUTING]: ./CONTRIBUTING.md
 [COPYING]: ./COPYING
-[@magnars]: https://twitter.com/magnars
 [@tacticiankerala]: https://github.com/tacticiankerala
