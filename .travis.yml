@@ -8,13 +8,13 @@ env:
   - EVM_EMACS=emacs-24.3-travis
   - EVM_EMACS=emacs-24.4-travis
   - EVM_EMACS=emacs-24.5-travis
+  - EVM_EMACS=emacs-25.1-travis
   - EVM_EMACS=emacs-git-snapshot
 
 matrix:
   fast_finish: true
   allow_failures:
     - env: EVM_EMACS=emacs-git-snapshot
-
 
 script:
   - emacs --version

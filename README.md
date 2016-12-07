@@ -38,8 +38,6 @@ EMR ships with many refactoring commands, and pull requests for extensions are
 welcome. See [Extension](#user-content-extension) for details on extending EMR
 to other language modes. It's easy (honest!).
 
-Tested on Emacs 24.3.
-
 ## Installation
 
 `emr` is available on [MELPA][]. This is the easiest way to install.
