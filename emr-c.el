@@ -29,7 +29,6 @@
 (require 's)
 (require 'dash)
 (require 'thingatpt)
-(autoload 'ido-completing-read "ido")
 (autoload 'c-mode-map "cc-mode")
 (autoload 'projectile-dir-files "projectile")
 (autoload 'projectile-project-p "projectile")
@@ -140,8 +139,8 @@ project, return all header files in the current directory."
   (interactive
    (list
     (if (yes-or-no-p "Library header?")
-        (format "<%s>" (ido-completing-read "Header: " emr-c:standard-headers))
-      (format "\"%s\"" (ido-completing-read "Header: " (emr-c:headers-in-project))))))
+        (format "<%s>" (completing-read "Header: " emr-c:standard-headers))
+      (format "\"%s\"" (completing-read "Header: " (emr-c:headers-in-project))))))
 
   (let ((str (concat "#include " header)))
     (when (s-contains? str (buffer-string))
