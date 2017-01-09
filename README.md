@@ -5,8 +5,9 @@
 [![MELPA](http://melpa.org/packages/emr-badge.svg)](http://melpa.org/#/emr)
 [![MELPA stable](http://stable.melpa.org/packages/emr-badge.svg)](http://stable.melpa.org/#/emr)
 
-Emacs Refactor (EMR) provides language-specific refactoring support for Emacs.
-It has a simple declarative interface for easy extension.
+Emacs Refactor (EMR) is a framework for providing language-specific
+refactoring in Emacs. It includes refactoring commands for a variety
+of languages, including elisp itself!
 
 - [Summary](#user-content-summary)
 - [Installation](#user-content-installation)
@@ -26,7 +27,8 @@ It has a simple declarative interface for easy extension.
 
 ## Summary
 
-To use EMR when editing, simply move point to an expression and invoke the refactor menu.
+To use EMR when editing, simply move point to an expression and 
+`M-x emr-show-refactor-menu`.
 
 ![Example][example-pic]
 
