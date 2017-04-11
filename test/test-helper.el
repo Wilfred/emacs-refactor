@@ -47,6 +47,4 @@ BODY lists the forms to be executed."
   "Assert that objects X and Y are equal."
   (should (equal x y)))
 
-(provide 'test-helper)
-
 ;;; test-helper.el ends here

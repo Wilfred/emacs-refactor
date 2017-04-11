@@ -26,7 +26,6 @@
 ;;; Code:
 
 (require 'emr-css)
-(require 'test-helper)
 
 (check "css--adds !important"
   (with-temp-buffer
