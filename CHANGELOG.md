@@ -1,6 +1,9 @@
 
 ## v0.3.7
 
+Elisp: Fixed an issue where `emr-el-extract-function` was confused by
+quoted symbols.
+
 CSS: Added `emr-css-toggle-important`.
 
 Ruby: Added `ruby-refactor-convert-post-conditional`.
