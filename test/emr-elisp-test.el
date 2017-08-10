@@ -51,6 +51,13 @@
          c
          (list d))))))
 
+(check "elisp--quoted vars are not free variables"
+  (should=
+   '(x)
+
+   (emr-el:free-variables
+    '(list x 'y))))
+
 (check "elisp--finds free vars in let* form"
   (should=
    '(a b c d)

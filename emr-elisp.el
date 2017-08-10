@@ -141,6 +141,24 @@ stdin. Bad."
           (list-utils-make-proper-copy)
           (-mapcat 'emr-el:bound-variables))))))))
 
+(defun emr-el:unquoted-symbols (form)
+  "Return a list of every unquoted symbol in FORM."
+  (let (syms
+        (forms-remaining (list form)))
+    (while (not (null forms-remaining))
+      (let ((subform (pop forms-remaining)))
+        (cond
+         ;; Skip quoted symbols.
+         ((and (consp subform) (eq (car subform) 'quote)))
+         ;; Iterate on the subforms for lists.
+         ((consp subform)
+          (push (cdr subform) forms-remaining)
+          (push (car subform) forms-remaining))
+         ;; If this node is a symbol, add it to our list.
+         ((and subform (symbolp subform))
+          (push subform syms)))))
+    syms))
+
 (defun emr-el:free-variables (form &optional context)
   "Try to find the symbols in FORM that do not have variable bindings.
 CONTEXT is the top level form that encloses FORM."
@@ -152,8 +170,7 @@ CONTEXT is the top level form that encloses FORM."
 
   (let ((bound-vars (emr-el:bound-variables form))
         (ctx-bound (emr-el:bound-variables context))
-        (form-syms (->> form (list) (-flatten) (-filter 'symbolp)))
-        )
+        (form-syms (emr-el:unquoted-symbols form)))
     (->> (or (ignore-errors (macroexpand-all form)) form)
       ;; Get all symbols from FORM's macro-expansion.
       (list)
