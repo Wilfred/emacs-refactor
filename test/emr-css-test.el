@@ -27,7 +27,8 @@
 
 (require 'emr-css)
 
-(check "css--adds !important"
+(ert-deftest emr-css-add-important ()
+  "Add !important in CSS."
   (with-temp-buffer
     (css-mode)
     (insert "display: block;")
@@ -37,7 +38,8 @@
       (buffer-string)
       "display: block !important;"))))
 
-(check "css--removes !important"
+(ert-deftest emr-css-remove-important ()
+  "Remove !important if present in CSS."
   (with-temp-buffer
     (css-mode)
     (insert "display: block !important;")
