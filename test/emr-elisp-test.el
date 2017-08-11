@@ -127,6 +127,15 @@
                         '(let (message)
                            (funcall message y)))))
 
+;;;; Inspecting forms at point
+
+(check "elisp--a top level let is not a definition"
+  (with-temp-buffer
+    (insert "(let ((x 1))\n  (message \"foo: %s %s\" x 'bar))")
+    (goto-char (point-min))
+    (search-forward "message")
+    (should (not (emr-el:looking-at-definition?)))))
+
 ;;;; Commands
 
 (defstruct emr-el-test-spec form before after)
