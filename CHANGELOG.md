@@ -1,8 +1,12 @@
 
 ## v0.3.7
 
-Elisp: Fixed an issue where `emr-el-extract-function` was confused by
+Elisp:
+
+* Fixed an issue where `emr-el-extract-function` was confused by
 quoted symbols.
+* Fixed an issue where extract refactorings were not offered when they
+  should be.
 
 CSS: Added `emr-css-toggle-important`.
 
