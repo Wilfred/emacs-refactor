@@ -1164,7 +1164,7 @@ the cdr is the usage form."
       (emr-collapse-vertical-whitespace))))
 
 ;;; `emr-el-ref': A reference to a function or variable within a file.
-(defstruct emr-el-ref file line col identifier type form)
+(cl-defstruct emr-el-ref file line col identifier type form)
 
 (defun emr-el:find-unused-defs ()
   "Return a list of all unused definitions in the buffer.

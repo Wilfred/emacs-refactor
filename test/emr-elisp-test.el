@@ -27,6 +27,10 @@
 
 ;;;; Function implementation.
 
+(require 'emr-elisp)
+(require 'dash)
+(require 's)
+
 (ert-deftest emr-elisp-symbol-names ()
   "elisp--uses symbol names when inferring arglists from callsites"
   (let ((fname (cl-gensym)))
@@ -161,7 +165,7 @@
 
 ;;;; Commands
 
-(defstruct emr-el-test-spec form before after)
+(cl-defstruct emr-el-test-spec form before after)
 
 (defun emr-el-test:example-call-from-docstring (str)
   "Extract the function usage form from a docstring test spec."

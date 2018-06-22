@@ -1,6 +1,7 @@
 ;;; test-utils.el --- Common utilities for emr tests  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
+;; Copyright (C) 2018 Wilfred Hughes
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
 
@@ -25,9 +26,16 @@
 
 ;;; Code:
 
+(require 'ert)
+(require 'f)
+
+(let ((helpful-dir (f-parent (f-dirname (f-this-file)))))
+  (add-to-list 'load-path helpful-dir))
+
 (require 'undercover)
-(undercover "*.el")
-(require 'emr-elisp)
+(undercover "emr*.el"
+	    (:exclude "*-test.el")
+	    (:report-file "/tmp/undercover-report.json"))
 
 ;; FIXME: this is an ugly hack. Tests fail in 25.1 without this.  When
 ;; we read the docstring, Emacs converts ' to ` by default and
