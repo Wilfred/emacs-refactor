@@ -43,8 +43,4 @@ BODY lists the forms to be executed."
        ,(intern (replace-regexp-in-string "[ .]" "_" desc)) ()
      ,@body))
 
-(defun should= (x y)
-  "Assert that objects X and Y are equal."
-  (should (equal x y)))
-
 ;;; test-helper.el ends here

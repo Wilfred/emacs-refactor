@@ -32,18 +32,20 @@
     (css-mode)
     (insert "display: block;")
     (emr-css-toggle-important)
-    (should=
-     (buffer-string)
-     "display: block !important;")))
+    (should
+     (equal
+      (buffer-string)
+      "display: block !important;"))))
 
 (check "css--removes !important"
   (with-temp-buffer
     (css-mode)
     (insert "display: block !important;")
     (emr-css-toggle-important)
-    (should=
-     (buffer-string)
-     "display: block;")))
+    (should
+     (equal
+      (buffer-string)
+      "display: block;"))))
 
 (provide 'emr-css-test)
 
