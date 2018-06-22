@@ -27,23 +27,27 @@
 
 (require 'emr-css)
 
-(check "css--adds !important"
+(ert-deftest emr-css-add-important ()
+  "Add !important in CSS."
   (with-temp-buffer
     (css-mode)
     (insert "display: block;")
     (emr-css-toggle-important)
-    (should=
-     (buffer-string)
-     "display: block !important;")))
+    (should
+     (equal
+      (buffer-string)
+      "display: block !important;"))))
 
-(check "css--removes !important"
+(ert-deftest emr-css-remove-important ()
+  "Remove !important if present in CSS."
   (with-temp-buffer
     (css-mode)
     (insert "display: block !important;")
     (emr-css-toggle-important)
-    (should=
-     (buffer-string)
-     "display: block;")))
+    (should
+     (equal
+      (buffer-string)
+      "display: block;"))))
 
 (provide 'emr-css-test)
 

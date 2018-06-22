@@ -11,6 +11,13 @@ env:
   - EVM_EMACS=emacs-25.1-travis
   - EVM_EMACS=emacs-git-snapshot
 
+addons:
+  apt:
+    packages:
+    - texinfo
+    - libgif-dev
+    - libxpm-dev
+
 matrix:
   fast_finish: true
   allow_failures:

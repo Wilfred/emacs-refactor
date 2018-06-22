@@ -27,109 +27,136 @@
 
 ;;;; Function implementation.
 
-(check "elisp--uses symbol names when inferring arglists from callsites"
-  (let ((fname (cl-gensym)))
-    (should=
-     '(x y)
-     (emr-el:infer-arglist-for-usage `(,fname x y)))))
+(require 'emr-elisp)
+(require 'dash)
+(require 's)
 
-(check "elisp--uses argn for non-symbol names when inferring arglists from callsites"
-  (should=
-   '(arg1 arg2)
-   (emr-el:infer-arglist-for-usage '(hello 9 8))))
+(ert-deftest emr-elisp-symbol-names ()
+  "elisp--uses symbol names when inferring arglists from callsites"
+  (let ((fname (cl-gensym)))
+    (should
+     (equal
+      '(x y)
+      (emr-el:infer-arglist-for-usage `(,fname x y))))))
+
+(ert-deftest emr-elisp-argn ()
+  "elisp--uses argn for non-symbol names when inferring arglists from callsites"
+  (should
+   (equal
+    '(arg1 arg2)
+    (emr-el:infer-arglist-for-usage '(hello 9 8)))))
 
 ;;;; Bound variables
 
-(check "elisp--finds free vars in let form"
-  (should=
-   '(a b c d)
+(ert-deftest emr-elisp-free-vars-let ()
+  "elisp--finds free vars in let form"
+  (should
+   (equal
+    '(a b c d)
 
-   (emr-el:free-variables
-    '(let (x (y a))
-       b
-       (let (z w)
-         c
-         (list d))))))
+    (emr-el:free-variables
+     '(let (x (y a))
+        b
+        (let (z w)
+          c
+          (list d)))))))
 
-(check "elisp--quoted vars are not free variables"
-  (should=
-   '(x)
+(ert-deftest emr-elisp-quoted-vars ()
+  "elisp--quoted vars are not free variables"
+  (should
+   (equal
+    '(x)
 
-   (emr-el:free-variables
-    '(list x 'y))))
+    (emr-el:free-variables
+     '(list x 'y)))))
 
-(check "elisp--finds free vars in let* form"
-  (should=
-   '(a b c d)
+(ert-deftest emr-elisp-free-vars-let* ()
+  "elisp--finds free vars in let* form"
+  (should
+   (equal
+    '(a b c d)
 
-   (emr-el:free-variables
-    '(let* (x (y a))
-       b
-       (let* (z w)
-         c
-         (list d))))))
+    (emr-el:free-variables
+     '(let* (x (y a))
+        b
+        (let* (z w)
+          c
+          (list d)))))))
 
-(check "elisp--finds free vars in lambda form"
-  (should=
-   '(a b c)
+(ert-deftest emr-elisp-free-vars-lambda ()
+  "elisp--finds free vars in lambda form"
+  (should
+   (equal
+    '(a b c)
 
-   (emr-el:free-variables
-    '(lambda (x &rest y)
-       a
-       (list b)
-       (lambda (z w)
-         c)))))
+    (emr-el:free-variables
+     '(lambda (x &rest y)
+        a
+        (list b)
+        (lambda (z w)
+          c))))))
 
-(check "elisp--finds free vars in progn form"
-  (should=
-   '(a b c)
+(ert-deftest emr-elisp-free-vars-progn ()
+  "elisp--finds free vars in progn form"
+  (should
+   (equal
+    '(a b c)
 
-   (emr-el:free-variables
-    '(progn
-       a
-       (lambda (x &rest y) b)
-       (let (z w) c)))))
+    (emr-el:free-variables
+     '(progn
+        a
+        (lambda (x &rest y) b)
+        (let (z w) c))))))
 
-(check "elisp--finds free vars in cl-destructuring-bind"
-  (should=
-   '(a b c d)
+(ert-deftest emr-elisp-free-vars-bind ()
+  "elisp--finds free vars in cl-destructuring-bind"
+  (should
+   (equal
+    '(a b c d)
 
-   (emr-el:free-variables
-    '(cl-destructuring-bind (x y) (list 1 2)
-       a
-       (list b)
-       (cl-destructuring-bind (z . w) (list 3 4 5)
-         (list c d))))))
+    (emr-el:free-variables
+     '(cl-destructuring-bind (x y) (list 1 2)
+        a
+        (list b)
+        (cl-destructuring-bind (z . w) (list 3 4 5)
+          (list c d)))))))
 
-(check "elisp--finds free vars in defun form"
-  (should=
-   '(a b)
+(ert-deftest emr-free-vars-defun ()
+  "elisp--finds free vars in defun form"
+  (should
+   (equal
+    '(a b)
 
-   (emr-el:free-variables
-    '(defun hello (x y)
-       (list a x)
-       (progn
-         (list b y))))))
+    (emr-el:free-variables
+     '(defun hello (x y)
+        (list a x)
+        (progn
+          (list b y)))))))
 
-(check "elisp--survives function symbol followed by non-lambda term"
+(ert-deftest emr-elisp-free-vars-function-sym ()
+  "elisp--survives function symbol followed by non-lambda term"
   (let ((fname (cl-gensym)))
-    (should=
-     `(,fname)
+    (should
+     (equal
+      `(,fname)
 
-     (emr-el:free-variables
-      `(function ,fname)))))
+      (emr-el:free-variables
+       `(function ,fname))))))
 
-(check "elisp--checks outer scope for bindings that share names with functions"
-  (should=
-   '(message y)
+(ert-deftest emr-elisp-free-vars-outer-scope ()
+  "elisp--checks outer scope for bindings that share names with functions"
+  (should
+   (equal
+    '(message y)
 
-   (emr-el:free-variables '(funcall message y)
-                        '(let (message)
-                           (funcall message y)))))
+    (emr-el:free-variables '(funcall message y)
+                           '(let (message)
+                              (funcall message y))))))
 
 ;;;; Inspecting forms at point
 
-(check "elisp--a top level let is not a definition"
+(ert-deftest emr-elisp-top-level-let ()
+  "elisp--a top level let is not a definition"
   (with-temp-buffer
     (insert "(let ((x 1))\n  (message \"foo: %s %s\" x 'bar))")
     (goto-char (point-min))
@@ -138,7 +165,7 @@
 
 ;;;; Commands
 
-(defstruct emr-el-test-spec form before after)
+(cl-defstruct emr-el-test-spec form before after)
 
 (defun emr-el-test:example-call-from-docstring (str)
   "Extract the function usage form from a docstring test spec."
@@ -199,7 +226,7 @@ AFTER:
     (assert (s-contains? "AFTER:" docstring))
     (assert (s-contains? "|" docstring)))
 
-  `(check ,(format "elisp--%s" fname)
+  `(ert-deftest ,fname ()
      ;; `documentation' returns the functions docstring concatenated with
      ;; its arglist. Remove the arglist.
      (let ((docstring (->> (documentation ',fname)
