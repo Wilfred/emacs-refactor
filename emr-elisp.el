@@ -1065,7 +1065,7 @@ Its variables will be let-bound."
       (buffer-string))))
 
 (defun emr-el:defun-at-point-has-body ()
-  (not (emr-blank? (emr-el:defun-body-str (thing-at-point 'defun)))))
+  (not (s-blank-str? (emr-el:defun-body-str (thing-at-point 'defun)))))
 
 ;;;###autoload
 (defun emr-el-inline-function ()

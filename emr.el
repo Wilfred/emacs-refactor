@@ -90,11 +90,6 @@ If the defun is preceded by comments, move above them."
   (nth 4 (syntax-ppss)))
 
 ;;;###autoload
-(defun emr-blank? (str)
-  "Non-nil if STR is null, empty or whitespace-only."
-  (s-blank? (s-trim str)))
-
-;;;###autoload
 (defun emr-line-str ()
   "Return the contents of the current line."
   (buffer-substring (line-beginning-position)
@@ -105,7 +100,7 @@ If the defun is preceded by comments, move above them."
   "Non-nil if POINT is on a blank line."
   (save-excursion
     (goto-char point)
-    (emr-blank? (emr-line-str))))
+    (s-blank-str? (emr-line-str))))
 
 ;;;###autoload
 (cl-defun emr-line-matches? (regex &optional (point (point)))
@@ -155,12 +150,6 @@ Ensure there are at most `emr-lines-between-toplevel-forms' blanks."
 ;;; These commands may be used to describe the changes made to buffers. See
 ;;; example in emr-elisp.
 
-(cl-defun emr:ellipsize (str &optional (maxlen (window-width (minibuffer-window))))
-  "Chop STR and add ellipses if it exceeds MAXLEN in length."
-  (if (> (length str) maxlen)
-      (concat (substring-no-properties str 0 (1- maxlen)) "…")
-    str))
-
 (defun emr:indexed-lines (str)
   "Split string STR into a list of conses.
 The index is the car and the line is the cdr."
@@ -184,7 +173,7 @@ buffer."
            (replace-regexp-in-string "[ \n\r\t]+" " " text))
 
       (format "%s line %s: %s" description line)
-      (emr:ellipsize)
+      (s-truncate (window-width (minibuffer-window)))
       (message))))
 
 (defun emr:line-visible? (line)
@@ -242,7 +231,7 @@ Removes the function arglist and lisp usage example."
             (when after-example
               (->> after-example
                 (s-lines)
-                (--drop-while (or (emr-blank? it)
+                (--drop-while (or (s-blank-str? it)
                                   (s-matches? (rx bol (+ space)) it)))
                 (s-join "\n"))))))
 
