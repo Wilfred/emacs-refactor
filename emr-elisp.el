@@ -33,7 +33,6 @@
 (require 'emr)
 (require 'emr-lisp)
 (autoload 'define-compilation-mode "compile")
-(autoload 'ido-yes-or-no-p "ido-yes-or-no")
 (autoload 'redshank-letify-form-up "redshank")
 (autoload 'paredit-splice-sexp-killing-backward "paredit")
 
@@ -1075,7 +1074,7 @@ Replaces all usages in the current buffer."
   ;; Warn the user if the defun at point has an empty body. Prompt before
   ;; continuing.
   (when (or (emr-el:defun-at-point-has-body)
-            (ido-yes-or-no-p "Warning: This function has no body.  Continue? "))
+            (y-or-n-p "Warning: This function has no body.  Continue? "))
     (atomic-change-group
       (save-excursion
 

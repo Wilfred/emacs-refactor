@@ -1,6 +1,9 @@
 ## v0.3.8
 
-No changes yet.
+Elisp:
+
+* Fixed a crash on inlining functions when ido-yes-or-no-p was not
+  installed.
 
 ## v0.3.7
 
