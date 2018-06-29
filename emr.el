@@ -310,6 +310,7 @@ Return a popup item for the refactoring menu if so."
 (defun emr-show-refactor-menu ()
   "Show the refactor menu at point."
   (interactive)
+  (emr-initialize)
   ;; Run each factory function and collect the menu items representing
   ;; available commands.
   (-if-let (actions (->> emr:refactor-commands

@@ -1,5 +1,9 @@
-
 ## v0.3.7
+
+General:
+
+* Fixed an issue where calling `emr-show-refactor-menu` would say 'no
+  refactorings available' when emr hadn't been used.
 
 Elisp:
 
