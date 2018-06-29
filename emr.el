@@ -79,37 +79,31 @@ If the defun is preceded by comments, move above them."
                 (not (bobp))))
     (forward-line -1)))
 
-;;;###autoload
 (defun emr-looking-at-string? ()
   "Return non-nil if point is inside a string."
   (nth 3 (syntax-ppss)))
 
-;;;###autoload
 (defun emr-looking-at-comment? ()
   "Non-nil if point is on a comment."
   (nth 4 (syntax-ppss)))
 
-;;;###autoload
 (defun emr-line-str ()
   "Return the contents of the current line."
   (buffer-substring (line-beginning-position)
                     (line-end-position)))
 
-;;;###autoload
 (cl-defun emr-blank-line? (&optional (point (point)))
   "Non-nil if POINT is on a blank line."
   (save-excursion
     (goto-char point)
     (s-blank-str? (emr-line-str))))
 
-;;;###autoload
 (cl-defun emr-line-matches? (regex &optional (point (point)))
   "Non-nil if POINT is on a line that matches REGEX."
   (save-excursion
     (goto-char point)
     (s-matches? regex (emr-line-str))))
 
-;;;###autoload
 (defun emr-insert-above-defun (str)
   "Insert and indent STR above the current top level form.
 Return the position of the end of STR."
@@ -130,7 +124,6 @@ Return the position of the end of STR."
           (open-line 1)))
       (point))))
 
-;;;###autoload
 (defun emr-collapse-vertical-whitespace ()
   "Collapse blank lines around point.
 Ensure there are at most `emr-lines-between-toplevel-forms' blanks."
