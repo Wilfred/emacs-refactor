@@ -54,10 +54,12 @@
 
 (defcustom emr-lines-between-toplevel-forms 1
   "The number of lines to try to preserve between toplevel forms."
+  :type 'integer
   :group 'emr)
 
 (defcustom emr-popup-help-delay 1
   "The time to wait before showing documentation in the refactor menu."
+  :type 'integer
   :group 'emr)
 
 ;;; Utility functions
