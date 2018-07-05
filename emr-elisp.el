@@ -428,15 +428,15 @@ AFTER:
 "
   (interactive
    (list
-    ;; Read a name for the function, ensuring it is not blank.
-    (let ((x (read-string "Name: ")))
-      (if (s-blank? x) (user-error "Name must not be blank") x))
+    ;; Function name.
+    (read-string "Name: ")
 
     ;; Prompt user with default arglist.
     (emr-el:read-args (emr-el:form-extent-for-extraction)
                       (thing-at-point 'defun))))
 
-  (cl-assert (not (s-blank? name)) () "Name must not be blank")
+  (when (s-blank? name)
+    (user-error "Name must not be blank"))
 
   (emr-lisp-extraction-refactor (sexp) "Extracted to"
     (let ((name (intern name))
@@ -447,8 +447,8 @@ AFTER:
       (insert (emr-el:print (cl-list* name arglist)))
       ;; Insert defun.
       (->> (format "(%s %s %s\n  %s)" defun-form name arglist body)
-        (emr-el:format-defun)
-        (emr-lisp-insert-above-defun)))))
+           (emr-el:format-defun)
+           (emr-lisp-insert-above-defun)))))
 
 ; ------------------
 
@@ -544,7 +544,8 @@ AFTER:
   (usage x)
 "
   (interactive "*sName: ")
-  (cl-assert (not (s-blank? name)) () "Name must not be blank")
+  (when (s-blank? name)
+    (user-error "Name must not be blank"))
   (emr-lisp-extraction-refactor (sexp) "Extracted to"
     ;; Insert usage.
     (insert (s-trim name))
@@ -572,7 +573,8 @@ AFTER:
 
 "
   (interactive "*sName: ")
-  (cl-assert (not (s-blank? name)) () "Name must not be blank")
+  (when (s-blank? name)
+    (user-error "Name must not be blank"))
   (emr-lisp-extraction-refactor (sexp) "Extracted to"
     ;; Insert usage
     (insert (s-trim name))
