@@ -20,7 +20,6 @@ of languages, including elisp itself!
     - [Ruby](#user-content-ruby)
     - [Scheme](#user-content-scheme)
 - [Extension](#user-content-extension)
-- [Development](#user-content-development)
 
 ## Summary
 
