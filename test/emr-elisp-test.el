@@ -218,24 +218,8 @@ AFTER:
   <Buffer state after executing command>
 
 "
-  (let ((docstring (documentation fname)))
-    ;; Perform some basic expansion-time checking.
-    (assert (not (s-blank? docstring)))
-    (assert (s-contains? "EXAMPLE:" docstring))
-    (assert (s-contains? "BEFORE:" docstring))
-    (assert (s-contains? "AFTER:" docstring))
-    (assert (s-contains? "|" docstring)))
-
   `(ert-deftest ,fname ()
-     ;; `documentation' returns the functions docstring concatenated with
-     ;; its arglist. Remove the arglist.
-     (let ((docstring (->> (documentation ',fname)
-                        (s-trim)
-                        (s-lines)
-                        (reverse)
-                        (-drop 1)
-                        (reverse)
-                        (s-join "\n"))))
+     (let ((docstring (documentation ',fname)))
 
        ;; Basic sanity checks before running.
        (assert (not (s-blank? docstring)))
