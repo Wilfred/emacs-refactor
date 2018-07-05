@@ -21,9 +21,6 @@ of languages, including elisp itself!
     - [Scheme](#user-content-scheme)
 - [Extension](#user-content-extension)
 - [Development](#user-content-development)
-- [Contributing](#user-content-contributing)
-    - [TODO](#user-content-todo)
-- [License](#user-content-license)
 
 ## Summary
 
@@ -181,60 +178,8 @@ let-binding form.
 If your favourite language mode already offers refactoring commands, it is
 simple to wire them up with EMR using this interface.
 
-## Development
-
-You will need [Cask][], [make][] and [git][] to build the project.
-
-1. Install Cask:
-
-   ```shell
-   curl -fsSkL https://raw.github.com/cask/cask/master/go | python
-   ```
-
-2. Clone and install with `make && make install`:
-
-   ```shell
-   cd
-   git clone git@github.com:Wilfred/emacs-refactor.git
-   cd emacs-refactor
-   make && make install
-   ```
-
-3. Configure your init.el:
-
-  ```lisp
- (autoload 'emr-show-refactor-menu "emr")
- (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
- (add-hook 'prog-mode-hook 'emr-initialize)
-   ```
-
-## Contributing
-
-Yes, please do. See [CONTRIBUTING][] for guidelines.
-
-Thanks to the following contributors:
-
-- Sreenath Nannat ([@tacticiankerala][]) for adding Ruby and JavaScript bindings
-
-### TODO
-
-* Elisp:
-    * Simplify let statements when inlining functions
-    * Use destructuring-bind when inlining functions that use destructuring
-      in their arglists.
-* C: More useful refactorings, eg, inline function/variable
-
-## License
-
-See [COPYING][]. Copyright (c) 2014-2015 Chris Barrett.
-
 [example-pic]: https://raw.github.com/Wilfred/emacs-refactor/master/assets/emr.png
-[Cask]: https://github.com/cask/cask
-[make]: http://www.gnu.org/software/make/
 [js2 refactor]: https://github.com/magnars/js2-refactor.el
 [ruby refactor]: https://github.com/ajvargo/ruby-refactor
 [git]: http://git-scm.com
 [MELPA]: http://melpa.milkbox.net/
-[CONTRIBUTING]: ./CONTRIBUTING.md
-[COPYING]: ./COPYING
-[@tacticiankerala]: https://github.com/tacticiankerala
