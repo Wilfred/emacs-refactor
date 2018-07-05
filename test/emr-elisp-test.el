@@ -186,10 +186,26 @@
 
       (setq after
             (buffer-substring (point) (point-max))))
-    (list example before after)))
+    (list
+     (emr-el-tests:unindent-rigidly example)
+     (emr-el-tests:unindent-rigidly before)
+     (emr-el-tests:unindent-rigidly after))))
 
-(defun emr-el-tests:remove-indentation (str)
-  (->> (s-trim str) (s-split "\n") (-map 's-trim) (s-join "\n")))
+(defun emr-el-tests:unindent-rigidly (string)
+  "Given an indented STRING, unindent rigidly until
+at least one line has no indent."
+  (let* ((lines (s-lines string))
+         (nonblanks (--remove (s-blank? it) lines))
+         ;; Get the leading whitespace for each line.
+         (indents (--map (car (s-match (rx bos (+ whitespace)) it))
+                         nonblanks))
+         (min-indent (-min (--map (length it) indents)))
+         (unindented (--map
+                      (if (s-blank? it)
+                          it
+                        (substring it min-indent))
+                      lines)))
+    (s-trim (s-join "\n" unindented))))
 
 (defmacro gentest-from-docstring (fname)
   "Define an ERT test according to the spec in FNAME's docstring.
@@ -222,7 +238,7 @@ AFTER:
          (with-temp-buffer
            ;; Insert the BEFORE into the buffer.
            (delay-mode-hooks (lisp-mode))
-           (insert (s-trim before))
+           (insert before)
 
            ;; Move to position.
            (goto-char (point-min))
@@ -232,12 +248,9 @@ AFTER:
            ;; Run the command we're testing.
            (eval (read form))
 
-           ;; Remove leading indentation - the forms inside the docstrings are
-           ;; probably indented for aesthetics.
-           (let ((expected (emr-el-tests:remove-indentation after))
-                 (result (emr-el-tests:remove-indentation
-                          (buffer-substring-no-properties (point-min) (point-max)))))
-             (should (equal expected result))))))))
+           (let ((result
+                  (s-trim (buffer-substring-no-properties (point-min) (point-max)))))
+             (should (equal result after))))))))
 
 (gentest-from-docstring emr-el-inline-variable)
 (gentest-from-docstring emr-el-eval-and-replace)
