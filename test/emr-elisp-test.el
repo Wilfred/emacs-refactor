@@ -165,36 +165,28 @@
 
 ;;;; Commands
 
-(cl-defstruct emr-el-test-spec form before after)
+(defun emr-el-test-example-docstring (str)
+  "Extract the example invocation, before and after from a docstring."
+  (let (start-pos example before after)
+    (with-temp-buffer
+      (insert str)
+      (goto-char (point-min))
 
-(defun emr-el-test:example-call-from-docstring (str)
-  "Extract the function usage form from a docstring test spec."
-  (with-temp-buffer
-    (insert str)
-    (let ((beg (save-excursion (goto-char (point-min))
-                               (search-forward-regexp (rx bol "EXAMPLE:"))))
-          (end (save-excursion (goto-char (point-max))
-                               (search-backward "BEFORE:"))))
+      (search-forward-regexp (rx bol "EXAMPLE:\n"))
+      (setq start-pos (point))
 
-      (s-trim (buffer-substring beg end)))))
+      (search-forward-regexp (rx bol "BEFORE:\n"))
+      (setq example
+            (buffer-substring start-pos (line-beginning-position -1)))
 
-(defun emr-el-test-spec-from-docstring (str)
-  "Parse STR for a test spec.
-Returns a cons where the car is the BEFORE state and the cdr is
-the AFTER state."
-  ;; Extract the test usage.
-  (-if-let (form (emr-el-test:example-call-from-docstring str))
-    ;; Extract the BEFORE and AFTER states to test.
-    (cl-destructuring-bind (_ spec)
-        (s-split (rx bol "BEFORE:") str)
-      (cl-destructuring-bind (before after)
-          (s-split (rx bol "AFTER:") spec)
-        (make-emr-el-test-spec
-         :form   (read form)
-         :before (s-trim before)
-         :after  (s-trim after))))
+      (setq start-pos (point))
+      (search-forward-regexp (rx bol "AFTER:\n"))
+      (setq before
+            (buffer-substring start-pos (line-beginning-position -1)))
 
-    (error "No test form in STR.")))
+      (setq after
+            (buffer-substring (point) (point-max))))
+    (list example before after)))
 
 (defun emr-el-tests:remove-indentation (str)
   (->> (s-trim str) (s-split "\n") (-map 's-trim) (s-join "\n")))
@@ -226,31 +218,26 @@ AFTER:
        (assert (s-contains? "EXAMPLE:" docstring))
        (assert (s-contains? "BEFORE:" docstring))
        (assert (s-contains? "AFTER:" docstring))
-       (assert (s-contains? "|" docstring))
-       (let ((spec (emr-el-test-spec-from-docstring docstring)))
-         (assert (s-contains? "|" (emr-el-test-spec-before spec)))
-
+       (-let [(form before after) (emr-el-test-example-docstring docstring)]
          (with-temp-buffer
-           ;; Insert the BEFORE state from the spec into the buffer, then perform
-           ;; the refactor command.
-           (lisp-mode)
-           (save-excursion
-             (insert (s-trim (emr-el-test-spec-before spec))))
+           ;; Insert the BEFORE into the buffer.
+           (delay-mode-hooks (lisp-mode))
+           (insert (s-trim before))
+
            ;; Move to position.
+           (goto-char (point-min))
            (search-forward "|")
            (delete-char -1)
-           (eval (emr-el-test-spec-form spec))
+
+           ;; Run the command we're testing.
+           (eval (read form))
 
            ;; Remove leading indentation - the forms inside the docstrings are
            ;; probably indented for aesthetics.
-           (let ((expected (eval `(rx ,(emr-el-tests:remove-indentation
-                                        (emr-el-test-spec-after spec)))))
-                 (result (emr-el-tests:remove-indentation (buffer-string))))
-             ;; Remove text properties from result.
-             (set-text-properties 0 (length result) nil result)
-             (set-text-properties 0 (length expected) nil expected)
-
-             (should (s-matches? expected result))))))))
+           (let ((expected (emr-el-tests:remove-indentation after))
+                 (result (emr-el-tests:remove-indentation
+                          (buffer-substring-no-properties (point-min) (point-max)))))
+             (should (equal expected result))))))))
 
 (gentest-from-docstring emr-el-inline-variable)
 (gentest-from-docstring emr-el-eval-and-replace)
