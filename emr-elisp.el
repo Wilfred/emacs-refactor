@@ -974,7 +974,7 @@ bindings or body of the enclosing let expression."
                               (forward-sexp)
                               (point)))
           (goto-char (point-min))
-          ;; Replace occurence os SYM with VALUE.
+          ;; Replace occurences of SYM with VALUE.
           (while (search-forward-regexp
                   (eval `(rx symbol-start (group-n 1 ,sym) symbol-end))
                   nil t)
