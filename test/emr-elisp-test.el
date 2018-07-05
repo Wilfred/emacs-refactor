@@ -251,8 +251,7 @@ AFTER:
            ;; the refactor command.
            (lisp-mode)
            (save-excursion
-             (insert (s-trim (emr-el-test-spec-before spec)))
-             (indent-region (point-min) (point-max)))
+             (insert (s-trim (emr-el-test-spec-before spec))))
            ;; Move to position.
            (search-forward "|")
            (delete-char -1)
