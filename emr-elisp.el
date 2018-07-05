@@ -736,8 +736,9 @@ details.
 
 (defconst emr-el:scope-boundary-forms
   '(lambda defun cl-defun defun* defmacro cl-defmacro defmacro*
-    let let* save-excursion unwind-protect
-    flet cl-flet cl-flet* cl-labels labels)
+     let let* save-excursion unwind-protect
+     flet cl-flet cl-flet* cl-labels labels
+     ert-deftest)
   "A list of forms that define some kind of scope or context.
 They will bound upward searches when looking for places to insert let forms.")
 

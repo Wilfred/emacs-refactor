@@ -4,6 +4,8 @@ Elisp:
 
 * Fixed a crash on inlining functions when ido-yes-or-no-p was not
   installed.
+* Fixed an issue when extracting let bindings inside `ert-deftest`
+  forms.
 
 ## v0.3.7
 
