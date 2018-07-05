@@ -6,6 +6,7 @@ Elisp:
   installed.
 * Fixed an issue when extracting let bindings inside `ert-deftest`
   forms.
+* Improved names of refactorings to clarify what they do.
 
 ## v0.3.7
 

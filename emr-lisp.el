@@ -204,7 +204,7 @@ textual comments."
 ; ------------------
 
 (emr-declare-command 'emr-lisp-comment-form
-  :title "comment"
+  :title "comment out"
   :description "form"
   :modes '(clojure-mode lisp-mode emacs-lisp-mode scheme-mode)
   :predicate (lambda ()

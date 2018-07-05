@@ -1293,7 +1293,7 @@ popup window."
                     (emr-el:def-find-usages (list-at-point)))))
 
 (emr-declare-command 'emr-el-extract-function
-  :title "function"
+  :title "extract function"
   :description "defun"
   :modes 'emacs-lisp-mode
   :predicate (lambda ()
@@ -1301,7 +1301,7 @@ popup window."
                         (emr-el:looking-at-let-binding-symbol?)))))
 
 (emr-declare-command 'emr-el-extract-variable
-  :title "variable"
+  :title "extract variable"
   :description "defvar"
   :modes 'emacs-lisp-mode
   :predicate (lambda ()
@@ -1310,7 +1310,7 @@ popup window."
                     (thing-at-point 'defun))))
 
 (emr-declare-command 'emr-el-extract-constant
-  :title "constant"
+  :title "extract constant"
   :description "defconst"
   :modes 'emacs-lisp-mode
   :predicate (lambda ()
@@ -1318,7 +1318,7 @@ popup window."
                         (emr-el:looking-at-let-binding-symbol?)))))
 
 (emr-declare-command 'emr-el-extract-to-let
-  :title "let-bind"
+  :title "extract to let"
   :description "let"
   :modes 'emacs-lisp-mode
   :predicate (lambda ()
@@ -1361,7 +1361,7 @@ popup window."
                     (not (emr-el:autoload-directive-exsts-above-defun?)))))
 
 (emr-declare-command 'emr-el-eval-and-replace
-  :title "eval"
+  :title "eval and replace"
   :description "value"
   :modes 'emacs-lisp-mode
   :predicate (lambda ()
