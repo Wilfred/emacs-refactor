@@ -153,6 +153,21 @@
                            '(let (message)
                               (funcall message y))))))
 
+(ert-deftest emr-elisp-extract-with-autoload ()
+  "Ensure we don't move autoload cookies when extract functions."
+  (with-temp-buffer
+    (delay-mode-hooks (emacs-lisp-mode))
+
+    (insert ";;;###autoload\n(defun foo ()\n  (+ 1 2))")
+    (search-backward "+")
+
+    (emr-el-extract-function "extracted" '())
+
+    ;; Autoload cookie should still be before foo.
+    (should
+     (s-contains-p ";;;###autoload\n(defun foo"
+                   (buffer-string)))))
+
 ;;;; Inspecting forms at point
 
 (ert-deftest emr-elisp-top-level-let ()

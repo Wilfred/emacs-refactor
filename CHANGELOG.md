@@ -7,6 +7,8 @@ Elisp:
 * Fixed an issue when extracting let bindings inside `ert-deftest`
   forms.
 * Improved names of refactorings to clarify what they do.
+* Fixed an issue with extract refactorings from functions with
+  autoload cookies, where the cookie got moved.
 
 ## v0.3.7
 
