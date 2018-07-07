@@ -903,22 +903,68 @@ wrap the form with a let statement at a sensible place."
          (--reduce-from (or acc (emr-el:find-in-tree elt it))
                         nil tree))))
 
+(defun emr-el:point-sexp-index ()
+  "Return the position of point in the current sexp.
+
+For example:
+  (foo| foo) => 0
+  (foo fo|o) => 1"
+  (let ((init-pos (point))
+        (result 0)
+        sexp-start sexp-end)
+    (save-excursion
+      ;; Find the boundaries of the containing sexp.
+      (backward-up-list)
+      (setq sexp-start (point))
+
+      (forward-sexp)
+      (setq sexp-end (point))
+
+      ;; Move over the opening paren of the containing sexp.
+      (goto-char (1+ sexp-start))
+
+      ;; Move forward, counting subitems until we pass the original
+      ;; point position.
+      (while (and
+              (< (point) init-pos)
+              (< (point) sexp-end))
+        (forward-sexp)
+        (setq result (1+ result))))
+
+    ;; When we stop, we've gone past the original position, so we've
+    ;; overcounted by 1.
+    (max (1- result)
+         0)))
+
 (defun emr-el:looking-at-let-binding-symbol? ()
   "Non-nil if point is on a binding symbol in a let-binding form."
   (when (symbol-at-point)
-    (ignore-errors
-      (let ((maybe-binding-list
-             (save-excursion
-               (emr-lisp-back-to-open-round)
-               (list-at-point))))
-        (save-excursion
-          ;; Select binding list for the let expression.
-          (emr-el:goto-start-of-let-binding)
-          (let ((bindings (progn
-                            ;; Move inside let form.
-                            (forward-char 1)
-                            (emr-el:let-binding-list (list-at-point)))))
-            (equal maybe-binding-list bindings)))))))
+    (let* ((let-form
+            (save-excursion
+              (emr-el:goto-start-of-let-binding)
+              (read (current-buffer))))
+           (vars-sexp
+            (-second-item let-form))
+           (enclosing-form
+            (save-excursion
+              (ignore-errors
+                (backward-up-list 1)
+                (read (current-buffer)))))
+           (enclosing-form-2
+            (save-excursion
+              (ignore-errors
+                (backward-up-list 2)
+                (read (current-buffer))))))
+      (and let-form
+           (or
+            ;; If the immediately enclosing form is the vars form,
+            ;; then we were in a form (let (x y| z) ...).
+            (equal vars-sexp enclosing-form)
+            ;; If the next enclosing form is the vars form, we are in
+            ;; a form (let ((x| y)) ...). Ensure we're also at the
+            ;; var, not its value.
+            (and (equal vars-sexp enclosing-form-2)
+                 (zerop (emr-el:point-sexp-index))))))))
 
 (defun emr-el:let-bindings-recursively-depend? (elt bindings)
   "Non-nil if the given let bindings list has recursive dependency on ELT."

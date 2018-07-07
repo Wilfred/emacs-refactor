@@ -170,6 +170,43 @@
 
 ;;;; Inspecting forms at point
 
+(ert-deftest emr-el:looking-at-let-binding-symbol? ()
+  ;; Vars with initial values.
+  (with-temp-buffer
+    (insert "(let* ((x 1)\n       (y 2))\n  1)")
+    (goto-char (point-min))
+    (search-forward "y")
+
+    (should (emr-el:looking-at-let-binding-symbol?)))
+  ;; Vars without initial values.
+  (with-temp-buffer
+    (insert "(let* (x y)\n  1)")
+    (goto-char (point-min))
+    (search-forward "y")
+
+    (should (emr-el:looking-at-let-binding-symbol?)))
+  ;; Not looking at a symbol.
+  (with-temp-buffer
+    (insert "(let* ((x 1)\n       (y 2))\n  1)")
+    (goto-char (point-min))
+    (search-forward "2")
+
+    (should (not (emr-el:looking-at-let-binding-symbol?))))
+  ;; A symbol, but in the let body.
+  (with-temp-buffer
+    (insert "(let* ((x 1)\n       (y 2))\n  y)")
+    (goto-char (point-max))
+    (search-backward "y")
+
+    (should (not (emr-el:looking-at-let-binding-symbol?))))
+  ;; A symbol, but used as an initial value for another symbol.
+  (with-temp-buffer
+    (insert "(let* ((x 1)\n       (y z))\n  y)")
+    (goto-char (point-min))
+    (search-forward "z")
+
+    (should (not (emr-el:looking-at-let-binding-symbol?)))))
+
 (ert-deftest emr-elisp-top-level-let ()
   "elisp--a top level let is not a definition"
   (with-temp-buffer
