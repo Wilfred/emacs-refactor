@@ -978,9 +978,9 @@ For example:
   (-when-let* ((b   (--first (equal elt (emr-el:first-atom it)) bindings))
                (pos (cl-position b bindings :test 'equal)))
     (-> (-split-at (1+ pos) bindings)
-      (cl-second)
-      (-flatten)
-      (-contains? elt))))
+        (cl-second)
+        (-flatten)
+        (-contains? elt))))
 
 (cl-defun emr-el:let-binding-is-used? (symbol (_let &optional bindings &rest body))
   "Non-nil if SYMBOL is used in the body or other bindings of the given let expression."
