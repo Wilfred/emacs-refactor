@@ -57,13 +57,6 @@
            (eval `(rx "(" ,(format "%s" sym) symbol-end)))
      do (return (point)))))
 
-(defun emr-lisp-peek-back-upwards ()
-  "Return the car of the enclosing form."
-  (save-excursion
-    (when (ignore-errors (backward-up-list) t)
-      (forward-char 1)
-      (sexp-at-point))))
-
 ; ------------------
 
 (defun emr-lisp-reindent-defun ()

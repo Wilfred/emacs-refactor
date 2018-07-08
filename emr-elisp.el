@@ -744,6 +744,13 @@ details.
   "A list of forms that define some kind of scope or context.
 They will bound upward searches when looking for places to insert let forms.")
 
+(defun emr-lisp-peek-back-upwards ()
+  "Return the car of the enclosing form."
+  (save-excursion
+    (when (ignore-errors (backward-up-list) t)
+      (forward-char 1)
+      (sexp-at-point))))
+
 (defun emr-el:simplify-let-form-at-point ()
   "Tidy the let form at point.
 If it has no bindings, splice its contents into the surrounding
