@@ -9,6 +9,7 @@ Elisp:
 * Improved names of refactorings to clarify what they do.
 * Fixed an issue with extract refactorings from functions with
   autoload cookies, where the cookie got moved.
+* Fixed an issue where inlining let variables wasn't always offered.
 
 ## v0.3.7
 
