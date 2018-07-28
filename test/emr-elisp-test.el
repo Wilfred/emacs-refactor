@@ -305,6 +305,7 @@ AFTER:
              (should (equal result after))))))))
 
 (gentest-from-docstring emr-el-inline-variable)
+(gentest-from-docstring emr-el-inline-let-variable)
 (gentest-from-docstring emr-el-eval-and-replace)
 (gentest-from-docstring emr-el-extract-function)
 (gentest-from-docstring emr-el-extract-constant)

@@ -1010,7 +1010,23 @@ bindings or body of the enclosing let expression."
 
 ;;;###autoload
 (defun emr-el-inline-let-variable ()
-  "Inline the let-bound variable at point."
+  "Inline the let-bound variable at point.
+
+EXAMPLE:
+
+  (emr-el-inline-let-variable)
+
+BEFORE:
+
+  (let ((x 1)
+        (y| 2))
+    (+ x y))
+
+AFTER:
+
+  (let ((x 1))
+    (+ x 2))
+"
   (interactive "*")
   (cl-assert (emr-el:looking-at-let-binding-symbol?))
   (save-excursion
