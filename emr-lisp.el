@@ -54,7 +54,7 @@
     (cl-loop
      while (ignore-errors (backward-up-list) t)
      when (thing-at-point-looking-at
-           (eval `(rx "(" ,(format "%s" sym) symbol-end)))
+           (rx-to-string `(seq "(" ,(symbol-name sym) symbol-end)))
      do (return (point)))))
 
 ; ------------------
@@ -121,7 +121,7 @@ BODY is a list of forms to execute after extracting the sexp near point."
            (unless (bobp)
              (or (emr-blank-line?)
                  (emr-line-matches?
-                  (eval `(rx (* space) ,comment-start))))))
+                  (rx-to-string `(seq (* space) ,comment-start))))))
     (forward-line -1)))
 
 (defun emr-lisp:end-of-comment-block ()
@@ -133,7 +133,7 @@ ignoring blank lines."
         (unless (eobp)
           (or (emr-blank-line?)
               (emr-line-matches?
-               (eval `(rx (* space) ,comment-start))))))
+               (rx-to-string `(seq (* space) ,comment-start))))))
     (forward-line)))
 
 ;;;###autoload
@@ -164,10 +164,11 @@ textual comments."
                 ;; 3. Restrict the starting position by finding the first
                 ;; opening delimiter in the comment block.
                 (let ((list-start
-                       (eval `(rx
-                               (* space) ,comment-start (* space)
-                               (* (or "'" "`" "#"))
-                               (or "[" "{" "(" "\"")))))
+                       (rx-to-string
+                        `(seq
+                          (* space) ,comment-start (* space)
+                          (* (or "'" "`" "#"))
+                          (or "[" "{" "(" "\"")))))
                   (unless (emr-line-matches? list-start)
                     (search-forward-regexp list-start end nil)))
                 (line-beginning-position)))

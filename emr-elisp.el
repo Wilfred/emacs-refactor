@@ -255,9 +255,11 @@ Returns a list of lines where changes were made."
   (save-excursion
     (goto-char (point-min))
     (save-match-data
-      (let ((match-sym (eval `(rx (not (any "(")) (* space)
-                                  (group symbol-start ,(symbol-name sym)
-                                         symbol-end))))
+      (let ((match-sym
+             (rx-to-string
+              `(seq (not (any "(")) (* space)
+                    (group symbol-start ,(symbol-name sym)
+                           symbol-end))))
             (lines))
         ;; Check for "(" since we don't want to replace function calls.
         (while (and (search-forward-regexp match-sym nil t)
@@ -596,7 +598,7 @@ relying on indentation."
    (cl-loop
     while (ignore-errors (backward-up-list) t)
     do (when (thing-at-point-looking-at
-              (eval `(rx "(" (or ,@(-map 'symbol-name emr-el-definition-macro-names)))))
+              (rx-to-string `(seq "(" (or ,@(-map 'symbol-name emr-el-definition-macro-names)))))
          (return (point))))
    ;; Fall back to using indentation.
    (ignore-errors
@@ -1032,7 +1034,7 @@ bindings or body of the enclosing let expression."
           (goto-char (point-min))
           ;; Replace occurences of SYM with VALUE.
           (while (search-forward-regexp
-                  (eval `(rx symbol-start (group-n 1 ,sym) symbol-end))
+                  (rx-to-string `(seq symbol-start (group-n 1 ,sym) symbol-end))
                   nil t)
             (unless (or (emr-looking-at-string?)
                         (emr-looking-at-comment?))
@@ -1154,13 +1156,13 @@ Replaces all usages in the current buffer."
             ;; the car of a list, or indirectly using funcall/apply. Handle
             ;; all these cases.
             (while (search-forward-regexp
-                    (eval `(rx "("
-                               ;; Optional use of apply/funcall.
-                               (? (or "apply" "funcall")
-                                  (+ (any space "\n" "\t"))
-                                  "'")
-                               ;; Usage of name.
-                               ,fname symbol-end))
+                    (rx-to-string `(seq "("
+                                        ;; Optional use of apply/funcall.
+                                        (? (or "apply" "funcall")
+                                           (+ (any space "\n" "\t"))
+                                           "'")
+                                        ;; Usage of name.
+                                        ,fname symbol-end))
                     nil t)
               ;; Move to start of the usage form.
               (search-backward "(")
@@ -1199,7 +1201,7 @@ the cdr is the usage form."
       (save-excursion
         (goto-char (point-min))
         (while (search-forward-regexp
-                (eval `(rx symbol-start ,(format "%s" sym) symbol-end))
+                (rx-to-string `(seq symbol-start ,(symbol-name sym) symbol-end))
                 nil t)
           (-when-let (form (list-at-point))
             (unless (equal definition-form form)
@@ -1233,8 +1235,8 @@ The result is a list of `emr-el-ref'."
       ;; This will search the buffer for known defun forms. As a special
       ;; cases, forms with a preceding autoload directive are ignored.
       (while (search-forward-regexp
-              (eval `(rx "(" (or ,@(-map 'symbol-name emr-el-definition-macro-names))
-                         symbol-end))
+              (rx-to-string `(seq "(" (or ,@(-map 'symbol-name emr-el-definition-macro-names))
+                                  symbol-end))
               nil t)
         (unless (or (emr-looking-at-string?)
                     (emr-looking-at-comment?)
