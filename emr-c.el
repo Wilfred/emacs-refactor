@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; Refactoring commands for C and C-Based modes..
+;; Refactoring commands for C and C-Based modes.
 
 ;;; Code:
 
