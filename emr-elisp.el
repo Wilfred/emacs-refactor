@@ -730,14 +730,6 @@ details.
     (--map (or (car-safe it) it))
     (-remove 'null)))
 
-(cl-defun emr-el:let-binding-list ((_let &optional bindings &rest body))
-  "Return the bindings list in the given let form."
-  bindings)
-
-(cl-defun emr-el:let-body ((_let &optional _bindings &rest body))
-  "Return the body forms in the given let form."
-  body)
-
 (defconst emr-el:scope-boundary-forms
   '(lambda defun cl-defun defun* defmacro cl-defmacro defmacro*
      let let* save-excursion unwind-protect
@@ -761,8 +753,7 @@ form or replace with `progn'."
     (emr-el:goto-start-of-let-binding)
     ;; Move into list.
     (forward-char 1)
-    (let ((bindings (emr-el:let-binding-list (list-at-point)))
-          (body     (emr-el:let-body (list-at-point))))
+    (-let (((_let bindings . body) (list-at-point)))
       ;; Move to position after bindings list.
       (forward-list 1)
       (cond
