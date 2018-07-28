@@ -835,6 +835,7 @@ the innermost let."
           (emr-lisp-find-upwards '-let*))))
     (-max (-non-nil positions))))
 
+;; TODO: the example is redundant here.
 (defun emr-el-toggle-let* ()
   "Toggle between let and let* in the enclosing let form.
 
@@ -1300,6 +1301,7 @@ The result is a list of `emr-el-ref'."
   (set (make-local-variable 'compilation-disable-input) t)
   (set (make-local-variable 'compilation-error-face) compilation-info-face))
 
+;; TODO: This is fooled by recursive functions.
 ;;;###autoload
 (defun emr-el-find-unused-definitions ()
   "Search the buffer for functions and variables that have no usages.
