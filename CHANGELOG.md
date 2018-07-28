@@ -2,6 +2,8 @@
 
 Elisp:
 
+* Extracting let bindings is now much more generic and produces
+  correct, equivalent code in many more circumstances.
 * Fixed a crash on inlining functions when ido-yes-or-no-p was not
   installed.
 * Fixed an issue when extracting let bindings inside `ert-deftest`
@@ -11,6 +13,9 @@ Elisp:
   autoload cookies, where the cookie got moved.
 * Fixed an issue where inlining let variables wasn't always offered.
 * Added a new refactoring for toggling between `let` and `let*`.
+
+Redshank is no longer a dependency: it was only used for extracting
+let bindings, and it was unmaintained.
 
 ## v0.3.7
 

@@ -215,6 +215,51 @@
     (search-forward "message")
     (should (not (emr-el:looking-at-definition?)))))
 
+(ert-deftest emr-el-extract-to-let--body ()
+  "Extracting a variable from the body."
+  (with-temp-buffer
+    (insert "(let ((x 1))\n  (+ 1 2))")
+    (search-backward "(+")
+    (emr-el-extract-to-let 'y)
+
+    (let ((result-form (read (buffer-string))))
+      (should
+       (equal
+        result-form
+        '(let ((x 1)
+               (y (+ 1 2)))
+           y))))))
+
+(ert-deftest emr-el-extract-to-let--let-var ()
+  "Extracting a variable from another let-bound variable."
+  (with-temp-buffer
+    (insert "(let ((x (+ 1 2)))\n  x)")
+    (search-backward "(+")
+    (emr-el-extract-to-let 'z)
+
+    (let ((result-form (read (buffer-string))))
+      (should
+       (equal
+        result-form
+        '(let* ((z (+ 1 2))
+                (x z))
+           x))))))
+
+(ert-deftest emr-el-extract-to-let--no-let ()
+  "Extracting a let variable when we don't a let form yet."
+  (with-temp-buffer
+    (insert "(defun foo ()\n  (+ 1 2))")
+    (search-backward "(+")
+    (emr-el-extract-to-let 'x)
+
+    (let ((result-form (read (buffer-string))))
+      (should
+       (equal
+        result-form
+        '(defun foo ()
+           (let ((x (+ 1 2)))
+             x)))))))
+
 ;;;; Commands
 
 (defun emr-el-test-example-docstring (str)

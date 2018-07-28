@@ -33,7 +33,6 @@
 (require 'emr)
 (require 'emr-lisp)
 (autoload 'define-compilation-mode "compile")
-(autoload 'redshank-letify-form-up "redshank")
 (autoload 'paredit-splice-sexp-killing-backward "paredit")
 
 (defcustom emr-el-definition-macro-names
@@ -60,14 +59,6 @@ stdin. Bad."
         (print-escape-newlines t)
         )
     (prin1-to-string form)))
-
-;;;; Compatibility
-
-(eval-and-compile
-  (unless (fboundp 'backward-down-list)
-    (defun backward-down-list (&optional arg)
-      (interactive "^p")
-      (down-list (- (or arg 1))))))
 
 ;;;; Navigation commands
 
@@ -819,10 +810,19 @@ form or replace with `progn'."
 (defun emr-el:goto-containing-body-form ()
   "Search upwards for the first function or macro declaration enclosing point.
 Move to that body form that encloses point."
-  (cl-loop
-   while (ignore-errors (backward-up-list) t)
-   do (when (-contains? emr-el:scope-boundary-forms (emr-lisp-peek-back-upwards))
-        (return (point)))))
+  ;; Ensure we're at the start of the current symbol.
+  (when (looking-at (rx symbol-end))
+    (backward-sexp))
+  (catch 'found
+    (while t
+      (when (-contains-p emr-el:scope-boundary-forms (emr-lisp-peek-back-upwards))
+        (throw 'found (point)))
+      (condition-case nil
+          (backward-up-list)
+        (error
+         ;; Outer sexp, can't go up any further. We didn't find any
+         ;; body form.
+         (throw 'found nil))))))
 
 (defun emr-el:let-start-pos ()
   "Search upward form point to find the start position of
@@ -833,7 +833,9 @@ the innermost let."
           (emr-lisp-find-upwards 'let*)
           (emr-lisp-find-upwards '-let)
           (emr-lisp-find-upwards '-let*))))
-    (-max (-non-nil positions))))
+    (setq positions (-non-nil positions))
+    (when positions
+      (-max positions))))
 
 ;; TODO: the example is redundant here.
 (defun emr-el-toggle-let* ()
@@ -864,16 +866,61 @@ AFTER:
       (insert "*"))))
 
 (defun emr-el:wrap-body-form-at-point-with-let ()
-  "Search upward for an enclosing LET statement. If one is not found,
-wrap the form with a let statement at a sensible place."
+  "Wrap the form with a let statement at a sensible place."
   (emr-el:goto-containing-body-form)
-  ;; Wrap with empty let statement.
-  (insert "(")
-  (save-excursion
+  (let ((start-pos (point)))
     (forward-sexp)
-    (insert ")"))
-  (insert "let ()\n  ")
+    (insert ")")
+    (goto-char start-pos))
+  (insert "(let ()\n  ")
   (emr-lisp-reindent-defun))
+
+;; https://github.com/Wilfred/emacs-refactor/issues/35
+(defun emr-el:add-let-binding (var val)
+  "Add a binding for symbol VAR assigned to VAL to the
+innermost let form at point.
+
+Ensures that VAR is inserted before point.
+
+VAL should be a string of elisp source code."
+  (-let* ((let-form-start (emr-el:let-start-pos))
+          ;; Read the whole let form.
+          ((let-keyword let-vars . _)
+           (save-excursion
+             (goto-char let-form-start)
+             (read (current-buffer))))
+          (vars-end
+           (save-excursion
+             (goto-char let-form-start)
+             ;; Step over opening paren.
+             (forward-char)
+             ;; Step over let keyword.
+             (forward-sexp)
+             ;; Step over the vars.
+             (forward-sexp)
+             (point))))
+    (save-excursion
+      (if (> (point) vars-end)
+          ;; We're extracting a let binding from the body, so we'll insert
+          ;; this new var after all the existing vars.
+          (progn
+            (goto-char vars-end)
+            (backward-char))
+        ;; We're extracting a new let binding from a value used for an
+        ;; existing let binding, so we'll insert before the current var.
+        (goto-char (nth 1 (syntax-ppss)))
+        ;; Move to the end of the previous sexp, if present.
+        (if (> (length let-vars) 1)
+            (progn
+              (backward-sexp)
+              (forward-sexp)))
+        ;; Convert let to let* if we only had a single binding.
+        (when (and (= (length let-vars) 1)
+                   (eq let-keyword 'let))
+          (emr-el-toggle-let*)))
+
+      (newline-and-indent)
+      (insert (format "(%s %s)" var val)))))
 
 ;;;###autoload
 (defun emr-el-extract-to-let (symbol)
@@ -885,37 +932,37 @@ wrap the form with a let statement at a sensible place."
   the current context (e.g. the enclosing `defun' or `lambda' form)."
   (interactive "*SVariable name: ")
   (atomic-change-group
-    (save-excursion
-      (let (did-wrap-form?)
+   (let (val-start-pos
+         val-end-pos
+         val)
 
-        ;; Wrap with a let-form if one does not exist.
-        ;;
-        ;; Redshank provides its own wrapping logic, but it wraps only the
-        ;; sexp it's extracting. Instead, we want the let form to be as close to the
-        ;; containing defun as possible.
-        (save-excursion
-          (unless (emr-el:let-start-pos)
-            (emr-el:wrap-body-form-at-point-with-let)
-            (setq did-wrap-form? t)))
+     ;; Get the position of the expression that will be the value
+     ;; for our extrcted var.
+     (if (use-region-p)
+         (progn
+           (setq val-start-pos (region-start))
+           (setq val-end-pos (region-end))
+           (deactivate-mark))
+       (save-excursion
+         (emr-lisp-back-to-open-round)
+         (setq val-start-pos (point))
+         (setq val-end-pos (progn (forward-sexp) (point)))))
 
-        ;; Extract the form.
-        ;;
-        ;; Redshank extracts by killing forward, so start from the beginning of
-        ;; the list or region.
-        (if (region-active-p)
-            (goto-char (region-beginning))
-          (emr-lisp-back-to-open-round))
-        (redshank-letify-form-up (symbol-name symbol))
+     (setq val
+           (buffer-substring-no-properties val-start-pos val-end-pos))
 
-        ;; Tidy let binding after insertion.
-        ;;
-        ;; Redshank leaves an extra newline when inserting into an empty
-        ;; let-form. Find that let-form and remove the extra newline.
-        (when did-wrap-form?
-          (goto-char (emr-el:let-start-pos))
-          (end-of-line)
-          (forward-char)
-          (join-line))))))
+     ;; Replace the expression with our new variable.
+     (goto-char val-start-pos)
+     (delete-region val-start-pos val-end-pos)
+     (insert (symbol-name symbol))
+
+     ;; If we're not inside a let, add one.
+     (save-excursion
+       (unless (emr-el:let-start-pos)
+         (emr-el:wrap-body-form-at-point-with-let)))
+
+     ;; Insert the new var in the let form.
+     (emr-el:add-let-binding symbol val))))
 
 ; ------------------
 
