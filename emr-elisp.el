@@ -753,7 +753,7 @@ form or replace with `progn'."
     (emr-el:goto-start-of-let-binding)
     ;; Move into list.
     (forward-char 1)
-    (-let (((_let bindings . body) (list-at-point)))
+    (-let (((let-keyword bindings . body) (list-at-point)))
       ;; Move to position after bindings list.
       (forward-list 1)
       (cond
@@ -773,12 +773,8 @@ form or replace with `progn'."
 
        ;; Replace `let*' with `let' if there's only a single binding form.
        ((equal 1 (length bindings))
-        (save-excursion
-          (emr-el:goto-start-of-let-binding)
-          (forward-char 1)
-          (when (search-forward-regexp (rx "let*")
-                                       (save-excursion (forward-sexp) (point)) t)
-            (replace-match "let"))))
+        (when (eq let-keyword 'let*)
+          (emr-el-toggle-let*)))
 
        ;; Otherwise replace `let' with `progn'.
        ((null bindings)
@@ -838,6 +834,33 @@ the innermost let."
           (emr-lisp-find-upwards '-let)
           (emr-lisp-find-upwards '-let*))))
     (-max (-non-nil positions))))
+
+(defun emr-el-toggle-let* ()
+  "Toggle between let and let* in the enclosing let form.
+
+EXAMPLE:
+
+  (emr-el-toggle-let*)
+
+BEFORE:
+
+  (let* ((x 1))
+    (+| x 1))
+
+AFTER:
+
+  (let ((x 1))
+    (+ x 1))
+"
+  (interactive)
+  (save-excursion
+    (goto-char (emr-el:let-start-pos))
+    (forward-char 1)
+    (forward-sexp)
+    ;; TODO: reindent afterwards
+    (if (eq (char-before (point)) ?*)
+        (delete-char -1)
+      (insert "*"))))
 
 (defun emr-el:wrap-body-form-at-point-with-let ()
   "Search upward for an enclosing LET statement. If one is not found,
@@ -1333,6 +1356,11 @@ popup window."
 ; ------------------
 
 ;;;; EMR declarations
+
+(emr-declare-command 'emr-el-toggle-let*
+  :title "toggle let/let*"
+  :modes 'emacs-lisp-mode
+  :predicate #'emr-el:let-start-pos)
 
 (emr-declare-command 'emr-el-implement-function
   :title "implement function"

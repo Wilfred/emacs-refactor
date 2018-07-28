@@ -1,4 +1,4 @@
-## v0.3.8
+## v0.3.8 (unreleased)
 
 Elisp:
 
@@ -10,6 +10,7 @@ Elisp:
 * Fixed an issue with extract refactorings from functions with
   autoload cookies, where the cookie got moved.
 * Fixed an issue where inlining let variables wasn't always offered.
+* Added a new refactoring for toggling between `let` and `let*`.
 
 ## v0.3.7
 
