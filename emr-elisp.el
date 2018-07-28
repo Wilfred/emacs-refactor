@@ -828,6 +828,17 @@ Move to that body form that encloses point."
    do (when (-contains? emr-el:scope-boundary-forms (emr-lisp-peek-back-upwards))
         (return (point)))))
 
+(defun emr-el:let-start-pos ()
+  "Search upward form point to find the start position of
+the innermost let."
+  (let ((positions
+         (list
+          (emr-lisp-find-upwards 'let)
+          (emr-lisp-find-upwards 'let*)
+          (emr-lisp-find-upwards '-let)
+          (emr-lisp-find-upwards '-let*))))
+    (-max (-non-nil positions))))
+
 (defun emr-el:wrap-body-form-at-point-with-let ()
   "Search upward for an enclosing LET statement. If one is not found,
 wrap the form with a let statement at a sensible place."
@@ -859,8 +870,7 @@ wrap the form with a let statement at a sensible place."
         ;; sexp it's extracting. Instead, we want the let form to be as close to the
         ;; containing defun as possible.
         (save-excursion
-          (unless (or (emr-lisp-find-upwards 'let)
-                      (emr-lisp-find-upwards 'let*))
+          (unless (emr-el:let-start-pos)
             (emr-el:wrap-body-form-at-point-with-let)
             (setq did-wrap-form? t)))
 
@@ -878,7 +888,7 @@ wrap the form with a let statement at a sensible place."
         ;; Redshank leaves an extra newline when inserting into an empty
         ;; let-form. Find that let-form and remove the extra newline.
         (when did-wrap-form?
-          (goto-char (emr-lisp-find-upwards 'let))
+          (goto-char (emr-el:let-start-pos))
           (end-of-line)
           (forward-char)
           (join-line))))))
@@ -888,13 +898,10 @@ wrap the form with a let statement at a sensible place."
 (defun emr-el:goto-start-of-let-binding ()
   "Move to the opening paren of the let-expression at point.
   Otherwise move to the previous one in the current top level form."
-  (cl-flet ((max-safe (&rest ns) (apply 'max (--map (or it 0) ns))))
-
-    (-when-let (pos (max-safe (emr-lisp-find-upwards 'let)
-                              (emr-lisp-find-upwards 'let*)))
-      (when (< 0 pos)
-        (goto-char pos)
-        (point)))))
+  (-when-let (pos (emr-el:let-start-pos))
+    (when (< 0 pos)
+      (goto-char pos)
+      (point))))
 
 (defun emr-el:find-in-tree (elt tree)
   "Return non-nil if ELT is in TREE."
