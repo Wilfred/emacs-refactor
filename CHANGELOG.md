@@ -17,6 +17,15 @@ Elisp:
 Redshank is no longer a dependency: it was only used for extracting
 let bindings, and it was unmaintained.
 
+Lisp:
+
+* Remove comment/uncomment refactorings. These cluttered the refactor
+  menu, as they were offered in all situations. There are many tools
+  for commenting already, such as: `comment-or-uncomment-region`,
+  `paredit-comment-dwim`, `comment-dwim`, `lispy-comment`.
+
+Please file a bug if you miss this feature.
+
 ## v0.3.7
 
 General:
