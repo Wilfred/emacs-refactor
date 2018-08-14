@@ -46,6 +46,26 @@
     '(arg1 arg2)
     (emr-el:infer-arglist-for-usage '(hello 9 8)))))
 
+(ert-deftest emr-el:looking-at-var-p ()
+  (with-temp-buffer
+    (emacs-lisp-mode)
+    (insert "foo")
+
+    (goto-char (point-min))
+    (should (emr-el:looking-at-var-p))
+
+    (goto-char (point-max))
+    (should (emr-el:looking-at-var-p)))
+
+  (dolist (src '("()" "[]" "123" "1.1" "-1" "1e2" "?x" "\"foo\""
+                 ";; foo" ":foo" "'foo"))
+    (with-temp-buffer
+      (emacs-lisp-mode)
+      (insert src)
+      (goto-char (point-min))
+
+      (should (not (emr-el:looking-at-var-p))))))
+
 ;;;; Bound variables
 
 (ert-deftest emr-elisp-free-vars-let ()

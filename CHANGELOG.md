@@ -1,5 +1,10 @@
 ## v0.4 (unreleased)
 
+elisp:
+
+* Only offer 'rename in function' when point is on symbols that are
+  bound in this function.
+
 iedit:
 
 * Fixed an issue with 'rename globally' where it only renamed the

@@ -1530,6 +1530,43 @@ popup window."
                     (not (emr-el:autoload-directive-exsts-above-defun?))
                     (not (emr-el:def-find-usages (list-at-point))))))
 
+
+(defun emr-el:looking-at-var-p ()
+  "Is point looking at a symbol for a variable?"
+  (save-excursion
+    (-let (((_ _ _ in-string in-comment . _) (syntax-ppss))
+           (sym-bounds (bounds-of-thing-at-point 'symbol))
+           (sexp nil))
+      (when (and
+             (not in-string)
+             (not in-comment)
+             sym-bounds)
+        (goto-char (car sym-bounds))
+        (setq sexp (read (current-buffer)))
+
+        (and
+         (symbolp sexp)
+         (not (null sexp))
+         (not (keywordp sexp)))))))
+
+(defun emr-el:looking-at-local-var-p ()
+  "Is point looking at a symbol for a locally bound variable?"
+  (when (emr-el:looking-at-var-p)
+    (let ((sym (symbol-at-point))
+          form)
+      (save-excursion
+        (emr-el:beginning-of-defun)
+        (setq form (read (current-buffer)))
+        (memq sym (emr-el:bound-variables form))))))
+
+(emr-declare-command 'emr-iedit-in-function
+  :title "rename (in function)"
+  :description "in function"
+  :modes 'emacs-lisp-mode
+  :predicate (lambda ()
+               (and (not (iedit-region-active))
+                    (emr-el:looking-at-local-var-p))))
+
 ;;;; Setup
 
 (defun emr-el:show-menu ()

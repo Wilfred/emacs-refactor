@@ -52,7 +52,8 @@
   :description "in function"
   :modes '(prog-mode)
   :predicate (lambda ()
-               (and (not (iedit-region-active))
+               (and (not (eq major-mode 'emacs-lisp-mode))
+                    (not (iedit-region-active))
                     (emr-iedit:looking-at-iterator?)
                     (which-function))))
 
