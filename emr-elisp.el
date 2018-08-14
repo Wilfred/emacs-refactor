@@ -102,34 +102,33 @@ stdin. Bad."
   ;; Form traversal can recur infinitely in some quotation scenarios. In
   ;; such cases it is not a problem to bail and unwind the stack.
   (ignore-errors
-   (-uniq
-    (let* (
-           ;; Handle errors in expansion. Expansion errors are common with syntax
-           ;; quotes, for example.
-           (form (or (ignore-errors (macroexpand-all form))
-                     (ignore-errors (macroexpand form))
-                     form))
+    (-uniq
+     (let* (
+            ;; Handle errors in expansion. Expansion errors are common with syntax
+            ;; quotes, for example.
+            (form (or (ignore-errors (macroexpand-all form))
+                      (ignore-errors (macroexpand form))
+                      form))
 
-           (hd (car-safe form))
-           )
-      (cond
-       ((equal 'lambda hd) (emr-el:bindings-in-lambda form))
-       ((equal 'let hd)  (emr-el:bindings-in-let form))
-       ((equal 'let* hd) (emr-el:bindings-in-let form))
-       ((equal 'defalias hd) (emr-el:bindings-in-defalias form))
-       ;; `function' is the quotation form for function objects.
-       ;; Do not bail if the next item is not a lambda.
-       ((equal 'function hd) (condition-case _err
-                                 (-mapcat 'emr-el:bindings-in-lambda (cdr form))
-                               (error
-                                (-mapcat 'emr-el:bound-variables (cdr form)))))
-       ;; FORM is probably a value if we're not looking at a list, and can be
-       ;; ignored.
-       ((listp form)
-        (->> form
-          ;; Handle improper lists.
-          (list-utils-make-proper-copy)
-          (-mapcat 'emr-el:bound-variables))))))))
+            (hd (car-safe form)))
+       (cond
+        ((equal 'lambda hd) (emr-el:bindings-in-lambda form))
+        ((equal 'let hd)  (emr-el:bindings-in-let form))
+        ((equal 'let* hd) (emr-el:bindings-in-let form))
+        ((equal 'defalias hd) (emr-el:bindings-in-defalias form))
+        ;; `function' is the quotation form for function objects.
+        ;; Do not bail if the next item is not a lambda.
+        ((equal 'function hd) (condition-case _err
+                                  (-mapcat 'emr-el:bindings-in-lambda (cdr form))
+                                (error
+                                 (-mapcat 'emr-el:bound-variables (cdr form)))))
+        ;; FORM is probably a value if we're not looking at a list, and can be
+        ;; ignored.
+        ((listp form)
+         (->> form
+              ;; Handle improper lists.
+              (list-utils-make-proper-copy)
+              (-mapcat 'emr-el:bound-variables))))))))
 
 (defun emr-el:unquoted-symbols (form)
   "Return a list of every unquoted symbol in FORM."
