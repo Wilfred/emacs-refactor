@@ -324,7 +324,8 @@ AFTER:
 
 "
   `(ert-deftest ,fname ()
-     (let ((docstring (documentation ',fname)))
+     (let* ((text-quoting-style 'straight)
+            (docstring (documentation ',fname)))
 
        ;; Basic sanity checks before running.
        (assert (not (s-blank? docstring)))

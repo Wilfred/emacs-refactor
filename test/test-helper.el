@@ -29,17 +29,12 @@
 (require 'ert)
 (require 'f)
 
-(let ((helpful-dir (f-parent (f-dirname (f-this-file)))))
-  (add-to-list 'load-path helpful-dir))
+(let ((emr-dir (f-parent (f-dirname (f-this-file)))))
+  (add-to-list 'load-path emr-dir))
 
 (require 'undercover)
 (undercover "emr*.el"
 	    (:exclude "*-test.el")
 	    (:report-file "/tmp/undercover-report.json"))
-
-;; FIXME: this is an ugly hack. Tests fail in 25.1 without this.  When
-;; we read the docstring, Emacs converts ' to ` by default and
-;; suddenly our examples don't contain valid elisp.
-(setq text-quoting-style 'straight)
 
 ;;; test-helper.el ends here
