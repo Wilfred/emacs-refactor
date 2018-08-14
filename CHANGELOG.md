@@ -1,6 +1,6 @@
 ## v0.4 (unreleased)
 
-No changes yet.
+EMR no longer modifies iedit-mode-map.
 
 ## v0.3.8
 

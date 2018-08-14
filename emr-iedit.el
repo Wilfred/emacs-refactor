@@ -64,8 +64,6 @@
                (and (not (iedit-region-active))
                     (emr-iedit:looking-at-iterator?))))
 
-(define-key iedit-mode-keymap (kbd "C-c C-c") 'iedit-mode)
-
 (provide 'emr-iedit)
 
 ;; Local Variables:
