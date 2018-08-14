@@ -1,6 +1,12 @@
 ## v0.4 (unreleased)
 
-EMR no longer modifies iedit-mode-map.
+iedit:
+
+* Fixed an issue with 'rename globally' where it only renamed the
+  current instance of a symbol.
+* Changed 'rename globally' to 'rename in file' to reflect what it
+  actually does.
+* EMR no longer modifies iedit-mode-map.
 
 ## v0.3.8
 

@@ -39,7 +39,7 @@
 (defun emr-iedit-global ()
   "Rename a variable appears in current buffer.."
   (interactive)
-  (iedit-mode t))
+  (iedit-mode))
 
 (defun emr-iedit-in-function ()
   "Rename variable appears in current function."
@@ -58,7 +58,7 @@
 
 (emr-declare-command 'emr-iedit-global
   :title "rename"
-  :description "globally"
+  :description "in file"
   :modes '(prog-mode)
   :predicate (lambda ()
                (and (not (iedit-region-active))
