@@ -1493,7 +1493,7 @@ popup window."
                         (macrop (symbol-at-point))))))
 
 (emr-declare-command 'emr-el-insert-autoload-directive
-  :title "autoload"
+  :title "autoload cookie"
   :description "directive"
   :modes 'emacs-lisp-mode
   :predicate (lambda ()
