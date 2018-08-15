@@ -27,6 +27,7 @@
 (require 'dash)
 (require 'thingatpt)
 (require 'which-func)
+(require 'emr-elisp)
 
 (require 'iedit)
 
@@ -48,14 +49,16 @@
 
 
 (emr-declare-command 'emr-iedit-in-function
-  :title "rename (in function)"
+  :title "rename"
   :description "in function"
   :modes '(prog-mode)
   :predicate (lambda ()
-               (and (not (eq major-mode 'emacs-lisp-mode))
-                    (not (iedit-region-active))
-                    (emr-iedit:looking-at-iterator?)
-                    (which-function))))
+               (and (not (iedit-region-active))
+                    (if (eq major-mode 'emacs-lisp-mode)
+                        (emr-el:looking-at-local-var-p)
+                      (and
+                       (emr-iedit:looking-at-iterator?)
+                       (which-function))))))
 
 (emr-declare-command 'emr-iedit-global
   :title "rename"
@@ -63,7 +66,11 @@
   :modes '(prog-mode)
   :predicate (lambda ()
                (and (not (iedit-region-active))
-                    (emr-iedit:looking-at-iterator?))))
+                    (if (eq major-mode 'emacs-lisp-mode)
+                        (and
+                         (emr-el:looking-at-symbol-p)
+                         (not (emr-el:looking-at-local-var-p)))
+                      (emr-iedit:looking-at-iterator?)))))
 
 (provide 'emr-iedit)
 

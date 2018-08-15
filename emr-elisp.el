@@ -1526,8 +1526,8 @@ popup window."
                     (not (emr-el:def-find-usages (list-at-point))))))
 
 
-(defun emr-el:looking-at-var-p ()
-  "Is point looking at a symbol for a variable?"
+(defun emr-el:looking-at-symbol-p ()
+  "Is point looking at an unquoted symbol?"
   (save-excursion
     (-let (((_ _ _ in-string in-comment . _) (syntax-ppss))
            (sym-bounds (bounds-of-thing-at-point 'symbol))
@@ -1546,21 +1546,13 @@ popup window."
 
 (defun emr-el:looking-at-local-var-p ()
   "Is point looking at a symbol for a locally bound variable?"
-  (when (emr-el:looking-at-var-p)
+  (when (emr-el:looking-at-symbol-p)
     (let ((sym (symbol-at-point))
           form)
       (save-excursion
         (emr-el:beginning-of-defun)
         (setq form (read (current-buffer)))
         (memq sym (emr-el:bound-variables form))))))
-
-(emr-declare-command 'emr-iedit-in-function
-  :title "rename (in function)"
-  :description "in function"
-  :modes 'emacs-lisp-mode
-  :predicate (lambda ()
-               (and (not (iedit-region-active))
-                    (emr-el:looking-at-local-var-p))))
 
 ;;;; Setup
 

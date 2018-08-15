@@ -2,8 +2,11 @@
 
 elisp:
 
+* Only offer one of 'rename in function' and 'rename in file', as
+  appropriate.
 * Only offer 'rename in function' when point is on symbols that are
   bound in this function.
+* Don't offer to rename special forms.
 
 iedit:
 
