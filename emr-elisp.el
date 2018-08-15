@@ -1482,15 +1482,21 @@ popup window."
                     (emr-el:let-bound-var-at-point-has-usages?))))
 
 (emr-declare-command 'emr-el-extract-autoload
-  :title "autoload"
+  :title "add autoload"
   :description "autoload"
   :modes 'emacs-lisp-mode
   :predicate (lambda ()
-               (and (not (emr-el:autoload-exists? (symbol-at-point) (buffer-string)))
-                    (not (emr-el:looking-at-definition?))
-                    (not (emr-el:variable-definition? (list-at-point)))
-                    (or (functionp (symbol-at-point))
-                        (macrop (symbol-at-point))))))
+               (let ((sym (symbol-at-point)))
+                 (and (not (emr-el:autoload-exists? sym (buffer-string)))
+                      (not (emr-el:looking-at-definition?))
+                      (not (emr-el:variable-definition? (list-at-point)))
+                      (or (functionp sym)
+                          (macrop sym))
+                      ;; Don't offer autoload if this function is
+                      ;; defined in the current file.
+                      (not (equal
+                            (cdr-safe (find-function-library sym))
+                            (buffer-file-name)))))))
 
 (emr-declare-command 'emr-el-insert-autoload-directive
   :title "autoload cookie"

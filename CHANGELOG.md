@@ -2,6 +2,10 @@
 
 elisp:
 
+* 'autoload' refactorings have been renamed to 'add autoload' and
+  'autoload cookie' for clarity.
+* 'add autoload' is no longer pointlessly offered for functions
+  defined in the current file.
 * Only offer one of 'rename in function' and 'rename in file', as
   appropriate.
 * Only offer 'rename in function' when point is on symbols that are
