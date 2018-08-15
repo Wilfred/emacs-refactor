@@ -185,11 +185,6 @@ CONTEXT is the top level form that encloses FORM."
 
 ;;;; Definition site tests
 
-(defun emr-el:macro-boundp (symbol)
-  "Test whether SYMBOL is bound as a macro."
-  (and (fboundp symbol)
-       (eq (car (symbol-function symbol)) 'macro)))
-
 (defun emr-el:macro-definition? (form)
   "Return t if FORM expands to a macro definition."
   (ignore-errors
@@ -1495,7 +1490,7 @@ popup window."
                     (not (emr-el:looking-at-definition?))
                     (not (emr-el:variable-definition? (list-at-point)))
                     (or (functionp (symbol-at-point))
-                        (emr-el:macro-boundp (symbol-at-point))))))
+                        (macrop (symbol-at-point))))))
 
 (emr-declare-command 'emr-el-insert-autoload-directive
   :title "autoload"
