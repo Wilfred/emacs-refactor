@@ -67,6 +67,10 @@ detailed descriptions."
 
   :group 'emr)
 
+(defvar emr-c-format-fallback-func 'indent-region
+  "Function to indent a buffer region.
+Will be passed start and end positions of region to be formatted.")
+
 ; ------------------
 
 (defconst emr-c:rx-include
@@ -161,6 +165,11 @@ project, return all header files in the current directory."
 (autoload 'clang-format-region "clang-format" ""  t)
 (autoload 'clang-format-buffer "clang-format" ""  t)
 
+(defun emr-clang-available? ()
+  "Return whether clang-format is available."
+  (and (featurep 'clang-format)
+       (executable-find "clang-format")))
+
 (defun emr-cc-get-style ()
   "Return style as a string."
   (cond
@@ -173,14 +182,20 @@ project, return all header files in the current directory."
    (t nil)))
 
 (defun emr-cc-format-region (start end)
-  "Format region (START/END) with clang-format."
+  "Format region (START/END).
+Uses either clang-format, if available, or `emr-c-format-fallback-func'."
   (interactive "rp")
-  (clang-format-region start end (emr-cc-get-style)))
+  (if (emr-clang-available?)
+      (clang-format-region start end (emr-cc-get-style))
+    (funcall emr-c-format-fallback-func start end)))
 
 (defun emr-cc-format-buffer ()
-  "Format region (START/END) with clang-format."
+  "Format region (START/END).
+Uses either clang-format, if available, or `emr-c-format-fallback-func.'"
   (interactive)
-  (clang-format-buffer (emr-cc-get-style)))
+  (if (emr-clang-available?)
+      (clang-format-buffer (emr-cc-get-style))
+    (funcall emr-c-format-fallback-func (point-min) (point-max))))
 
 (defalias 'emr-cc-tidy-includes 'emr-c-tidy-includes)
 
@@ -213,6 +228,13 @@ project, return all header files in the current directory."
         (insert "throw ;\n}\n")
         (emr-cc-format-region start (point)))))
 
+(defun emr-region-active? ()
+  "Return t if a valid region is active."
+  (and mark-active (not (equal (mark) (point)))))
+(defun emr-region-inactive? ()
+  "Return nil if a valid region is active."
+  (not (emr-region-active?)))
+
 ; ------------------
 
 ;;; EMR Declarations
@@ -226,32 +248,31 @@ project, return all header files in the current directory."
 
 (emr-declare-command 'emr-cc-format-region
   :title "format region"
-  :description "with clang"
+  :description (if (emr-clang-available?)
+                   "with clang"
+                 "with the value of emr-c-format-fallback-func")
   :modes '(c-mode c++-mode)
-  :predicate (lambda ()
-               (and mark-active (not (equal (mark) (point)))
-                    (executable-find "clang-format"))))
+  :predicate 'emr-region-active?)
+
 (emr-declare-command 'emr-cc-format-buffer
   :title "format buffer"
-  :description "with clang"
+  :description (if (emr-clang-available?)
+                   "with clang"
+                 "with the value of emr-c-format-fallback-func")
   :modes '(c-mode c++-mode)
-  :predicate (lambda ()
-               (and (not mark-active)
-                    (executable-find "clang-format"))))
+  :predicate 'emr-region-inactive?)
 
 (emr-declare-command 'emr-cc-surround-if-end
   :title "surround"
   :description "with if-endif"
   :modes '(c++-mode c-mode)
-  :predicate (lambda ()
-               (and mark-active (not (equal (mark) (point))))))
+  :predicate 'emr-region-active?)
 
 (emr-declare-command 'emr-cpp-try-catch
   :title "surround"
   :description "with try-catch"
   :modes '(c++-mode)
-  :predicate (lambda ()
-               (and mark-active (not (equal (mark) (point))))))
+  :predicate 'emr-region-active?)
 
 ; ------------------
 
@@ -266,7 +287,7 @@ project, return all header files in the current directory."
 
 ;;;###autoload
 (define-minor-mode emr-c-mode
-  "A minor-mode for C that makes extra key bidings available."
+  "A minor-mode for C that makes extra key bindings available."
   nil " emr" emr-c-mode-map)
 
 (defun emr-c:show-menu ()
