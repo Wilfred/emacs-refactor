@@ -1267,13 +1267,18 @@ Replaces all usages in the current buffer."
 
 ; ------------------
 
+(defun emr-el:def-name (definition-form)
+  "Given a defvar/defun/... form, return its name."
+  (let* ((form-name (nth 1 definition-form)))
+    (when (symbolp form-name)
+      form-name)))
+
 (defun emr-el:def-find-usages (definition-form)
   "Find the usages for a given symbol.
 
 Returns a list of conses, where the car is the line number and
 the cdr is the usage form."
-  (-when-let (sym (ignore-errors
-                    (nth 1 definition-form)))
+  (-when-let (sym (emr-el:def-name definition-form))
     ;; Search the buffer for usages of `sym'. Remove the definition form
     ;; from the results.
     (let (acc)

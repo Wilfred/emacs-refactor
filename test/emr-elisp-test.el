@@ -282,6 +282,13 @@
 
 ;;;; Commands
 
+(ert-deftest emr-el:find-unused-defs ()
+  "Ensure we don't crash on quoted definitions."
+  (with-temp-buffer
+    (insert "(defmacro my-defvar (name val)\n  `(defvar ,name ,val))")
+
+    (emr-el:find-unused-defs)))
+
 (defun emr-el-test-example-docstring (str)
   "Extract the example invocation, before and after from a docstring."
   (let (start-pos example before after)
