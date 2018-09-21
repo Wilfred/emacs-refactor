@@ -46,6 +46,18 @@
     '(arg1 arg2)
     (emr-el:infer-arglist-for-usage '(hello 9 8)))))
 
+(ert-deftest emr-el:interactive-form-p ()
+  (should
+   (not
+    (emr-el:interactive-form-p
+     '(defun foo () 1))))
+  (should
+   (emr-el:interactive-form-p
+    '(defun foo () (interactive) 1)))
+  (should
+   (emr-el:interactive-form-p
+    '(defun foo () "docstring" (interactive) 1))))
+
 (ert-deftest emr-el:looking-at-symbol-p ()
   (with-temp-buffer
     (emacs-lisp-mode)

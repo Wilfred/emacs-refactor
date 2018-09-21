@@ -1307,6 +1307,17 @@ the cdr is the usage form."
 ;;; `emr-el-ref': A reference to a function or variable within a file.
 (cl-defstruct emr-el-ref file line col identifier type form)
 
+(defun emr-el:interactive-form-p (form)
+  "Does FORM contain an (interactive) expression?"
+  ;; (defun foo () x y ...) -> (x y ...)
+  (let ((body (-drop 3 form)))
+    ;; Ignore docstring, if present.
+    (when (stringp (car body))
+      (setq body (-drop 1 body)))
+
+    (eq (car-safe (car body))
+        'interactive)))
+
 (defun emr-el:find-unused-defs ()
   "Return a list of all unused definitions in the buffer.
 The result is a list of `emr-el-ref'."
@@ -1330,7 +1341,10 @@ The result is a list of `emr-el-ref'."
                        (col  (save-excursion
                                (emr-el:beginning-of-defun)
                                (current-column))))
-            (unless (emr-el:def-find-usages form)
+            (unless (or
+                     ;; Consider interactive forms to be used.
+                     (emr-el:interactive-form-p form)
+                     (emr-el:def-find-usages form))
               (push
                (make-emr-el-ref :file (buffer-file-name)
                                 :line (line-number-at-pos)

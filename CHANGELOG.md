@@ -11,6 +11,8 @@ elisp:
 * Only offer 'rename in function' when point is on symbols that are
   bound in this function.
 * Don't offer to rename special forms.
+* 'Find unused' now considers interactive functions to be used, and is
+  also more robust.
 
 iedit:
 
