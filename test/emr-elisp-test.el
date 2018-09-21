@@ -174,7 +174,7 @@
                               (funcall message y))))))
 
 (ert-deftest emr-elisp-extract-with-autoload ()
-  "Ensure we don't move autoload cookies when extract functions."
+  "Ensure we don't move autoload cookies when we extract functions."
   (with-temp-buffer
     (delay-mode-hooks (emacs-lisp-mode))
 
