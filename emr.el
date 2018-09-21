@@ -1,7 +1,7 @@
 ;;; emr.el --- Emacs refactoring system.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
-;; Copyright (C) 2016 Wilfred Hughes
+;; Copyright (C) 2016-2018 Wilfred Hughes
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
 ;; Version: 0.4

@@ -1,9 +1,8 @@
-;;; emr-js.el --- Refactoring commands for JavaScript.
+;;; emr-js.el --- Refactoring commands for JavaScript.  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2014 Chris Barrett
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.1
 
 ;; This file is not part of GNU Emacs.
 

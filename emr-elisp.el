@@ -1,9 +1,9 @@
 ;;; emr-elisp.el --- Refactoring commands for Emacs Lisp  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2013 Chris Barrett
+;; Copyright (C) 2018 Wilfred Hughes
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 20130531.2226
 
 ;; This file is not part of GNU Emacs.
 

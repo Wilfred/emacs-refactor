@@ -1,5 +1,8 @@
-;;; emr-iedit.el -- Brief introduction here.
+;;; emr-iedit.el -- Use iedit for rename refactorings  -*- lexical-binding: t; -*-
+
 ;; Copyright (C) 2015 EMR Project
+;; Copyright (C) 2018 Wilfred Hughes
+
 ;; Author: YangYingchao <yangyingchao@gmail.com>
 
 ;; This file is not part of GNU Emacs.
