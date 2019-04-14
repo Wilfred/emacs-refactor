@@ -13,6 +13,8 @@ elisp:
 * Don't offer to rename special forms.
 * 'Find unused' now considers interactive functions to be used, and is
   also more robust.
+* 'Extract to let' is now more robust for subexpressions and adds
+  newlines correctly.
 
 iedit:
 
