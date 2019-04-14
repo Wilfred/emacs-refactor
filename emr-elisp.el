@@ -926,37 +926,37 @@ VAL should be a string of elisp source code."
   the current context (e.g. the enclosing `defun' or `lambda' form)."
   (interactive "*SVariable name: ")
   (atomic-change-group
-   (let (val-start-pos
-         val-end-pos
-         val)
+    (let (val-start-pos
+          val-end-pos
+          val)
 
-     ;; Get the position of the expression that will be the value
-     ;; for our extrcted var.
-     (if (use-region-p)
-         (progn
-           (setq val-start-pos (region-start))
-           (setq val-end-pos (region-end))
-           (deactivate-mark))
-       (save-excursion
-         (emr-lisp-back-to-open-round)
-         (setq val-start-pos (point))
-         (setq val-end-pos (progn (forward-sexp) (point)))))
+      ;; Get the position of the expression that will be the value
+      ;; for our extrcted var.
+      (if (use-region-p)
+          (progn
+            (setq val-start-pos (region-beginning))
+            (setq val-end-pos (region-end))
+            (deactivate-mark))
+        (save-excursion
+          (emr-lisp-back-to-open-round)
+          (setq val-start-pos (point))
+          (setq val-end-pos (progn (forward-sexp) (point)))))
 
-     (setq val
-           (buffer-substring-no-properties val-start-pos val-end-pos))
+      (setq val
+            (buffer-substring-no-properties val-start-pos val-end-pos))
 
-     ;; Replace the expression with our new variable.
-     (goto-char val-start-pos)
-     (delete-region val-start-pos val-end-pos)
-     (insert (symbol-name symbol))
+      ;; Replace the expression with our new variable.
+      (goto-char val-start-pos)
+      (delete-region val-start-pos val-end-pos)
+      (insert (symbol-name symbol))
 
-     ;; If we're not inside a let, add one.
-     (save-excursion
-       (unless (emr-el:let-start-pos)
-         (emr-el:wrap-body-form-at-point-with-let)))
+      ;; If we're not inside a let, add one.
+      (save-excursion
+        (unless (emr-el:let-start-pos)
+          (emr-el:wrap-body-form-at-point-with-let)))
 
-     ;; Insert the new var in the let form.
-     (emr-el:add-let-binding symbol val))))
+      ;; Insert the new var in the let form.
+      (emr-el:add-let-binding symbol val))))
 
 ; ------------------
 
