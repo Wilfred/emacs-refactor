@@ -1,4 +1,8 @@
-## v0.4 (unreleased)
+## v0.4.1 (unreleased)
+
+No changes yet.
+
+## v0.4
 
 elisp:
 
