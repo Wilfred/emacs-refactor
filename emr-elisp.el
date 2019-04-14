@@ -883,6 +883,9 @@ VAL should be a string of elisp source code."
            (save-excursion
              (goto-char let-form-start)
              (read (current-buffer))))
+          (let-paren-depth
+           (save-excursion
+             (nth 0 (syntax-ppss let-form-start))))
           (vars-end
            (save-excursion
              (goto-char let-form-start)
@@ -894,27 +897,34 @@ VAL should be a string of elisp source code."
              (forward-sexp)
              (point))))
     (save-excursion
-      (if (> (point) vars-end)
-          ;; We're extracting a let binding from the body, so we'll insert
-          ;; this new var after all the existing vars.
-          (progn
-            (goto-char vars-end)
-            (backward-char))
-        ;; We're extracting a new let binding from a value used for an
-        ;; existing let binding, so we'll insert before the current var.
-        (goto-char (nth 1 (syntax-ppss)))
-        ;; Move to the end of the previous sexp, if present.
-        (if (> (length let-vars) 1)
+      (let ((var-start-depth (+ let-paren-depth 2))
+            vars-after-p)
+        (if (> (point) vars-end)
+            ;; We're extracting a let binding from the body, so we'll insert
+            ;; this new var after all the existing vars.
             (progn
-              (backward-sexp)
-              (forward-sexp)))
-        ;; Convert let to let* if we only had a single binding.
-        (when (and (= (length let-vars) 1)
-                   (eq let-keyword 'let))
-          (emr-el-toggle-let*)))
+              (goto-char vars-end)
+              (backward-char)
+              (newline-and-indent))
+          ;; Move up s-expressions until we're at the beginning of the
+          ;; variable declaration.
+          ;; (let (|(x foo)) ...)
+          (setq vars-after-p t)
+          (while (not (eq (nth 0 (syntax-ppss)) var-start-depth))
+            (goto-char (nth 1 (syntax-ppss))))
+          ;; Move to the end of the previous sexp, if present.
+          (if (> (length let-vars) 1)
+              (progn
+                (backward-sexp)
+                (forward-sexp)))
+          ;; Convert let to let* if we only had a single binding.
+          (when (and (= (length let-vars) 1)
+                     (eq let-keyword 'let))
+            (emr-el-toggle-let*)))
 
-      (newline-and-indent)
-      (insert (format "(%s %s)" var val)))))
+        (insert (format "(%s %s)" var val))
+        (when vars-after-p
+          (newline-and-indent))))))
 
 ;;;###autoload
 (defun emr-el-extract-to-let (symbol)

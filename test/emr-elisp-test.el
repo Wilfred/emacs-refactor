@@ -277,6 +277,22 @@
                 (x z))
            x))))))
 
+(ert-deftest emr-el-extract-to-let--numeric-literal ()
+  "Extracting a literal value from another let-bound variable."
+  (with-temp-buffer
+    (insert "(let ((x 3))\n  x)")
+    (search-backward "3")
+    (set-mark (1+ (point)))
+    (emr-el-extract-to-let 'z)
+
+    (let ((result-form (read (buffer-string))))
+      (should
+       (equal
+        result-form
+        '(let* ((z 3)
+                (x z))
+           x))))))
+
 (ert-deftest emr-el-extract-to-let--no-let ()
   "Extracting a let variable when we don't a let form yet."
   (with-temp-buffer
