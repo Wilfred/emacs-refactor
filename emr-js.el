@@ -64,7 +64,8 @@
   :predicate (lambda ()
                (and
                 (require 'js2-refactor nil t)
-                (use-region-p))))
+                (or (use-region-p)
+                    (ignore-errors (js2r--name-node-at-point))))))
 
 (emr-declare-command 'js2r-introduce-parameter
   :title "add parameter"
