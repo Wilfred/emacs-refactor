@@ -905,7 +905,8 @@ VAL should be a string of elisp source code."
             (progn
               (goto-char vars-end)
               (backward-char)
-              (newline-and-indent))
+	      (when let-vars
+		(newline-and-indent)))
           ;; Move up s-expressions until we're at the beginning of the
           ;; variable declaration.
           ;; (let (|(x foo)) ...)

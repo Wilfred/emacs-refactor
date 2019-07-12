@@ -262,6 +262,16 @@
                (y (+ 1 2)))
            y))))))
 
+(ert-deftest emr-el-extract-to-let--first-var ()
+  "Ensure whitspace is correct for the first variable."
+  (with-temp-buffer
+    (insert "(+ 1 (* 2 3))")
+    (search-backward "(*")
+    (emr-el-extract-to-let 'x)
+
+    (should
+     (equal (buffer-string) "(let ((x (* 2 3)))\n  (+ 1 x))"))))
+
 (ert-deftest emr-el-extract-to-let--let-var ()
   "Extracting a variable from another let-bound variable."
   (with-temp-buffer
