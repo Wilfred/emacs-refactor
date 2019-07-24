@@ -274,21 +274,13 @@ Uses either clang-format, if available, or `emr-c-format-fallback-func.'"
   :modes '(c++-mode)
   :predicate 'emr-region-active?)
 
-; ------------------
+(emr-declare-command 'emr-c-insert-include
+  :title "insert header"
+  :description "#include"
+  :modes '(c-mode)
+  :predicate (lambda () t))
 
-;;;; Minor Mode
-
-;;;###autoload
-(defvar emr-c-mode-map
-  (let ((km (make-sparse-keymap)))
-    (define-key km (kbd "C-c i") 'emr-c-insert-include)
-    km)
-  "Key map for `emr-c-mode'.")
-
-;;;###autoload
-(define-minor-mode emr-c-mode
-  "A minor-mode for C that makes extra key bindings available."
-  nil " emr" emr-c-mode-map)
+;; ------------------
 
 (defun emr-c:show-menu ()
   (when (boundp 'c-mode-map)
