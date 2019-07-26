@@ -34,28 +34,12 @@ to other language modes. It's easy (honest!).
 
 ## Installation
 
-`emr` is available on [MELPA][]. This is the easiest way to install.
+Install `emr` from [MELPA](http://www.melpa.org/), then configure your
+init.el:
 
-If you haven't set up MELPA, you'll need to add the following to your init.el
-
-```lisp
-;;; Initialize packages.
-
-(require 'package)
-(add-to-list 'package-archives '("melpa" . "http://melpa.milkbox.net/packages/"))
-(package-initialize)
-(unless package-archive-contents (package-refresh-contents))
+```emacs-lisp
+(define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
 ```
-
-Once MELPA is configured:
-
-1. `M-x package-install emr`
-
-2. Configure your init.el:
-
-  ```lisp
- (define-key prog-mode-map (kbd "M-RET") 'emr-show-refactor-menu)
-   ```
 
 ## Language support
 
@@ -181,4 +165,3 @@ simple to wire them up with EMR using this interface.
 [js2 refactor]: https://github.com/magnars/js2-refactor.el
 [ruby refactor]: https://github.com/ajvargo/ruby-refactor
 [git]: http://git-scm.com
-[MELPA]: http://melpa.milkbox.net/
