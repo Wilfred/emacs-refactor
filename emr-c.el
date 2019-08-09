@@ -297,8 +297,7 @@ Uses either clang-format, if available, or `emr-c-format-fallback-func.'"
   (--each (buffer-list)
     (with-current-buffer it
       (when (derived-mode-p 'c-mode)
-        (emr-c:show-menu)
-        (emr-c-mode +1)))))
+        (emr-c:show-menu)))))
 
 (provide 'emr-c)
 
