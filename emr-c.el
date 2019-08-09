@@ -292,13 +292,11 @@ Uses either clang-format, if available, or `emr-c-format-fallback-func.'"
 ;;;###autoload
 (defun emr-c-initialize ()
   "Initialize EMR in C buffers and enable the EMR menu."
-  (add-hook 'c-mode-hook 'emr-c-mode)
   (add-hook 'c-mode-hook 'emr-c:show-menu)
   (--each (buffer-list)
     (with-current-buffer it
       (when (derived-mode-p 'c-mode)
-        (emr-c:show-menu)
-        (emr-c-mode +1)))))
+        (emr-c:show-menu)))))
 
 (provide 'emr-c)
 
