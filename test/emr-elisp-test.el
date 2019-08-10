@@ -282,6 +282,7 @@
   (with-temp-buffer
     (insert "(let ((x 3))\n  x)")
     (search-backward "3")
+    (transient-mark-mode t)
     (set-mark (1+ (point)))
     (emr-el-extract-to-let 'z)
 
