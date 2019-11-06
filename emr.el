@@ -73,16 +73,15 @@ If the defun is preceded by comments, move above them."
   (ignore-errors
     (beginning-of-thing 'defun))
   ;; If there is a comment attached to this defun, skip over it.
-  (let* ((prev-line-pos
+  (let* ((prev-line-end-pos
           (unless (bobp)
             (save-excursion
               (forward-line -1)
-              (point))))
+              (point-at-eol))))
          (comment-preceding
           (and
-           prev-line-pos
-           (emr-looking-at-comment?
-            (line-end-position prev-line-pos)))))
+           prev-line-end-pos
+           (emr-looking-at-comment? prev-line-end-pos))))
     (when comment-preceding
       (forward-line -1)
       (while (and (emr-looking-at-comment? (line-end-position))
@@ -91,11 +90,12 @@ If the defun is preceded by comments, move above them."
 
 (defun emr-looking-at-string? ()
   "Return non-nil if point is inside a string."
-  (nth 3 (syntax-ppss)))
+  (save-excursion (nth 3 (syntax-ppss))))
 
 (defun emr-looking-at-comment? (&optional pos)
   "Non-nil if point is on a comment."
-  (nth 4 (syntax-ppss pos)))
+  (save-excursion
+    (nth 4 (syntax-ppss pos))))
 
 (defun emr-line-str ()
   "Return the contents of the current line."
