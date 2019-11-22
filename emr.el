@@ -4,9 +4,11 @@
 ;; Copyright (C) 2016-2018 Wilfred Hughes
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
-;; Version: 0.4.1
 ;; Keywords: tools convenience refactoring
-;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (paredit "24.0.0") (projectile "0.9.1") (clang-format "0") (iedit "0.97"))
+;; Version: 0.4.1
+;; URL: https://github.com/Wilfred/emacs-refactor
+;; Package-Requires: ((s "1.3.1") (dash "1.2.0") (cl-lib "0.2") (popup "0.5.0") (emacs "24.1") (list-utils "0.3.0") (paredit "24.0.0") (projectile "0.9.1") (clang-format "0.0.1") (iedit "0.97"))
+
 ;; This file is not part of GNU Emacs.
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -93,7 +95,7 @@ If the defun is preceded by comments, move above them."
   (save-excursion (nth 3 (syntax-ppss))))
 
 (defun emr-looking-at-comment? (&optional pos)
-  "Non-nil if point is on a comment."
+  "Non-nil if POS is on a comment."
   (save-excursion
     (nth 4 (syntax-ppss pos))))
 
@@ -180,7 +182,7 @@ buffer."
       (message))))
 
 (defun emr:line-visible? (line)
-  "Return true if LINE is within the visible bounds of the current window."
+  "Return non-nil if LINE is within the visible bounds of the current window."
   (let* ((min (line-number-at-pos (window-start)))
          (max (line-number-at-pos (window-end))))
     (and (>= line min) (<= line max))))
@@ -217,7 +219,7 @@ buffer."
 
 (defun emr:documentation (sym)
   "Get the docstring for SYM.
-Removes the function arglist and lisp usage example."
+Removes the function arglist and Lisp usage example."
   (cl-destructuring-bind (before-example &optional after-example)
       (->> (documentation sym)
         (s-lines)
@@ -271,8 +273,7 @@ Removes the function arglist and lisp usage example."
             :title title
             :modes (if (symbolp modes) (list modes) modes)
             :predicate predicate
-            :description description
-            )
+            :description description)
            emr:refactor-commands))
 
 (defun emr:hash-values (ht)
