@@ -21,7 +21,7 @@
 
 ;;; Commentary:
 
-;; Refactoring support for Ruby. Requires `Ruby Refactor`.
+;; Refactoring support for Ruby.  Requires `Ruby Refactor`.
 ;;
 ;;    https://github.com/ajvargo/ruby-refactor
 ;;

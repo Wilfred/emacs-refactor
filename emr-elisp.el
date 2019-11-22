@@ -43,10 +43,10 @@ Used when searching for usages across the whole buffer."
   :group 'emr)
 
 (defun emr-el:safe-read (sexp)
-  "A wrapper around `read' that returns nil immediately if SEXP is null.
+  "A wrapper around `read' that return nil immediately if SEXP is null.
 
-If sexp is nil, `read' would prompt the user for input from
-stdin. Bad."
+If sexp is nil, `read' would prompt the user for input from stdin.
+Bad."
   (and sexp (read sexp)))
 
 (defun emr-el:print (form)
@@ -274,8 +274,7 @@ BEFORE:
 
 AFTER:
 
-  (usage value)
- "
+  (usage value)"
   (interactive "*")
   (save-excursion
     (emr-lisp-back-to-open-round)
@@ -322,8 +321,7 @@ BEFORE:
 
 AFTER:
 
-  (+ 3 3)
-"
+  (+ 3 3)"
   (interactive "*")
   (emr-lisp-extraction-refactor (sexp) "Replacement at"
 
@@ -411,8 +409,7 @@ AFTER:
     (application x))
 
   (defun orig (x)
-    (extracted x))
-"
+    (extracted x))"
   (interactive
    (list
     ;; Function name.
@@ -465,8 +462,7 @@ AFTER:
   (defun hello (x y)
     )
 
-  (hello x y)
-"
+  (hello x y)"
   (interactive (list
                 (emr-el:safe-read
                  (emr-el:read-with-default "Name" (symbol-at-point)))
@@ -528,8 +524,7 @@ AFTER:
 
   (defvar x (+ 1 2))
 
-  (usage x)
-"
+  (usage x)"
   (interactive "*sName: ")
   (when (s-blank? name)
     (user-error "Name must not be blank"))
@@ -556,9 +551,7 @@ AFTER:
 
   (defconst x (+ 1 2))
 
-  (usage x)
-
-"
+  (usage x)"
   (interactive "*sName: ")
   (when (s-blank? name)
     (user-error "Name must not be blank"))
@@ -571,11 +564,11 @@ AFTER:
 ; ------------------
 
 (defun emr-el:autoload-exists? (function str)
-  "Returns true if an autoload for FUNCTION exists in string STR."
+  "Return non-nil if an autoload for FUNCTION exists in string STR."
   (s-contains? (format "(autoload '%s " function) str))
 
 (defun emr-el:beginning-of-defun ()
-  "A safe version of beginning-of-defun.
+  "A safe version of `beginning-of-defun'.
 Attempts to find an enclosing defun form first, rather than
 relying on indentation."
   (or
@@ -611,8 +604,7 @@ BEFORE:
 AFTER:
 
   ;;;###autoload
-  (defun hello ())
-"
+  (defun hello ())"
   (interactive "*")
   (unless (emr-el:autoload-directive-exsts-above-defun?)
     (emr-reporting-buffer-changes "Inserted autoload"
@@ -819,8 +811,7 @@ Move to that body form that encloses point."
          (throw 'found nil))))))
 
 (defun emr-el:let-start-pos ()
-  "Search upward form point to find the start position of
-the innermost let."
+  "Search upward form point to find the start position of the innermost let."
   (let ((positions
          (list
           (emr-lisp-find-upwards 'let)
@@ -847,8 +838,7 @@ BEFORE:
 AFTER:
 
   (let ((x 1))
-    (+ x 1))
-"
+    (+ x 1))"
   (interactive)
   (save-excursion
     (goto-char (emr-el:let-start-pos))
@@ -871,8 +861,7 @@ AFTER:
 
 ;; https://github.com/Wilfred/emacs-refactor/issues/35
 (defun emr-el:add-let-binding (var val)
-  "Add a binding for symbol VAR assigned to VAL to the
-innermost let form at point.
+  "Add a binding for symbol VAR assigned to VAL to the innermost let form.
 
 Ensures that VAR is inserted before point.
 
@@ -973,7 +962,7 @@ VAL should be a string of elisp source code."
 
 (defun emr-el:goto-start-of-let-binding ()
   "Move to the opening paren of the let-expression at point.
-  Otherwise move to the previous one in the current top level form."
+Otherwise move to the previous one in the current top level form."
   (-when-let (pos (emr-el:let-start-pos))
     (when (< 0 pos)
       (goto-char pos)
@@ -1050,7 +1039,7 @@ For example:
                  (zerop (emr-el:point-sexp-index))))))))
 
 (defun emr-el:let-bindings-recursively-depend? (elt bindings)
-  "Non-nil if the given let bindings list has recursive dependency on ELT."
+  "Non-nil if the given let BINDINGS list has recursive dependency on ELT."
   (-when-let* ((b   (--first (equal elt (emr-el:first-atom it)) bindings))
                (pos (cl-position b bindings :test 'equal)))
     (-> (-split-at (1+ pos) bindings)
@@ -1101,8 +1090,7 @@ BEFORE:
 AFTER:
 
   (let ((x 1))
-    (+ x 2))
-"
+    (+ x 2))"
   (interactive "*")
   (cl-assert (emr-el:looking-at-let-binding-symbol?))
   (save-excursion
@@ -1141,7 +1129,7 @@ AFTER:
 ; ------------------
 
 (defun emr-el:extract-arguments-in-usage-form (usage)
-  "Given a function usage form, extract the arguments applied to the function."
+  "Given a function USAGE form, extract the arguments applied to the function."
   (with-temp-buffer
     (save-excursion (insert usage))
     ;; Move to funcall parameters.
@@ -1192,7 +1180,7 @@ AFTER:
     (buffer-string)))
 
 (defun emr-el:transform-function-usage (def usage)
-  "Replace the usage of a function with the body from its definition.
+  "Replace the USAGE of a function with the body from its DEF.
 Its variables will be let-bound."
   (let* ((params (->> (emr-el:safe-read def)
                    (emr-el:defun-arglist-symbols)
@@ -1279,13 +1267,13 @@ Replaces all usages in the current buffer."
 ; ------------------
 
 (defun emr-el:def-name (definition-form)
-  "Given a defvar/defun/... form, return its name."
+  "Given a DEFINITION-FORM such as defvar/defun/..., return its name."
   (let* ((form-name (nth 1 definition-form)))
     (when (symbolp form-name)
       form-name)))
 
 (defun emr-el:def-find-usages (definition-form)
-  "Find the usages for a given symbol.
+  "Find the usages for a given DEFINITION-FORM symbol.
 
 Returns a list of conses, where the car is the line number and
 the cdr is the usage form."
