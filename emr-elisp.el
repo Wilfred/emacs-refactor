@@ -491,7 +491,7 @@ AFTER:
         ;; position.
         (if (thing-at-point-looking-at "(")
             (insert (format "%s" name))
-          (insert (format "'%s" name)))
+          (insert (format "#'%s" name)))
 
         ;; Insert definition.
         (setq pos (->> (format "(%s %s %s\n  )" defun-form name arglist)
