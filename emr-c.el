@@ -183,10 +183,12 @@ a function."
                  (function :tag "custom function")
                  (string :tag "Format string (one argument)")))
 
-(defun emr-cc--include-guard-space ()
-  "Return a string to insert for `emr-cc-include-guard-space'."
-  (pcase emr-cc-include-guard-space
-    ((pred stringp) emr-cc-include-guard-space)
+(defun emr-cc--include-guard-space (variable)
+  "Resolve a # spacing VARIABLE.
+VARIABLE is the value of the # spacing variable, for example the
+value of `emr-cc-include-guard-space'."
+  (pcase variable
+    ((pred stringp) variable)
     (`nil "")
     (_ " ")))
 
@@ -209,14 +211,14 @@ a function."
 
 "
         guard (or emr-cc-include-guard-value "")
-        (emr-cc--include-guard-space)))
+        (emr-cc--include-guard-space emr-cc-include-guard-space)))
       (goto-char (point-max))
       (unless (= (char-before) ?\n)
         (insert ?\n))
       (insert
        (format
         "\n#%sendif%s"
-        (emr-cc--include-guard-space)
+        (emr-cc--include-guard-space emr-cc-include-guard-space)
         (or (-some->>
                 (-some-> emr-cc-include-guard-suffix
                   (cl-etypecase
@@ -252,12 +254,21 @@ Return non-nil if an include guard was actually removed."
         ;; Success, even if there was no #endif.
         t))))
 
+(defcustom emr-cc-pragma-once-space nil
+  "`emr-cc-include-guard-space', but for #pragma once."
+  :type '(choice
+          (const :tag "Insert a space after #" t)
+          (const :tag "Don't insert space after #" nil)
+          (string :tag "Insert after #:"))
+  :group 'emr-cc)
+
 (defun emr-cc-add-pragma-once ()
   "Add #pragma once."
   (interactive)
   (save-excursion
     (emr-cc--beginning-of-header)
-    (insert "#pragma once\n\n")))
+    (insert (format "#%spragma once\n\n"
+                    (emr-cc--include-guard-space emr-cc-pragma-once-space)))))
 
 (defun emr-cc-delete-pragma-once ()
   "Remove #pragma once.
