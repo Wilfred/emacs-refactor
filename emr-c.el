@@ -197,7 +197,9 @@ value of `emr-cc-include-guard-space'."
   (goto-char (point-min))
   ;; Skip comment(s) and whitespace (e.g. license header)
   (let ((parse-sexp-ignore-comments t))
-    (forward-sexp))
+    (with-syntax-table (copy-syntax-table (syntax-table))
+      (modify-syntax-entry ?\\ " ")
+      (forward-sexp)))
   (beginning-of-line))
 
 (defun emr-cc--end-of-header ()
