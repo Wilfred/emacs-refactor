@@ -124,7 +124,122 @@ Library and project includes are kept separate."
            (s-append "\n")
            (insert)))))
 
-; ------------------
+;;; include guards
+
+(defun emr-cc-basename-include-guard ()
+  "Derive an include guard from the buffer's basename.
+All non-identifier characters of either the buffer's filename if
+available or the buffer's name are replaced by underscores."
+  (let ((name (or (-some-> (buffer-file-name) file-name-base)
+                  (buffer-file-name))))
+    (replace-regexp-in-string (rx (or ".")) "_" name t t)))
+
+(defcustom emr-cc-include-guard-style #'emr-cc-include-guard
+  "Function used to derive the include guard symbol.
+It will be called with no arguments in the context of the buffer
+where `emr-cc-add-include-guard' is called and must return a
+string to be used as include guard."
+  :type 'function
+  :group 'emr-cc)
+
+(defcustom emr-cc-include-guard-value nil
+  "What include guards are #defined to, or nil.
+If this is non-nil, `emr-cc-add-include-guard' will insert this
+string after \"#define <symbol> \" (note the space)."
+  :type '(choice string (const nil))
+  :group 'emr-cc)
+
+(defcustom emr-cc-include-guard-space nil
+  "Whether there should be a space after #.
+If this is t, `emr-cc-add-include-guard' will insert a space
+after the # of #define, #ifndef and #endif. This variable may
+also be a string, in which case that is inserted instead."
+  :type '(choice
+          (const :tag "Insert a space after #" t)
+          (const :tag "Don't insert space after #" nil)
+          (string :tag "Insert after #:"))
+  :group 'emr-cc)
+
+(defun emr-cc-include-guard-suffix-c89 (guard)
+  "Insert the include GUARD wrapped in a c89-style comment."
+  (format "/* %s */" guard))
+
+(defun emr-cc-include-guard-suffix-comment (guard)
+  "Insert the include GUARD wrapped in a // comment."
+  (format "// %s" guard))
+
+(defcustom emr-cc-include-guard-suffix nil
+  "Function to determine the text after #endif.
+If this is non-nil, `emr-cc-add-include-guard' will insert the
+result of calling this function with the include guard (see
+`emr-cc-include-guard-style') as only argument and insert its
+result, if non-nil, after \"#endif \" (note the space)."
+  :type '(choice (const :tag "/* GUARD */" emr-cc-include-guard-suffix-c89)
+                 (const :tag "// GUARD" emr-cc-include-guard-suffix-comment)
+                 (const :tag "No #endif suffix" nil)
+                 (function :tag "custom function")))
+
+(defun emr-cc--include-guard-space ()
+  "Return a string to insert for `emr-cc-include-guard-space'."
+  (pcase emr-cc-include-guard-space
+    ((pred stringp) emr-cc-include-guard-space)
+    (`nil "")
+    (_ " ")))
+
+(defun emr-cc-add-include-guard ()
+  "Add an include guard to the current buffer."
+  (interactive)
+  (let ((guard (funcall emr-cc-include-guard-style)))
+    (save-excursion
+      (goto-char (point-min))
+      ;; Skip comment(s) and whitespace (e.g. license header)
+      (forward-sexp)
+      (beginning-of-line)
+      (insert
+       (format
+        "#%3$sifndef %1$s
+#%3$sdefine %1$s%2$s
+
+"
+        guard (or emr-cc-include-guard-value "")
+        (emr-cc--include-guard-space)))
+      (goto-char (point-max))
+      (unless (= (char-before) ?\n)
+        (insert ?\n))
+      (insert
+       (format
+        "\n#%sendif%s"
+        (emr-cc--include-guard-space)
+        (or (-some->> (-some-> emr-cc-include-guard-suffix (funcall guard))
+              (concat " "))
+            ""))))))
+
+(defun emr-cc-delete-include-guard ()
+  "Remove the current buffer's include guard."
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (forward-sexp)
+    (beginning-of-line)
+    (save-match-data
+      (when (looking-at
+             (rx bol "#" (* space) "ifndef" (* space) (group (+ any) symbol-end) (* any) "\n"
+                 bol "#" (* space) "define" (* space) (backref 1) symbol-end (* any) "\n"
+                 (? "\n")))
+        (replace-match "")
+
+        (goto-char (point-max))
+        (backward-sexp)
+        (beginning-of-line)
+        (when (looking-at (rx bol "#" (* space) "endif" symbol-end (* any) eol))
+          (replace-match "")
+          ;; We can't know if the file should end in a newline, so don't delete
+          ;; yet another newline (even if it was inserted by
+          ;; `emr-cc-add-include-guard'). User's own whitespace management
+          ;; solutions (e.g. `ws-butler') can fix this.
+          (when (eq (char-before) ?\n)
+            (delete-char -1)))))))
+
 
 (defun emr-c:headers-in-project ()
   "Return a list of available C header files.
