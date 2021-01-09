@@ -173,11 +173,15 @@ also be a string, in which case that is inserted instead."
 If this is non-nil, `emr-cc-add-include-guard' will insert the
 result of calling this function with the include guard (see
 `emr-cc-include-guard-style') as only argument and insert its
-result, if non-nil, after \"#endif \" (note the space)."
+result, if non-nil, after \"#endif \" (note the space). If this
+variable is a string, it will be `format'ted with the include
+guard as second argument and inserted the same way as if it were
+a function."
   :type '(choice (const :tag "/* GUARD */" emr-cc-include-guard-suffix-c89)
                  (const :tag "// GUARD" emr-cc-include-guard-suffix-comment)
                  (const :tag "No #endif suffix" nil)
-                 (function :tag "custom function")))
+                 (function :tag "custom function")
+                 (string :tag "Format string (one argument)")))
 
 (defun emr-cc--include-guard-space ()
   "Return a string to insert for `emr-cc-include-guard-space'."
@@ -213,7 +217,11 @@ result, if non-nil, after \"#endif \" (note the space)."
        (format
         "\n#%sendif%s"
         (emr-cc--include-guard-space)
-        (or (-some->> (-some-> emr-cc-include-guard-suffix (funcall guard))
+        (or (-some->>
+                (-some-> emr-cc-include-guard-suffix
+                  (cl-etypecase
+                      (string (format emr-cc-include-guard-suffix guard))
+                    (function (funcall emr-cc-include-guard-suffix guard))))
               (concat " "))
             ""))))))
 
