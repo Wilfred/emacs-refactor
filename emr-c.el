@@ -186,15 +186,18 @@ result, if non-nil, after \"#endif \" (note the space)."
     (`nil "")
     (_ " ")))
 
+(defun emr-cc--beginning-of-header ()
+  (goto-char (point-min))
+  ;; Skip comment(s) and whitespace (e.g. license header)
+  (forward-sexp)
+  (beginning-of-line))
+
 (defun emr-cc-add-include-guard ()
   "Add an include guard to the current buffer."
   (interactive)
   (let ((guard (funcall emr-cc-include-guard-style)))
     (save-excursion
-      (goto-char (point-min))
-      ;; Skip comment(s) and whitespace (e.g. license header)
-      (forward-sexp)
-      (beginning-of-line)
+      (emr-cc--beginning-of-header)
       (insert
        (format
         "#%3$sifndef %1$s
@@ -218,9 +221,7 @@ result, if non-nil, after \"#endif \" (note the space)."
   "Remove the current buffer's include guard."
   (interactive)
   (save-excursion
-    (goto-char (point-min))
-    (forward-sexp)
-    (beginning-of-line)
+    (emr-cc--beginning-of-header)
     (save-match-data
       (when (looking-at
              (rx bol "#" (* space) "ifndef" (* space) (group (+ any) symbol-end) (* any) "\n"
@@ -240,6 +241,22 @@ result, if non-nil, after \"#endif \" (note the space)."
           (when (eq (char-before) ?\n)
             (delete-char -1)))))))
 
+(defun emr-cc-add-pragma-once ()
+  "Add #pragma once."
+  (interactive)
+  (save-excursion
+    (emr-cc--beginning-of-header)
+    (insert "#pragma once\n\n")))
+
+(defun emr-cc-delete-pragma-once ()
+  "Remove #pragma once."
+  (interactive)
+  (save-excursion
+    (emr-cc--beginning-of-header)
+    (save-match-data
+      (when (looking-at (rx "#" (* space) "pragma" (* space) "once" (* any) (** 0 2 ?\n)))
+        (replace-match "")))))
+
 
 (defun emr-c:headers-in-project ()
   "Return a list of available C header files.
@@ -247,10 +264,10 @@ result, if non-nil, after \"#endif \" (note the space)."
 Find header files in the current project.  If this is not a valid
 project, return all header files in the current directory."
   (->> (-if-let (proj (projectile-project-p))
-         (--map (concat proj it) (projectile-dir-files proj))
+           (--map (concat proj it) (projectile-dir-files proj))
          (-> (buffer-file-name) (file-name-directory) (directory-files t)))
-    (--filter (-contains? '("h" "hpp") (file-name-extension it)))
-    (-map 'file-relative-name)))
+       (--filter (-contains? '("h" "hpp") (file-name-extension it)))
+       (-map 'file-relative-name)))
 
 ;;;###autoload
 (defun emr-c-insert-include (header)
