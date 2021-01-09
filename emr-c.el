@@ -218,7 +218,8 @@ result, if non-nil, after \"#endif \" (note the space)."
             ""))))))
 
 (defun emr-cc-delete-include-guard ()
-  "Remove the current buffer's include guard."
+  "Remove the current buffer's include guard.
+Return non-nil if an include guard was actually removed."
   (interactive)
   (save-excursion
     (emr-cc--beginning-of-header)
@@ -239,7 +240,9 @@ result, if non-nil, after \"#endif \" (note the space)."
           ;; `emr-cc-add-include-guard'). User's own whitespace management
           ;; solutions (e.g. `ws-butler') can fix this.
           (when (eq (char-before) ?\n)
-            (delete-char -1)))))))
+            (delete-char -1)))
+        ;; Success, even if there was no #endif.
+        t))))
 
 (defun emr-cc-add-pragma-once ()
   "Add #pragma once."
@@ -249,13 +252,24 @@ result, if non-nil, after \"#endif \" (note the space)."
     (insert "#pragma once\n\n")))
 
 (defun emr-cc-delete-pragma-once ()
-  "Remove #pragma once."
+  "Remove #pragma once.
+Return non-nil if a #pragma once was removed."
   (interactive)
   (save-excursion
     (emr-cc--beginning-of-header)
     (save-match-data
       (when (looking-at (rx "#" (* space) "pragma" (* space) "once" (* any) (** 0 2 ?\n)))
-        (replace-match "")))))
+        (replace-match "")
+        t))))
+
+(defun emr-cc-toggle-include-guard ()
+  "Toggle between #pragma once and include guards."
+  (interactive)
+  (if (emr-cc-delete-pragma-once)
+      (emr-cc-add-include-guard)
+    (unless (emr-cc-delete-include-guard)
+      (user-error "Current buffer contains neither an include guard nor #pragma once"))
+    (emr-cc-add-pragma-once)))
 
 
 (defun emr-c:headers-in-project ()
