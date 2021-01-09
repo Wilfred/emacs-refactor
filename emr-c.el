@@ -136,12 +136,19 @@ available or the buffer's name are replaced by underscores."
              (rx (or (not (any alpha "_")) (: bos digit)))
              "_" name t t))))
 
+(defun emr-cc-basename-included-guard ()
+  "Like `emr-cc-basename-include-guard', but ends in _INCLUDED."
+  (concat (emr-cc-basename-include-guard) "_INCLUDED"))
+
 (defcustom emr-cc-include-guard-style #'emr-cc-include-guard
   "Function used to derive the include guard symbol.
 It will be called with no arguments in the context of the buffer
 where `emr-cc-add-include-guard' is called and must return a
 string to be used as include guard."
-  :type 'function
+  :type '(choice
+          (const emr-cc-basename-include-guard)
+          (const emr-cc-basename-included-guard)
+          (function :tag "custom function"))
   :group 'emr-cc)
 
 (defcustom emr-cc-include-guard-value nil
