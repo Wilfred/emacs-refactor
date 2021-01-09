@@ -198,7 +198,15 @@ value of `emr-cc-include-guard-space'."
   ;; Skip comment(s) and whitespace (e.g. license header)
   (let ((parse-sexp-ignore-comments t))
     (forward-sexp))
-  (beginning-of-defun))
+  (beginning-of-line))
+
+(defun emr-cc--end-of-header ()
+  "Go to bol at the end of the source file, skipping comments."
+  (goto-char (point-max))
+  (let ((parse-sexp-ignore-comments t))
+    (backward-sexp)
+    (forward-sexp))
+  (beginning-of-line))
 
 (defun emr-cc-add-include-guard ()
   "Add an include guard to the current buffer."
@@ -247,10 +255,7 @@ Return non-nil if an include guard was actually removed."
       (replace-match "")
 
       (save-excursion
-        (goto-char (point-max))
-        (let ((parse-sexp-ignore-comments t))
-          (backward-sexp))
-        (end-of-defun)
+        (emr-cc--end-of-header)
         (when (looking-at (rx bol "#" (* space) "endif" symbol-end (* any) eol))
           (replace-match "")
           ;; We can't know if the file should end in a newline, so don't delete
