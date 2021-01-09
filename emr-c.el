@@ -229,19 +229,24 @@ value of `emr-cc-include-guard-space'."
               (concat " "))
             ""))))))
 
+(defun emr-cc--looking-at-include-guard ()
+  "`looking-at' the include guard of the buffer, if it has one."
+  (save-excursion
+    (emr-cc--beginning-of-header)
+    (looking-at
+     (rx bol "#" (* space) "ifndef" (* space) (group (+ any) symbol-end) (* any) "\n"
+         bol "#" (* space) "define" (* space) (backref 1) symbol-end (* any) "\n"
+         (? "\n")))))
+
 (defun emr-cc-delete-include-guard ()
   "Remove the current buffer's include guard.
 Return non-nil if an include guard was actually removed."
   (interactive)
-  (save-excursion
-    (emr-cc--beginning-of-header)
-    (save-match-data
-      (when (looking-at
-             (rx bol "#" (* space) "ifndef" (* space) (group (+ any) symbol-end) (* any) "\n"
-                 bol "#" (* space) "define" (* space) (backref 1) symbol-end (* any) "\n"
-                 (? "\n")))
-        (replace-match "")
+  (save-match-data
+    (when (emr-cc--looking-at-include-guard)
+      (replace-match "")
 
+      (save-excursion
         (goto-char (point-max))
         (let ((parse-sexp-ignore-comments t))
           (backward-sexp))
@@ -253,9 +258,9 @@ Return non-nil if an include guard was actually removed."
           ;; `emr-cc-add-include-guard'). User's own whitespace management
           ;; solutions (e.g. `ws-butler') can fix this.
           (when (eq (char-before) ?\n)
-            (delete-char -1)))
-        ;; Success, even if there was no #endif.
-        t))))
+            (delete-char -1))))
+      ;; Success, even if there was no #endif.
+      t)))
 
 (defcustom emr-cc-pragma-once-space nil
   "`emr-cc-include-guard-space', but for #pragma once."
@@ -273,16 +278,19 @@ Return non-nil if an include guard was actually removed."
     (insert (format "#%spragma once\n\n"
                     (emr-cc--include-guard-space emr-cc-pragma-once-space)))))
 
+(defun emr-cc--looking-at-pragma-once ()
+  (save-excursion
+    (emr-cc--beginning-of-header)
+    (looking-at (rx "#" (* space) "pragma" (* space) "once" (* any) (** 0 2 ?\n)))))
+
 (defun emr-cc-delete-pragma-once ()
   "Remove #pragma once.
 Return non-nil if a #pragma once was removed."
   (interactive)
-  (save-excursion
-    (emr-cc--beginning-of-header)
-    (save-match-data
-      (when (looking-at (rx "#" (* space) "pragma" (* space) "once" (* any) (** 0 2 ?\n)))
-        (replace-match "")
-        t))))
+  (save-match-data
+    (when (emr-cc--looking-at-pragma-once)
+      (replace-match "")
+      t)))
 
 (defun emr-cc-toggle-include-guard ()
   "Toggle between #pragma once and include guards."
@@ -403,7 +411,18 @@ Uses either clang-format, if available, or `emr-c-format-fallback-func.'"
   "Return nil if a valid region is active."
   (not (emr-region-active?)))
 
-; ------------------
+
+(defun emr-cc--has-include-guard? ()
+  "Check if there is an include guard or #pragma once."
+  (save-match-data
+    (or (emr-cc--looking-at-include-guard)
+        (emr-cc--looking-at-pragma-once))))
+
+(defun emr-cc--need-include-guard? ()
+  "Check if the buffer has no include guard or #pragma once."
+  (not (emr-cc--has-include-guard?)))
+
+                                        ; ------------------
 
 ;;; EMR Declarations
 
@@ -447,6 +466,40 @@ Uses either clang-format, if available, or `emr-c-format-fallback-func.'"
   :description "#include"
   :modes '(c-mode)
   :predicate (lambda () t))
+
+(emr-declare-command 'emr-cc-add-include-guard
+  :title "add include guard"
+  :description "#ifndef X #define X... #endif"
+  :modes '(c-mode c++-mode)
+  :predicate #'emr-cc--need-include-guard?)
+
+(emr-declare-command 'emr-cc-delete-include-guard
+  :title "remove include guard"
+  :description "remove #ifndef X #define X... #endif"
+  :modes '(c-mode c++-mode)
+  :predicate (lambda ()
+               (save-match-data
+                 (emr-cc--looking-at-include-guard))))
+
+(emr-declare-command 'emr-cc-add-pragma-once
+  :title "add #pragma once"
+  :description "#pragma once"
+  :modes '(c-mode c++-mode)
+  :predicate #'emr-cc--need-include-guard?)
+
+(emr-declare-command 'emr-cc-delete-pragma-once
+  :title "remove #pragma once"
+  :description "remove #pragma once"
+  :modes '(c-mode c++-mode)
+  :predicate (lambda ()
+               (save-match-data
+                 (emr-cc--looking-at-pragma-once))))
+
+(emr-declare-command 'emr-cc-toggle-include-guard
+  :title "toggle include guard"
+  :description "toggle between #pragma once and an include guard"
+  :modes '(c-mode c++-mode)
+  :predicate #'emr-cc--has-include-guard?)
 
 ;; ------------------
 
