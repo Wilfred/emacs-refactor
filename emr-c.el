@@ -224,7 +224,8 @@ value of `emr-cc-include-guard-space'."
 "
         guard (or emr-cc-include-guard-value "")
         (emr-cc--include-guard-space emr-cc-include-guard-space)))
-      (goto-char (point-max))
+      (emr-cc--end-of-header)
+      (forward-line)
       (unless (= (char-before) ?\n)
         (insert ?\n))
       (insert
