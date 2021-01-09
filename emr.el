@@ -309,8 +309,7 @@ Return a popup item for the refactoring menu if so."
   ;; available commands.
   (-if-let (actions (->> emr:refactor-commands
                       (emr:hash-values)
-                      (-map 'emr:make-popup)
-                      (-remove 'null)))
+                      (-keep 'emr:make-popup)))
       ;; Display the menu.
       (atomic-change-group
         (-when-let (action (popup-menu*
