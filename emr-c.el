@@ -234,8 +234,8 @@ value of `emr-cc-include-guard-space'."
   (save-excursion
     (emr-cc--beginning-of-header)
     (looking-at
-     (rx bol "#" (* space) "ifndef" (* space) (group (+ any) symbol-end) (* any) "\n"
-         bol "#" (* space) "define" (* space) (backref 1) symbol-end (* any) "\n"
+     (rx bol (* space) "#" (* space) "ifndef" (* space) (group (+ any) symbol-end) (* any) "\n"
+         bol (* space) "#" (* space) "define" (* space) (backref 1) symbol-end (* any) "\n"
          (? "\n")))))
 
 (defun emr-cc-delete-include-guard ()
@@ -281,7 +281,7 @@ Return non-nil if an include guard was actually removed."
 (defun emr-cc--looking-at-pragma-once ()
   (save-excursion
     (emr-cc--beginning-of-header)
-    (looking-at (rx "#" (* space) "pragma" (* space) "once" (* any) (** 0 2 ?\n)))))
+    (looking-at (rx bol (* space) "#" (* space) "pragma" (* space) "once" (* any) (** 0 2 ?\n)))))
 
 (defun emr-cc-delete-pragma-once ()
   "Remove #pragma once.
