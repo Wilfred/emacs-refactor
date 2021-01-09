@@ -131,8 +131,10 @@ Library and project includes are kept separate."
 All non-identifier characters of either the buffer's filename if
 available or the buffer's name are replaced by underscores."
   (let ((name (or (-some-> (buffer-file-name) file-name-base)
-                  (buffer-file-name))))
-    (replace-regexp-in-string (rx (or ".")) "_" name t t)))
+                  (buffer-name))))
+    (upcase (replace-regexp-in-string
+             (rx (or (not (any alpha "_")) (: bos digit)))
+             "_" name t t))))
 
 (defcustom emr-cc-include-guard-style #'emr-cc-include-guard
   "Function used to derive the include guard symbol.
