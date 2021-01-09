@@ -129,8 +129,11 @@ Library and project includes are kept separate."
 (defun emr-cc-basename-include-guard ()
   "Derive an include guard from the buffer's basename.
 All non-identifier characters of either the buffer's filename if
-available or the buffer's name are replaced by underscores."
-  (let ((name (or (-some-> (buffer-file-name) file-name-base)
+available or the buffer's name are replaced by underscores, and
+the result is upcased.
+
+E.g. foo.h -> FOO_H."
+  (let ((name (or (-some-> (buffer-file-name) file-name-nondirectory)
                   (buffer-name))))
     (upcase (replace-regexp-in-string
              (rx (or (not (any alpha "_")) (: bos digit)))
