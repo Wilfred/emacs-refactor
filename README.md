@@ -1,6 +1,5 @@
 # emacs-refactor
 
-[![Build Status](https://travis-ci.org/Wilfred/emacs-refactor.svg)](https://travis-ci.org/Wilfred/emacs-refactor)
 [![Coverage Status](https://coveralls.io/repos/Wilfred/emacs-refactor/badge.svg)](https://coveralls.io/r/Wilfred/emacs-refactor)
 [![MELPA](http://melpa.org/packages/emr-badge.svg)](http://melpa.org/#/emr)
 [![MELPA stable](http://stable.melpa.org/packages/emr-badge.svg)](http://stable.melpa.org/#/emr)
