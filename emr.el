@@ -165,7 +165,7 @@ The index is the car and the line is the cdr."
   (--remove (equal (car it) (cdr it))
             (-zip (emr:indexed-lines str1) (emr:indexed-lines str2))))
 
-(cl-defun emr:report-action (description line text)
+(defun emr:report-action (description line text)
   "Report the action that occured at the point of difference.
 
 Displays a short summary containing the line number, a
@@ -177,9 +177,9 @@ buffer."
              "nil"
            (replace-regexp-in-string "[ \n\r\t]+" " " text))
 
-      (format "%s line %s: %s" description line)
-      (s-truncate (window-width (minibuffer-window)))
-      (message))))
+         (format "%s line %s: %s" description line)
+         (s-truncate (window-width (minibuffer-window)))
+         (message))))
 
 (defun emr:line-visible? (line)
   "Return non-nil if LINE is within the visible bounds of the current window."
