@@ -577,7 +577,7 @@ relying on indentation."
     while (ignore-errors (backward-up-list) t)
     do (when (thing-at-point-looking-at
               (rx-to-string `(seq "(" (or ,@(-map 'symbol-name emr-el-definition-macro-names)))))
-         (return (point))))
+         (cl-return (point))))
    ;; Fall back to using indentation.
    (ignore-errors
      (beginning-of-thing 'defun))))

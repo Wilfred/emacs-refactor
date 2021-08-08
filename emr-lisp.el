@@ -54,7 +54,7 @@
      while (ignore-errors (backward-up-list) t)
      when (thing-at-point-looking-at
            (rx-to-string `(seq "(" ,(symbol-name sym) symbol-end)))
-     do (return (point)))))
+     do (cl-return (point)))))
 
 ; ------------------
 
