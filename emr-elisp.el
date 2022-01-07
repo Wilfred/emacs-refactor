@@ -30,9 +30,9 @@
 (require 'list-utils)
 (require 'dash)
 (require 'thingatpt)
+(require 'compile)
 (require 'emr)
 (require 'emr-lisp)
-(autoload 'define-compilation-mode "compile")
 (autoload 'paredit-splice-sexp-killing-backward "paredit")
 
 (defcustom emr-el-definition-macro-names
